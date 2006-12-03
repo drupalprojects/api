@@ -98,18 +98,15 @@ function api_menu($may_cache) {
       }
 
       if (strpos($_GET['q'], 'api/'. arg(1) .'/file/') !== FALSE) {
-        $matches = array();
-        preg_match('!(api/'. arg(1) .'/file/)(.*?)(/source|/file|$)!', $_GET['q'], $matches);
-        $main_url = $matches[1] . $matches[2];
-        $file_name = $matches[2];
+        $file_name = substr($_GET['q'], strlen('api/'. arg(1) .'/file/'));
 
-        $items[] = array('path' => $main_url, 'title' => t('file'),
+        $items[] = array('path' => $_GET['q'], 'title' => t('file'),
           'callback' => 'api_page_file', 'access' => $access,
           'callback arguments' => array(arg(1), $file_name),
           'type' => MENU_CALLBACK);
-        $items[] = array('path' => $main_url .'/documentation', 'title' => t('view documentation'),
+        $items[] = array('path' => $_GET['q'] .'/documentation', 'title' => t('view documentation'),
           'type' => MENU_DEFAULT_LOCAL_TASK, 'weight' => -10);
-        $items[] = array('path' => $main_url .'/source', 'title' => t('view source'),
+        $items[] = array('path' => $_GET['q'] .'/source', 'title' => t('view source'),
           'callback' => 'api_page_file_source', 'access' => $access,
           'callback arguments' => array(arg(1), $file_name),
           'type' => MENU_LOCAL_TASK);
