@@ -1252,3 +1252,8 @@ function api_scan_directories($directories) {
   }
   return $source_files;
 }
+
+function api_simpletest() {
+	$dir = drupal_get_path('module', 'api'). '/tests';
+  return array_keys(file_scan_directory($dir, '\.test$'));
+}
