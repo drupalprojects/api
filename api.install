@@ -83,9 +83,9 @@ function api_update_2() {
 
 function api_update_3() {
   $ret[] = update_sql("CREATE TABLE {api_reference_storage} (
-             reference_key text NOT NULL,
-             from_did int(10) NOT NULL default '0'
-           ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
+    reference_key text NOT NULL,
+    from_did int(10) NOT NULL default '0'
+  ) TYPE=MyISAM /*!40100 DEFAULT CHARACTER SET utf8 */;");
 
   $reference = variable_get('api_reference', array());
   foreach (array_keys($reference) as $key) {
