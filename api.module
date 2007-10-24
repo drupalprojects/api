@@ -1146,8 +1146,6 @@ function api_cron() {
         db_query("DELETE FROM {api_reference_storage} WHERE from_did = %d OR to_did = %d", $doc->did, $doc->did);
       }
     }
-    // Clean out any references that couldn't be linked (References to PHP functions, etc.)
-    db_query('DELETE FROM {api_reference_storage}');
   }
 
   // Update any references that were resolved during this run.
