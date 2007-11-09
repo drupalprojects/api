@@ -446,6 +446,7 @@ function api_save_documentation(&$docblock) {
   }
 
   if (is_array($docblock['groups'])) {
+    db_query("DELETE FROM {api_reference_storage} WHERE branch_name = '%s' AND object_type = 'group' AND from_did = %d", $docblock['branch_name'], $did);
     foreach ($docblock['groups'] as $group_name) {
       api_reference($docblock['branch_name'], 'group', $group_name, $did);
     }
