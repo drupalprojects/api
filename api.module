@@ -20,6 +20,11 @@
  */
 
 /**
+ * Regular expression for matching file names.
+ */
+define('API_RE_FILENAME', '([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)');
+
+/**
  * Implementation of hook_help()
  */
 function api_help($section) {
@@ -1173,7 +1178,7 @@ function api_link_documentation($documentation, $branch_name) {
 }
 
 function _api_link_documentation($documentation, $branch_name, $stages = array()) {
-  static $patterns = array(
+  $patterns = array(
     // Find HTML tags, which will not be filtered.
     'tags' => '/(<[^>]+?>)/',
 
@@ -1186,7 +1191,7 @@ function _api_link_documentation($documentation, $branch_name, $stages = array()
 
     // Find file names, which are an arbitrary number of strings joined with
     // '.'
-    'file' => '%(?<=^|\s)([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)(?=$|\s|[.,:;?!])%e',
+    'file' => '%(?<=^|\s)'. API_RE_FILENAME .'(?=$|\s|[.,:;?!])%e',
   );
   $stage = array_shift($stages);
 
