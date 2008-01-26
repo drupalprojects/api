@@ -1396,6 +1396,7 @@ function api_link_name($name, $branch_name, $prepend = '', $append = '') {
       'function' => array(),
       'file' => array(),
       'constant' => array(),
+      'global' => array(),
     );
     while ($object = db_fetch_object($result)) {
       $local_objects[$object->object_type][$object->title] = $object;
