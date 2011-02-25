@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 class ApiLinkCodeTest extends DrupalTestCase {
   function get_info() {
