@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 function api_schema() {
   $schema['api_branch'] = array(

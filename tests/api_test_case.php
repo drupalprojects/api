@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 class ApiTestCase extends DrupalWebTestCase {
   function setUp() {
