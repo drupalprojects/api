@@ -241,11 +241,9 @@ function api_schema() {
     'fields' => array(
       'object_name' => array(
         'type' => 'varchar',
-        'mysql_type' => 'varbinary',
-        'pgsql_type' => 'bytea',
+        'mysql_type' => 'varbinary(127)',
+        'pgsql_type' => 'bytea(127)',
         'length' => '127',
-        'not null' => TRUE,
-        'default' => '',
       ),
       'branch_id' => array(
         'type' => 'int',
@@ -346,7 +344,7 @@ function api_enable() {
   $exists = FALSE;
   $result = db_select('api_branch', 'b')
     ->fields('b', array('branch_name'))
-    >condition('branch_name', 'php')
+    ->condition('branch_name', 'php')
     ->range(0,1)
     ->execute();
 
