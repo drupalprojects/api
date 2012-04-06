@@ -5,13 +5,6 @@
  * The PHP documentation parser that generates content for api.module.
  */
 
-module_load_include('inc', 'grammar_parser', 'engine/parser');
-module_load_include('inc', 'grammar_parser', 'engine/reader');
-module_load_include('inc', 'grammar_parser', 'engine/writer');
-module_load_include('inc', 'grammar_parser', 'engine/editor');
-module_load_include('inc', 'grammar_parser', 'engine/list');
-module_load_include('inc', 'grammar_parser', 'engine/object');
-
 /**
  * Reads in a file and calls a callback function to parse and save it.
  *
@@ -56,7 +49,7 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
  *   Array from api_parse_file() containing the file contents and information
  *   about the file, branch, etc.
  */
-Function api_parse_text_file($docblock) {
+function api_parse_text_file($docblock) {
   $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE);
   // We don't actually want to keep track of references for text files.
   $references = array();
@@ -105,6 +98,10 @@ function api_parse_html_file($docblock) {
  *   about the file, branch, etc.
  */
 function api_parse_php_file($docblock) {
+  if (!api_libraries_loaded()) {
+    return;
+  }
+
   // Build grammar statements.
   $editor = PGPEditor::getInstance();
   $reader = $editor->getReader();
@@ -170,6 +167,10 @@ function api_parse_php_file($docblock) {
  *   are added to the end of this array.
  */
 function api_documentation_loop($statements, $default_block, &$docblocks) {
+  if (!api_libraries_loaded()) {
+    return;
+  }
+
   static $object_types = array(
     T_ASSIGNMENT => 'property',
     T_CONST => 'constant',
@@ -208,7 +209,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         $docblock['content'] = $editor->commentToString($statement->comment);
         $statement->comment = '';
         $references = array();
-        $docblock['code'] = api_format_php("<?php\n". $statement->toString() ."\n?".">", $references, FALSE, ($statement->type == T_FUNCTION));
+        $docblock['code'] = api_format_php("<?php\n" . $statement->toString() . "\n?" . ">", $references, FALSE, ($statement->type == T_FUNCTION));
         if ($statement->type == T_FUNCTION) {
           $docblock['signature'] = $editor->functionGetSignature($statement);
           $docblock['references'] = $references;
@@ -255,11 +256,12 @@ function api_save_documentation($docblocks) {
   // Make a list of the documentation IDs that were contained in this file
   // the last time through. We'll remove any items that are not in this file
   // any more after we get through the $docblocks array.
-  $old_dids = array();
-  $result = db_query("SELECT did FROM {api_documentation} WHERE branch_id = %d AND file_name = '%s'", $docblocks[0]['branch']->branch_id, $docblocks[0]['file_name']);
-  while ($object = db_fetch_object($result)) {
-    $old_dids[] = $object->did;
-  }
+  $old_dids = db_select('api_documentation', 'd')
+    ->fields('d', array('did'))
+    ->condition('branch_id', $docblocks[0]['branch']->branch_id)
+    ->condition('file_name', $docblocks[0]['file_name'])
+    ->execute()
+    ->fetchCol();
 
   $dids = array();
   $class_dids = array();
@@ -336,7 +338,7 @@ function api_save_documentation($docblocks) {
         // are stripped out below, so we use [strong] and then fix it later.
         $this_param = $param_match[1][0];
         $this_param = preg_replace('|^([^\n]+)|', '[strong]$1[/strong]:', $this_param);
-        $params .= "\n\n". $this_param;
+        $params .= "\n\n" . $this_param;
         $offset = $param_match[0][1];
       }
       // Format and then replace our fake tags with real ones.
@@ -350,7 +352,7 @@ function api_save_documentation($docblocks) {
       preg_match_all('/' . API_RE_TAG_START . 'return\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $return_matches, PREG_SET_ORDER);
       foreach ($return_matches as $return_match) {
         $docblock['content'] = str_replace($return_match[0], '', $docblock['content']);
-        $docblock['return_value'] .= "\n\n". $return_match[1];
+        $docblock['return_value'] .= "\n\n" . $return_match[1];
       }
       $docblock['return_value'] = api_format_documentation($docblock['return_value']);
 
@@ -359,7 +361,7 @@ function api_save_documentation($docblocks) {
       $docblock['see'] = '';
       while (preg_match('/' . API_RE_TAG_START . 'see\s(.*?)\n/s', substr($docblock['content'], $offset), $match, PREG_OFFSET_CAPTURE)) {
         $docblock['content'] = str_replace($match[0][0], '', $docblock['content']);
-        $docblock['see'] .= "\n\n". $match[1][0];
+        $docblock['see'] .= "\n\n" . $match[1][0];
         $offset = $match[0][1];
       }
       $docblock['see'] = api_format_documentation($docblock['see']);
@@ -390,7 +392,15 @@ function api_save_documentation($docblocks) {
       $docblock['class_did'] = $class_dids[$docblock['class']];
     }
 
-    $docblock['did'] = db_result(db_query("SELECT did FROM {api_documentation} WHERE object_name = '%s' AND branch_id = %d AND object_type = '%s' AND file_name = '%s'", $docblock['object_name'], $docblocks[0]['branch']->branch_id, $docblock['object_type'], $docblock['file_name']));
+    // See if this docblock already existed, and get its ID.
+    $docblock['did'] = db_select('api_documentation', 'd')
+      ->fields('d', array('did'))
+      ->condition('object_name', $docblock['object_name'])
+      ->condition('file_name', $docblock['file_name'])
+      ->condition('object_type', $docblock['object_type'])
+      ->condition('branch_id', $docblocks[0]['branch']->branch_id)
+      ->execute()
+      ->fetchField();
     if ($docblock['did'] > 0) {
       _api_add_text_defaults($docblock, 'api_documentation');
       drupal_write_record('api_documentation', $docblock, 'did');
@@ -408,11 +418,19 @@ function api_save_documentation($docblocks) {
       $class_dids[$docblock['object_name']] = $docblock['did'];
     }
 
-    db_query('DELETE FROM {api_overrides} WHERE did = %d OR overrides_did = %d OR root_did = %d', $docblock['did'], $docblock['did'], $docblock['did']);
+    db_delete('api_overrides')
+      ->condition(db_or()
+        ->condition('did', $docblock['did'])
+        ->condition('overrides_did', $docblock['did'])
+        ->condition('root_did', $docblock['did'])
+      )
+      ->execute();
 
     switch ($docblock['object_type']) {
       case 'function':
-        db_query('DELETE FROM {api_function} WHERE did = %d', $docblock['did']);
+        db_delete('api_function')
+          ->condition('did', $docblock['did'])
+          ->execute();
         _api_add_text_defaults($docblock, 'api_function');
         drupal_write_record('api_function', $docblock);
 
@@ -428,7 +446,11 @@ function api_save_documentation($docblocks) {
 
       case 'interface':
       case 'class':
-        db_query("DELETE FROM {api_reference_storage} WHERE branch_id = '%s' AND object_type IN ('class', 'interface') AND from_did = %d", $docblocks[0]['branch']->branch_id, $docblock['did']);
+        db_delete('api_reference_storage')
+          ->condition('branch_id', $docblocks[0]['branch']->branch_id)
+          ->condition('object_type', array('class', 'interface'))
+          ->condition('from_did', $docblock['did'])
+          ->execute();
         foreach ($docblock['extends'] as $extend) {
           api_reference($docblocks[0]['branch'], 'class', $extend, $docblock['did']);
         }
@@ -439,7 +461,11 @@ function api_save_documentation($docblocks) {
     }
 
     if (isset($docblock['groups'])) {
-      db_query("DELETE FROM {api_reference_storage} WHERE branch_id = '%s' AND object_type = 'group' AND from_did = %d", $docblocks[0]['branch']->branch_id, $docblock['did']);
+      db_delete('api_reference_storage')
+        ->condition('branch_id', $docblocks[0]['branch']->branch_id)
+        ->condition('object_type', 'group')
+        ->condition('from_did', $docblock['did'])
+        ->execute();
       foreach ($docblock['groups'] as $group_name) {
         api_reference($docblocks[0]['branch'], 'group', $group_name, $docblock['did']);
       }
@@ -448,14 +474,31 @@ function api_save_documentation($docblocks) {
     $dids[] = $docblock['did'];
   }
 
+  // Clean out all of the doc objects from this file that no longer exist.
   $old_dids = array_diff($old_dids, $dids);
   if (count($old_dids) > 0) {
-    $old_dids = implode(',', $old_dids);
-    db_query('DELETE FROM {api_documentation} WHERE did IN (%s)', $old_dids);
-    db_query('DELETE FROM {api_file} WHERE did IN (%s)', $old_dids);
-    db_query('DELETE FROM {api_function} WHERE did IN (%s)', $old_dids);
-    db_query('DELETE FROM {api_reference_storage} WHERE from_did IN (%s) OR to_did IN (%s)', $old_dids, $old_dids);
-    db_query('DELETE FROM {api_overrides} WHERE did IN (%s) OR overrides_did IN (%s) OR root_did IN (%s)', $old_dids, $old_dids, $old_dids);
+    db_delete('api_documentation')
+      ->condition('did', $old_dids)
+      ->execute();
+    db_delete('api_file')
+      ->condition('did', $old_dids)
+      ->execute();
+    db_delete('api_function')
+      ->condition('did', $old_dids)
+      ->execute();
+    db_delete('api_reference_storage')
+      ->condition(db_or()
+        ->condition('from_did', $old_dids)
+        ->condition('to_did', $old_dids)
+      )
+      ->execute();
+    db_delete('api_overrides')
+      ->condition(db_or()
+        ->condition('did', $old_dids)
+        ->condition('root_did', $old_dids)
+        ->condition('overrides_did', $old_dids)
+      )
+      ->execute();
   }
 
   api_schedule_shutdown();
@@ -480,8 +523,14 @@ function api_replace_references($branch, $did, $name, $references) {
     $shortname = substr($name, $pos + 2);
   }
 
-  // First, remove any existing references.
-  db_query("DELETE FROM {api_reference_storage} WHERE branch_id = %d AND object_type IN ('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'member-parent','member-self', 'member', 'member-class') AND from_did = %d", $branch->branch_id, $did);
+  // Remove any existing references.
+  db_delete('api_reference_storage')
+    ->condition('branch_id', $branch->branch_id)
+    ->condition('object_type', array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'member-parent','member-self', 'member', 'member-class'))
+    ->condition('from_did', $did)
+    ->execute();
+
+  // Add the new references.
   foreach ($references as $type => $list) {
     // Don't save a reference to the item itself.
     if ($type == 'function' || $type == 'potential callback' || $type == 'member-self') {
@@ -582,18 +631,18 @@ function api_autop($text) {
     }
     elseif (!$ignore) {
       $chunk = api_format_documentation_lists($chunk);
-      $chunk = preg_replace('|\n*$|', '', $chunk) ."\n\n"; // just to make things a little easier, pad the end
+      $chunk = preg_replace('|\n*$|', '', $chunk) . "\n\n"; // just to make things a little easier, pad the end
       $chunk = preg_replace('|<br />\s*<br />|', "\n\n", $chunk);
-      $chunk = preg_replace('!(<'. $block .'[^>]*>)!', "\n$1", $chunk); // Space things out a little
-      $chunk = preg_replace('!(</'. $block .'>)!', "$1\n\n", $chunk); // Space things out a little
+      $chunk = preg_replace('!(<' . $block . '[^>]*>)!', "\n$1", $chunk); // Space things out a little
+      $chunk = preg_replace('!(</' . $block . '>)!', "$1\n\n", $chunk); // Space things out a little
       $chunk = preg_replace("/\n\n+/", "\n\n", $chunk); // take care of duplicates
       $chunk = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $chunk); // make paragraphs, including one at the end
       $chunk = preg_replace('|<p>\s*</p>\n|', '', $chunk); // under certain strange conditions it could create a P of entirely whitespace
       $chunk = preg_replace("|<p>(<li.+?)</p>|", "$1", $chunk); // problem with nested lists
       $chunk = preg_replace('|<p><blockquote([^>]*)>|i', "<blockquote$1><p>", $chunk);
       $chunk = str_replace('</blockquote></p>', '</p></blockquote>', $chunk);
-      $chunk = preg_replace('!<p>\s*(</?'. $block .'[^>]*>)!', "$1", $chunk);
-      $chunk = preg_replace('!(</?'. $block .'[^>]*>)\s*</p>!', "$1", $chunk);
+      $chunk = preg_replace('!<p>\s*(</?' . $block . '[^>]*>)!', "$1", $chunk);
+      $chunk = preg_replace('!(</?' . $block . '[^>]*>)\s*</p>!', "$1", $chunk);
       $chunk = preg_replace('/&([^#])(?![A-Za-z0-9]{1,8};)/', '&amp;$1', $chunk);
     }
     $output .= $chunk;
@@ -606,7 +655,7 @@ function api_autop($text) {
  */
 function api_format_embedded_php($matches) {
   $references = array();
-  return "\n". api_format_php("<?php". decode_entities($matches[1]) ."?".">", $references, FALSE, FALSE) ."\n";
+  return "\n" . api_format_php("<?php" . decode_entities($matches[1]) . "?" . ">", $references, FALSE, FALSE) . "\n";
 }
 
 /**
@@ -667,7 +716,7 @@ function api_format_documentation_lists($documentation) {
       $matches[3] = '<strong>' . substr($matches[3], 0, $p) . '</strong>' .
         substr($matches[3], $p);
     }
-    $output .= $matches[3] ."\n";
+    $output .= $matches[3] . "\n";
   }
 
   // Clean up any unclosed lists.
@@ -814,7 +863,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_OPEN_TAG:
           $in_member = FALSE;
           $member_of = '';
-          $to_add = '<span class="php-boundry">'. $value .'</span>';
+          $to_add = '<span class="php-boundry">' . $value . '</span>';
           $open_count++;
           if (strlen($output) == 0) {
             // This is at the start of $output, so we tentatively want
@@ -828,7 +877,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_CLOSE_TAG:
           $in_member = FALSE;
           $member_of = '';
-          $to_add = '<span class="php-boundry">'. $value .'</span>';
+          $to_add = '<span class="php-boundry">' . $value . '</span>';
           $close_count++;
           // Save the size of the closing tag here. If we didn't encounter
           // any more tokens after this, it will remain (this is reset to zero
@@ -842,13 +891,13 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_DOC_COMMENT:
           $in_member = FALSE;
           $member_of = '';
-          $output .= '<span class="php-comment">'. $value .'</span>';
+          $output .= '<span class="php-comment">' . $value . '</span>';
           break;
 
         case T_VARIABLE:
           $in_member = FALSE;
           $member_of = $value;
-          $output .= '<span class="php-variable">'. $value .'</span>';
+          $output .= '<span class="php-variable">' . $value . '</span>';
           break;
 
         case T_CONSTANT_ENCAPSED_STRING:
@@ -864,18 +913,18 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
               $references['potential ' . $invoke_type][$newname] = $newname;
             }
           }
-          if ($track_references && preg_match("|^'" . API_RE_PHP_FUNCTION . "'$|", $value)) {
+          if ($track_references && preg_match("|^'" . DRUPAL_PHP_FUNCTION_PATTERN . "'$|", $value)) {
             $newname = str_replace("'", '', $value);
             $references['potential callback'][$newname] = $newname;
           }
 
-          $output .= '<span class="' . $class . '">'. $value .'</span>';
+          $output .= '<span class="' . $class . '">' . $value . '</span>';
           break;
 
         case T_INLINE_HTML:
           $in_member = FALSE;
           $member_of = '';
-          $output .= '<span class="php-string">'. $value .'</span>';
+          $output .= '<span class="php-string">' . $value . '</span>';
           break;
 
         case T_STRING:
@@ -918,7 +967,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
             }
           }
 
-          $output .= '<span class="' . $class . '">'. $value .'</span>';
+          $output .= '<span class="' . $class . '">' . $value . '</span>';
 
           // Save references -- only for functions.
           if ($track_references && $is_function) {
@@ -958,28 +1007,66 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_DNUMBER:
           $in_member = FALSE;
           $member_of = '';
-          $output .= '<span class="php-constant">'. $value .'</span>';
+          $output .= '<span class="php-constant">' . $value . '</span>';
           break;
 
-        case T_ARRAY_CAST: case T_ARRAY: case T_AS: case T_BOOL_CAST:
-        case T_BREAK: case T_CASE: case T_CLASS: case T_CONST:
-        case T_CONTINUE: case T_DECLARE: case T_DEFAULT: case T_DO:
-        case T_DOUBLE_CAST: case T_ECHO: case T_ELSE: case T_ELSEIF:
-        case T_EMPTY: case T_ENDDECLARE: case T_ENDFOR: case T_ENDFOREACH:
-        case T_ENDIF: case T_ENDSWITCH: case T_ENDWHILE: case T_EVAL:
-        case T_EXIT: case T_EXTENDS: case T_FOR: case T_FOREACH:
-        case T_FUNCTION: case T_GLOBAL: case T_IF: case T_INCLUDE_ONCE:
-        case T_INCLUDE: case T_INT_CAST: case T_ISSET: case T_LIST:
-        case T_NEW: case T_OBJECT_CAST: case T_PRINT:
-        case T_REQUIRE_ONCE: case T_REQUIRE: case T_RETURN: case T_STATIC:
-        case T_STRING_CAST: case T_SWITCH: case T_UNSET_CAST: case T_UNSET:
-        case T_USE: case T_VAR: case T_WHILE:
+        case T_ARRAY_CAST:
+        case T_ARRAY:
+        case T_AS:
+        case T_BOOL_CAST:
+        case T_BREAK:
+        case T_CASE:
+        case T_CLASS:
+        case T_CONST:
+        case T_CONTINUE:
+        case T_DECLARE:
+        case T_DEFAULT:
+        case T_DO:
+        case T_DOUBLE_CAST:
+        case T_ECHO:
+        case T_ELSE:
+        case T_ELSEIF:
+        case T_EMPTY:
+        case T_ENDDECLARE:
+        case T_ENDFOR:
+        case T_ENDFOREACH:
+        case T_ENDIF:
+        case T_ENDSWITCH:
+        case T_ENDWHILE:
+        case T_EVAL:
+        case T_EXIT:
+        case T_EXTENDS:
+        case T_FOR:
+        case T_FOREACH:
+        case T_FUNCTION:
+        case T_GLOBAL:
+        case T_IF:
+        case T_INCLUDE_ONCE:
+        case T_INCLUDE:
+        case T_INT_CAST:
+        case T_ISSET:
+        case T_LIST:
+        case T_NEW:
+        case T_OBJECT_CAST:
+        case T_PRINT:
+        case T_REQUIRE_ONCE:
+        case T_REQUIRE:
+        case T_RETURN:
+        case T_STATIC:
+        case T_STRING_CAST:
+        case T_SWITCH:
+        case T_UNSET_CAST:
+        case T_UNSET:
+        case T_USE:
+        case T_VAR:
+        case T_WHILE:
           $in_member = FALSE;
           $member_of = '';
-          $output .= '<span class="php-keyword">'. $value .'</span>';
+          $output .= '<span class="php-keyword">' . $value . '</span>';
           break;
 
-        case T_OBJECT_OPERATOR: case T_DOUBLE_COLON:
+        case T_OBJECT_OPERATOR:
+        case T_DOUBLE_COLON:
           $output .= $value;
           $in_member = TRUE;
           break;
@@ -1028,7 +1115,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
     $output .= '</ol>';
   }
 
-  $output = '<pre class="php"><code>'. $output .'</code></pre>';
+  $output = '<pre class="php"><code>' . $output . '</code></pre>';
   return $output;
 }
 
@@ -1053,11 +1140,22 @@ function api_reference($branch, $to_type, $to_name, $from_did) {
 
   // Don't make references to built-in PHP functions.
   if ($to_type == 'function' && !isset($is_php_function[$to_name])) {
-    $is_php_function[$to_name] = (db_result(db_query_range("SELECT 1 FROM {api_documentation} d INNER JOIN {api_branch} b ON b.branch_id = d.branch_id AND b.type = 'php' WHERE d.object_name = '%s'", $to_name, 1, 1)));
+    $query = db_select('api_documentation', 'd')
+      ->fields('d', 'did');
+    $b = $query->innerJoin('api_branch', 'b', "b.branch_id = d.branch_id AND b.type = 'php'");
+    $query->condition('d.object_name', $to_name);
+    $is_php_function[$to_name] = $query->execute()->fetchField();
   }
 
   if ($to_type != 'function' || !$is_php_function[$to_name]) {
-    db_query("INSERT INTO {api_reference_storage} (object_name, branch_id, object_type, from_did) VALUES ('%s', '%s', '%s', %d)", $to_name, $branch->branch_id, $to_type, $from_did);
+    $id = db_insert('api_reference_storage')
+      ->fields(array(
+          'object_name' => $to_name,
+          'branch_id' => $branch->branch_id,
+          'object_type' => $to_type,
+          'from_did' => $from_did,
+        ))
+      ->execute();
   }
 }
 
@@ -1083,15 +1181,27 @@ function api_schedule_shutdown() {
  */
 function api_shutdown() {
   // We will be re-computing this below.
-  db_query("DELETE FROM {api_reference_storage} WHERE object_type = 'computed-member'");
+  db_delete('api_reference_storage')
+    ->condition('object_type', 'computed-member')
+    ->execute();
 
   // Figure out all the dids of the object/branch/types in reference storage.
-  db_query("UPDATE {api_reference_storage} r INNER JOIN {api_documentation} d ON r.object_name = d.object_name AND r.branch_id = d.branch_id AND r.object_type = d.object_type SET r.to_did = d.did WHERE r.object_type  IN ('class', 'group',  'interface')");
+  // Note: There doesn't seem to be a way to use the DB API to build this
+  // query, so using ANSI SQL syntax instead.
+  db_query("UPDATE {api_reference_storage} SET to_did = ( SELECT d.did FROM {api_documentation} d WHERE d.object_name = {api_reference_storage}.object_name AND d.branch_id = {api_reference_storage}.branch_id AND d.object_type = {api_reference_storage}.object_type AND d.object_type IN ('class', 'group', 'interface') ) WHERE EXISTS ( SELECT d.did FROM {api_documentation} d WHERE d.object_name = {api_reference_storage}.object_name AND d.branch_id = {api_reference_storage}.branch_id AND d.object_type = {api_reference_storage}.object_type AND d.object_type IN ('class', 'group', 'interface') )");
 
   // Save overrides.
+  $query = db_select('api_documentation', 'ad')
+    ->fields('ad', array('did', 'object_type', 'member_name', 'class_did', 'documentation', 'throws', 'var', 'code'));
+  $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = ad.did');
+  $af = $query->leftJoin('api_function', 'af', 'af.did = ad.did');
+  $query->fields('af', array('parameters', 'return_value'))
+    ->condition('ad.class_did', 0, '<>')
+    ->isNull($ao . '.did');
+  $result = $query->execute();
+
   $changed_classes = array();
-  $result = db_query("SELECT ad.did, ad.object_type, ad.member_name, ad.class_did, ad.documentation, af.parameters, af.return_value, ad.see, ad.throws, ad.var, ad.code FROM {api_documentation} ad LEFT JOIN {api_overrides} ao ON ao.did = ad.did LEFT JOIN {api_function} af ON af.did = ad.did WHERE ad.class_did <> 0 AND ao.did IS NULL");
-  while ($object = db_fetch_object($result)) {
+  foreach ($result as $object) {
     $changed_classes[$object->class_did] = TRUE;
     $override = array(
       'did' => $object->did,
@@ -1102,8 +1212,16 @@ function api_shutdown() {
     $overrides_did = 0;
     $parents = array($object->class_did);
     while ($parent = array_shift($parents)) {
-      $result_parents = db_query("SELECT ad.did, ars.to_did, ad.summary, ad.documentation, af.parameters, af.return_value, ad.see, ad.throws, ad.var, ad.class_did FROM {api_reference_storage} ars LEFT JOIN {api_documentation} ad ON ad.class_did = ars.to_did AND ad.object_type = '%s' AND ad.member_name = '%s' LEFT JOIN {api_function} af ON af.did = ad.did WHERE ars.from_did = %d AND ars.object_type IN ('class', 'interface')", $object->object_type, $object->member_name, $parent);
-      while ($parent_class = db_fetch_object($result_parents)) {
+      $query = db_select('api_reference_storage', 'ars')
+        ->fields('ars', array('to_did'));
+      $ad = $query->leftJoin('api_documentation', 'ad', "ad.class_did = ars.to_did AND ad.object_type = ':obj_type' AND ad.member_name = ':mem_name'", array(':obj_type' => $object->object_type, ':mem_name' => $object->member_name));
+      $query->fields($ad, array('did', 'summary', 'documentation', 'see', 'var', 'class_did'));
+      $af = $query->leftJoin('api_function', 'af', 'af.did = ' . $ad . '.did');
+      $query->fields($af, array('parameters', 'return_value'))
+        ->condition('ars.from_did', $parent)
+        ->condition('ars.object_type', array('class', 'interface'));
+      $result_parents = $query->execute();
+      foreach ($result_parents as $parent_class) {
         $parents[] = $parent_class->to_did;
         if (!empty($parent_class->class_did)) {
           $changed_classes[$parent_class->class_did] = TRUE;
@@ -1126,12 +1244,16 @@ function api_shutdown() {
   }
 
   // Save members
-  while (list($class_did, ) = each($changed_classes)) {
+  while (list($class_did,  ) = each($changed_classes)) {
     // Add child classes to $changed_classes
-    $result_chidren = db_query("SELECT ars.from_did FROM {api_reference_storage} ars WHERE ars.to_did = %d AND ars.object_type IN ('class', 'interface') AND ars.from_did <> 0", $class_did);
-    while ($child = db_fetch_object($result_chidren)) {
-      $changed_classes[$child->from_did] = TRUE;
-    }
+    $result_children = db_select('api_reference_storage', 'ars')
+      ->fields('ars', array('from_did'))
+      ->condition('to_did', $class_did)
+      ->condition('from_did', 0, '<>')
+      ->execute()
+      ->fetchCol();
+    $changed_classes = array_fill_keys($result_children, TRUE);
+
     // Walk up the tree to find members. Since methods, properties, and
     // constants can share names, do each separately.
     $all_members = array(
@@ -1142,21 +1264,32 @@ function api_shutdown() {
     $parents = array($class_did);
     while ($parent = array_shift($parents)) {
       // Add this class's parents to the list.
-      $result_parents = db_query("SELECT ars.to_did FROM {api_reference_storage} ars WHERE ars.from_did = %d AND ars.object_type IN ('class', 'interface') AND ars.to_did <> 0", $parent);
-      while ($object = db_fetch_object($result_parents)) {
+      $result_parents = db_select('api_reference_storage', 'ars')
+        ->fields('ars', array('to_did'))
+        ->condition('from_did', $parent)
+        ->condition('to_did', 0, '<>')
+        ->execute();
+      foreach ($result_parents as $object) {
         $parents[] = $object->to_did;
       }
       // Find members of each type.
       foreach ($all_members as $type => $members) {
-        $result_members = db_query("SELECT did, member_name FROM {api_documentation} WHERE class_did = %d AND object_type = '%s' AND member_name NOT IN (" . db_placeholders($members, 'text') . ")", array_merge(array($parent, $type), array_keys($members)));
-        while ($member = db_fetch_object($result_members)) {
+        $result_members = db_select('api_documentation', 'd')
+          ->fields('d', array('did', 'member_name'))
+          ->condition('class_did', $parent)
+          ->condition('object_type', $type)
+          ->condition('member_name', array_keys($members), 'NOT IN')
+          ->execute();
+        foreach ($result_members as $member) {
           $members[$member->member_name] = $member->did;
         }
         $all_members[$type] = $members;
       }
     }
-    // Save them
-    db_query("DELETE FROM {api_members} WHERE class_did = %d", $class_did);
+    // Save them.
+    db_delete('api_members')
+      ->condition('class_did', $class_did)
+      ->execute();
     foreach ($all_members as $type => $members) {
       array_shift($members);
       foreach ($members as $did) {
@@ -1169,16 +1302,55 @@ function api_shutdown() {
     }
   }
 
+
   // Figure out the member-self references in reference storage. Basically,
   // ChildClass::foo() calls $this->bar(). We need to figure out the ID of
   // $this->bar(), which could be on ChildClass::bar() or ParentClass::bar().
   // The {api_methods} table keeps track of this.
-  db_query("INSERT INTO {api_reference_storage} (object_name, branch_id, object_type, from_did, to_did) (SELECT memberd.object_name, r.branch_id, 'computed-member' as object_type, r.from_did, 0 as to_did FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did INNER JOIN ({api_members} m INNER JOIN {api_documentation} memberd ON m.did = memberd.did) ON memberd.member_name = r.object_name AND m.class_did = d.class_did WHERE r.object_type = 'member-self' AND memberd.object_type = 'function')");
+
+  $select = db_select('api_reference_storage', 'r');
+  $d = $select->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+  $select2 = db_select('api_members', 'm');
+  $memberd = $select2->innerJoin('api_documentation', 'memberd', 'm.did = memberd.did');
+  $m_name = $select2->addField($memberd, 'member_name', 'm_name');
+  $m_cdid = $select2->addField('m', 'class_did', 'm_cdid');
+  $m_objtype = $select2->addField($memberd, 'object_type', 'm_objtype');
+  $m_objname = $select2->addField($memberd, 'object_name', 'm_objname');
+  $mm = $select->innerJoin($select2, 'mm', 'mm.m_name = r.object_name AND mm.cdid = ' . $d . '.class_did');
+  $select->addField($mm, $m_objname, 'object_name');
+  $select->addFied('r', 'branch_id', 'branch_id');
+  $select->addExpression("'computed-member'", 'object_type');
+  $select->addField('r', 'from_did', 'from_did');
+  $select->addExpression(0, 'to_did');
+  $select->condition('r.object_type', 'member-self')
+    ->condition($mm . '.m_obj_name', 'function');
+
+  db_insert('api_reference_storage')
+    ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'to_did'))
+    ->from($select)
+    ->execute();
 
   // Do the same for member-parent references, where ChildClass::foo() calls
   // parent::bar(). {api_reference} keeps track of parent classes, with parent
   // class in to_did, and extending child class on from_did.
-  db_query("INSERT INTO {api_reference_storage} (object_name, branch_id, object_type, from_did, to_did) (SELECT parentd.object_name, r.branch_id, 'computed-member' as object_type, r.from_did, parentd.did as to_did FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did INNER JOIN {api_reference_storage} parentr ON parentr.from_did = d.class_did AND parentr.object_type = 'class' INNER JOIN {api_members} parentm ON parentr.to_did = parentm.class_did INNER JOIN {api_documentation} parentd ON parentd.did = parentm.did AND parentd.member_name = r.object_name WHERE r.object_type = 'member-parent' AND parentd.object_type = 'function')");
+
+  $select = db_select('api_reference_storage', 'r');
+  $d = $select->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+  $parentr = $select->innerJoin('api_reference_storage', 'parentr', "parentr.from_did = d.class_did AND parentr.object_type = 'class'");
+  $parentm = $select->innerJoin('api_members', 'parentm', 'parentr.to_did = parentm.class_did');
+  $parentd = $select->innerJoin('api_documentation', 'parentd', 'parentd.did = parentm.did AND parentd.member_name = r.object_name');
+  $select->condition('r.object_type', 'member-parent')
+    ->condition('parentd.object_type', 'function');
+  $select->addField($parentd, 'object_name');
+  $select->addFied('r', 'branch_id', 'branch_id');
+  $select->addExpression("'computed-member'", 'object_type');
+  $select->addField('r', 'from_did', 'from_did');
+  $select->addField($parentd, 'did', 'to_did');
+
+  db_insert('api_reference_storage')
+    ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'to_did'))
+    ->from($select)
+    ->execute();
 
   // Save JSON autocomplete cache
   $directory = file_directory_path();
@@ -1186,7 +1358,7 @@ function api_shutdown() {
     drupal_queue_include();
 
     $path = file_create_path('api');
-    file_check_directory($path, FILE_CREATE_DIRECTORY);
+    file_prepare_directory($path, FILE_CREATE_DIRECTORY);
     $date = gmdate('U');
     foreach (api_get_branch_names() as $branch_name) {
       $new_json = api_autocomplete($branch_name, FALSE);
@@ -1326,8 +1498,14 @@ function api_update_branch_files($branch) {
 
   // List all documented files for the branch.
   $files = array();
-  $result = db_query("SELECT f.did, f.modified, f.queued, d.object_name FROM {api_documentation} d INNER JOIN {api_file} f ON d.did = f.did WHERE d.branch_id = %d AND d.object_type = 'file'", $branch->branch_id);
-  while ($file = db_fetch_object($result)) {
+  $query = db_select('api_documentation', 'd')
+    ->fields('d', array('object_name'));
+  $f = $query->innerJoin('api_file', 'f', 'd.did = f.did');
+  $query->fields($f, array('did', 'modified', 'queued'))
+    ->condition('d.branch_id', $branch->branch_id)
+    ->condition('d.object_type', 'file');
+  $result = $query->execute();
+  foreach ($result as $file) {
     $files[$file->object_name] = $file;
   }
 
@@ -1372,7 +1550,7 @@ function api_update_branch_files($branch) {
         else {
           // Update the 'queued' field in the {api_file} table so this does not
           // get queued again.
-          $file->queued = time();
+          $file->queued = time(),
           drupal_write_record('api_file', $file, 'did');
         }
       }
@@ -1382,12 +1560,28 @@ function api_update_branch_files($branch) {
   // Remove outdated files.
   foreach (array_keys($files) as $file_name) {
     watchdog('api', 'Removing %file.', array('%file' => $file_name));
-    $result = db_query("SELECT ad.did FROM {api_documentation} ad WHERE ad.file_name = '%s' AND ad.branch_id = %d", $file_name, $branch->branch_id);
-    while ($doc = db_fetch_object($result)) {
-      db_query("DELETE FROM {api_documentation} WHERE did = %d", $doc->did);
-      db_query("DELETE FROM {api_file} WHERE did = %d", $doc->did);
-      db_query("DELETE FROM {api_function} WHERE did = %d", $doc->did);
-      db_query("DELETE FROM {api_reference_storage} WHERE from_did = %d OR to_did = %d", $doc->did, $doc->did);
+    $dids = db_select('api_documentation', 'ad')
+      ->fields('ad', array('did'))
+      ->condition('file_name', $file_name)
+      ->condition('branch_id', $branch->branch_id)
+      ->execute()
+      ->fetchCol();
+    foreach ($dids as $did) {
+      db_delete('api_documentation')
+        ->condition('did', $did)
+        ->execute();
+      db_delete('api_file')
+        ->condition('did', $did)
+        ->execute();
+      db_delete('api_function')
+        ->condition('did', $did)
+        ->execute();
+      db_delete('api_reference_storage')
+        ->condition(db_or()
+          ->condition('from_did', $did)
+          ->condition('to_did', $did)
+        )
+        ->execute();
     }
     api_schedule_shutdown();
   }
@@ -1448,7 +1642,7 @@ function api_scan_directories($directories, $excluded_directories) {
   $todo = $directory_array;
   while (count($todo) > 0) {
     $directory = array_shift($todo);
-    $files = file_scan_directory($directory, '.*', array('.', '..', 'CVS'), 0, FALSE);
+    $files = file_scan_directory($directory, '/.*/', array('recurse' => FALSE));
     foreach ($files as $path => $file) {
       if (is_dir($path)) {
         // See if we want to scan this path, and if so, add to To Do list.

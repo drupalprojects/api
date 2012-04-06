@@ -19,7 +19,15 @@ function api_page_admin_overview() {
   drupal_queue_include();
   $queue = DrupalQueue::get('api_parse');
   $num = $queue->numberOfItems();
-  $output .= '<p>' . format_plural($num, 'There is approximately @count parsing job waiting in the queue.',  'There are approximately @count parsing jobs waiting in the queue.') . '</p>';
+  $output .= '<p>' . format_plural($num, 'There is approximately @count parsing job waiting in the queue.', 'There are approximately @count parsing jobs waiting in the queue.') . '</p>';
+
+  // Display library status.
+  if (api_libraries_loaded(FALSE)) {
+    $output .= '<p>' . t('Required parsing libraries are present.') . '</p>';
+  }
+  else {
+    $output .= '<p>' . t('The Grammar Parser library is not present. You will not be able to parse API files until you install it. See README.txt for a link to installation instructions for this version of the API module.') . '</p>';
+  }
 
   return $output;
 }
@@ -31,7 +39,7 @@ function api_page_admin_overview() {
  * @see api_page_admin_form_submit()
  * @ingroup forms
  */
-function api_page_admin_form() {
+function api_page_admin_form($form, &$form_state) {
   $branches = api_get_branches();
   $form = array();
 
@@ -60,18 +68,18 @@ function api_page_admin_form() {
         '#value' => $branch->branch_name,
       );
       $ops = array();
-      $ops[] = l(t('edit'), 'admin/settings/api/branches/'. $branch->branch_id);
+      $ops[] = l(t('edit'), 'admin/config/api/branches/' . $branch->branch_id);
       if ($branch->type == 'files') {
-        $ops[] = l(t('reparse'), 'admin/settings/api/reparse/'. $branch->branch_id);
+        $ops[] = l(t('reparse'), 'admin/config/api/reparse/' . $branch->branch_id);
       }
       $form['branches'][$branch->branch_id]['operations'] = array(
-        '#value' =>  implode(' ', $ops),
+        '#value' => implode(' ', $ops),
       );
     }
   }
   else {
     $form['branches'] = array(
-      '#value' => '<p><em>'. t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/settings/api/branches/new'))) .'</em></p>',
+      '#value' => '<p><em>' . t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/api/branches/new'))) . '</em></p>',
     );
   }
 
@@ -91,7 +99,8 @@ function api_page_admin_form() {
  *
  * @ingroup themeable
  */
-function theme_api_branch_table($element) {
+function theme_api_branch_table($variables) {
+  $element = $variables['element'];
   $header = array(
     t('Default'),
     t('Project identifier'),
@@ -103,11 +112,11 @@ function theme_api_branch_table($element) {
   foreach (element_children($element) as $key) {
     $row = array();
     foreach (element_children($element[$key]) as $child) {
-      $row[] = drupal_render($element[$key][$child]);
+      $row[] = drupal_render_children($element[$key][$child]);
     }
     $rows[] = $row;
   }
-  return theme('table', $header, $rows);
+  return theme('table', array('header' => $header, 'rows' => $rows));
 }
 
 /**
@@ -130,11 +139,11 @@ function api_page_admin_form_submit($form, &$form_state) {
  * @see api_reset_queue_form_submit()
  * @ingroup forms
  */
-function api_reset_queue_form() {
+function api_reset_queue_form($form, &$form_state) {
 
   $form = array();
 
-  return confirm_form($form, t('Are you sure you want to reset the parse queue?'), 'admin/settings/api', t('Files will be added back to the queue as necessary at the next cron run.'));
+  return confirm_form($form, t('Are you sure you want to reset the parse queue?'), 'admin/config/api', t('Files will be added back to the queue as necessary at the next cron run.'));
 }
 
 /**
@@ -146,7 +155,7 @@ function api_reset_queue_form_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     api_reset_parse_queue();
   }
-  $form_state['redirect'] = 'admin/settings/api';
+  $form_state['redirect'] = 'admin/config/api';
 }
 
 /**
@@ -156,16 +165,16 @@ function api_reset_queue_form_submit($form, &$form_state) {
  *   HTML for the page.
  */
 function api_admin_new_branch_page() {
-  return '<h3>' . t('Select branch type') . '</h3>' . theme('links', array(
-    'files' => array(
-      'title' => t('Files'),
-      'href' => 'admin/settings/api/branches/new/files',
-    ),
-    'php' => array(
-      'title' => t('PHP functions'),
-      'href' => 'admin/settings/api/branches/new/php',
-    ),
-  ));
+  return '<h3>' . t('Select branch type') . '</h3>' . theme('links', array('links' => array(
+      'files' => array(
+        'title' => t('Files'),
+        'href' => 'admin/config/api/branches/new/files',
+      ),
+      'php' => array(
+        'title' => t('PHP functions'),
+        'href' => 'admin/config/api/branches/new/php',
+      ),
+    )));
 }
 
 /**
@@ -181,7 +190,7 @@ function api_admin_new_branch_page() {
  * @see api_branch_edit_form_submit()
  * @ingroup forms
  */
-function api_branch_edit_form($form_state, $branch_id = NULL) {
+function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
   if (is_numeric($branch_id)) {
     $branch = api_get_branch_by_id($branch_id);
   }
@@ -247,7 +256,7 @@ function api_branch_edit_form($form_state, $branch_id = NULL) {
   );
   if (is_numeric($branch_id)) {
     $form[] = array(
-      '#value' => l(t('Delete'), 'admin/settings/api/branches/'. $branch->branch_id .'/delete'),
+      '#value' => l(t('Delete'), 'admin/config/api/branches/' . $branch->branch_id . '/delete'),
     );
   }
 
@@ -293,7 +302,10 @@ function api_branch_edit_form_files(&$form, $branch) {
  *   Object representing the branch to edit.
  */
 function api_branch_edit_form_php(&$form, $branch) {
-  $form[] = array('#weight' => -99, '#value' => '<p>' . t('Links to external documentation, such as the PHP manual.') . '</p>');
+  $form[] = array(
+    '#weight' => -99,
+    '#value' => '<p>' . t('Links to external documentation, such as the PHP manual.') . '</p>',
+  );
 
   $form['data']['summary'] = array(
     '#type' => 'textfield',
@@ -334,7 +346,7 @@ function api_branch_edit_form_validate($form, &$form_state) {
   }
 
   // Check for duplicate branch names.
-  if (db_result(db_query("SELECT 1 FROM {api_branch} WHERE branch_id <> %d AND project = '%s' AND branch_name = '%s'", $form['#branch']->branch_id, $form_state['values']['project'], $form_state['values']['branch_name']))) {
+  if (db_query("SELECT 1 FROM {api_branch} WHERE branch_id <> :branch_id AND project = :project AND branch_name = :branch_name", array(':branch_id' => $form['#branch']->branch_id, ':project' => $form_state['values']['project'], ':branch_name' => $form_state['values']['branch_name']))->fetchField()) {
     form_set_error('branch_name', t('%project and %branch_name is already used by another branch.', array('%project' => $form_state['values']['project'], '%branch_name' => $form_state['values']['branch_name'])));
   }
 }
@@ -378,7 +390,7 @@ function api_branch_edit_form_submit($form, &$form_state) {
   api_save_branch($branch);
 
   drupal_set_message(t('Saved %branch_name.', array('%branch_name' => $branch->branch_name)));
-  $form_state['redirect'] = 'admin/settings/api';
+  $form_state['redirect'] = 'admin/config/api';
 }
 
 /**
@@ -409,35 +421,44 @@ function api_clean_directory_list($list) {
  *
  * @see api_branch_delete_form_submit()
  */
-function api_branch_delete_form($form_state, $branch_id) {
+function api_branch_delete_form($form, $form_state, $branch_id) {
   $branch = api_get_branch_by_id($branch_id);
-  return confirm_form(array('#branch' => $branch), t('Are you sure you want to delete %branch_name?', array('%branch_name' => $branch->branch_name)), 'admin/settings/api', NULL, t('Delete'));
+  return confirm_form(array('#branch' => $branch), t('Are you sure you want to delete %branch_name?', array('%branch_name' => $branch->branch_name)), 'admin/config/api', NULL, t('Delete'));
 }
 
 /**
  * Form submission handler for api_branch_delete_form().
  */
 function api_branch_delete_form_submit($form, &$form_state) {
-  $result = db_query("SELECT did FROM {api_documentation} WHERE branch_id = %d", $form['#branch']->branch_id);
-  $dids = array();
-  while ($did = db_fetch_object($result)) {
-    $dids[] = $did->did;
-  }
+  $dids = db_select('api_documentation', 'ad')
+    ->fields('ad', 'did')
+    ->condition('branch_id', $form['#branch']->branch_id)
+    ->execute()
+    ->fetchCol();
   if (count($dids) > 0) {
-    $placeholders = db_placeholders($dids);
-    db_query("DELETE FROM {api_file} WHERE did IN (". $placeholders .")", $dids);
-    db_query("DELETE FROM {api_function} WHERE did IN (". $placeholders .")", $dids);
+    db_delete('api_file')
+      ->condition('did', $dids)
+      ->execute();
+    db_delete('api_function')
+      ->condition('did', $dids)
+      ->execute();
   }
-  db_query("DELETE FROM {api_reference_storage} WHERE branch_id = %d", $form['#branch']->branch_id);
-  db_query("DELETE FROM {api_documentation} WHERE branch_id = %d", $form['#branch']->branch_id);
-  db_query("DELETE FROM {api_branch} WHERE branch_id = '%s'", $form['#branch']->branch_id);
+  db_delete('api_reference_storage')
+    ->condition('branch_id', $form['#branch']->branch_id)
+    ->execute();
+  db_delete('api_documentation')
+    ->condition('branch_id', $form['#branch']->branch_id)
+    ->execute();
+  db_delete('api_branch')
+    ->condition('branch_id', $form['#branch']->branch_id)
+    ->execute();
 
   if (variable_get('api_default_branch', NULL) == $form['#branch']->branch_id) {
     variable_set('api_default_branch', NULL);
   }
 
   menu_rebuild();
-  $form_state['redirect'] = 'admin/settings/api';
+  $form_state['redirect'] = 'admin/config/api';
 }
 
 /**
@@ -445,7 +466,7 @@ function api_branch_delete_form_submit($form, &$form_state) {
  *
  * @see api_comments_settings_form_submit()
  */
-function api_comments_settings_form(&$form_state) {
+function api_comments_settings_form($form, &$form_state) {
   $type = new stdClass();
   $type->type = 'api';
   $form = array(
@@ -493,5 +514,5 @@ function api_admin_reparse($branch_id) {
   $branch = api_get_branch_by_id($branch_id);
 
   drupal_set_message(t('@num files in branch @branch set to reparse, starting at next cron run', array('@num' => $num, '@branch' => $branch->branch_name)), $type);
-  drupal_goto('admin/settings/api/branches');
+  drupal_goto('admin/config/api/branches');
 }

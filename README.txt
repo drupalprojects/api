@@ -1,4 +1,3 @@
-
 API Module
 Generates and displays API documentation pages.
 
@@ -42,12 +41,8 @@ parenthesis that follows it.
 Functions must be closed by a right curly bracket in the first column. No lines
 inside a function may have a right curly bracket in the first column.
 
-
 Besides the Doxygen features that are supported, this module also provides the
 following features:
-
-CVS version numbers and dates are parsed from
-tags and reported.
 
 Functions may be in multiple groups (Doxygen ignores all but the first
 group). This allows, for example, theme_menu_tree() to be marked as both
@@ -63,5 +58,5 @@ changes.
 
 INSTALLATION AND SETUP
 
-See http://drupal.org/node/425944 for information on how to install and set up
+See http://drupal.org/node/1516558 for information on how to install and set up
 this module.

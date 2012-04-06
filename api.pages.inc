@@ -27,7 +27,7 @@ function api_search_redirect() {
     $branch = api_get_active_branch();
   }
   if (isset($branch)) {
-    $_REQUEST['destination'] = 'api/search/'. $branch->branch_name .'/'. $tail;
+    $_GET['destination'] = 'api/search/' . $branch->branch_name . '/' . $tail;
     drupal_goto();
   }
 }
@@ -42,11 +42,16 @@ function api_search_redirect() {
  * @see api_menu()
  */
 function api_opensearch($branch_name) {
-  if (!db_result(db_query("SELECT 1 FROM {api_branch} WHERE branch_name = '%s'", $branch_name))) {
+  $branch_id = db_select('api_branch', 'b')
+    ->fields('b', array('branch_id'))
+    ->condition('branch_name', $branch_name)
+    ->execute()
+    ->fetchField();
+  if (!$branch_id) {
     return drupal_not_found();
   }
 
-  drupal_set_header('Content-Type: text/xml; charset=utf-8');
+  drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
 
   $short_name = t('Drupal API @branch', array('@branch' => $branch_name));
   $description = t('Drupal @branch API documentation', array('@branch' => $branch_name));
@@ -61,8 +66,8 @@ function api_opensearch($branch_name) {
     $image = 'misc/favicon.ico';
   }
   $image = url($image, array('absolute' => TRUE));
-  $search_url = url('api/search/'. $branch_name, array('absolute' => TRUE)) .'/{searchTerms}';
-  $suggest_url = url('api/suggest/'. $branch_name, array('absolute' => TRUE)) .'/{searchTerms}';
+  $search_url = url('api/search/' . $branch_name, array('absolute' => TRUE)) . '/{searchTerms}';
+  $suggest_url = url('api/suggest/' . $branch_name, array('absolute' => TRUE)) . '/{searchTerms}';
   $search_form_url = url('api', array('absolute' => TRUE));
   $self_url = url($_GET['q'], array('absolute' => TRUE));
 
@@ -96,11 +101,18 @@ function api_suggest($branch) {
   $matches = array();
   $search = func_get_args();
   array_shift($search);
-  $result = db_query_range("SELECT d.title FROM {api_documentation} d INNER JOIN {api_branch} b ON d.branch_id = b.branch_id WHERE d.title LIKE '%%%s%%' AND b.branch_name = '%s' ORDER BY LENGTH(d.title)", implode('/', str_replace('_', '\_', $search)), $branch, 0, 10);
-  while ($r = db_fetch_object($result)) {
+  $query = db_select('api_documentation', 'd')
+    ->fields('d', array('title'));
+  $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
+  $result = $query->condition('d.title', '%' . implode('/', str_replace('_', '\_', $search)) . '%', 'LIKE')
+    ->condition('b.branch_name', $branch)
+    ->range(0, 10)
+    ->execute();
+
+  foreach ($result as $r) {
     $matches[] = $r->title;
   }
-  print drupal_json(array($search, array_unique($matches)));
+  print drupal_json_output(array($search, array_values(array_unique($matches))));
 }
 
 /**
@@ -112,10 +124,17 @@ function api_suggest($branch) {
  * @see api_menu()
  */
 function api_page_function_dump($branch_name) {
-  $result = db_query("SELECT d.title, d.summary, f.signature FROM {api_documentation} d INNER JOIN {api_function} f ON d.did = f.did INNER JOIN {api_branch} b ON d.branch_id = b.branch_id  WHERE b.branch_name = '%s' AND d.object_type = 'function'", $branch_name);
-  while ($object = db_fetch_object($result)) {
+  $query = db_select('api_documentation', 'd')
+    ->fields('d', array('title', 'summary'));
+  $f = $query->innerJoin('api_function', 'f', 'd.did = f.did');
+  $query->fields('f', array('f.sigature'));
+  $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
+  $query->condition($b . '.branch_name', $branch_name)
+    ->condition('d.object_type', 'function');
+  $result = $query->execute();
+  foreach ($result as $object) {
     print($object->signature);
-    print(' ### '. $object->summary ."\n");
+    print(' ### ' . $object->summary . "\n");
   }
 }
 
@@ -157,16 +176,33 @@ function api_search_listing($branch_name) {
     api_set_html_page_title(implode(' | ', $page_title));
   }
 
-  $count = db_result(db_query("SELECT count(*) FROM {api_branch} b INNER JOIN {api_documentation} ad ON b.branch_id = ad.branch_id WHERE b.branch_name = '%s' AND ad.title = '%s'", $branch_name, $search_text));
-  if ((int) $count === 1) {
-    // Exact match.
-    $item = db_fetch_object(db_query("SELECT b.branch_name, b.project, b.project_title, ad.* FROM {api_branch} b INNER JOIN {api_documentation} ad ON b.branch_id = ad.branch_id WHERE b.branch_name = '%s' AND ad.title = '%s'", $branch_name, $search_text));
+  $query = db_select('api_branch', 'b');
+  $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
+  $query->fields('b', array('branch_name', 'project', 'project_title'))
+    ->fields('d')
+    ->condition('b.branch_name', $branch_name)
+    ->condition('ad.title', $search_text);
+
+  $count = $query->countQuery()->execute()->fetchField();
+  if ($count === 1) {
+    // There is one exact match.
+    $item = $query->execute()->fetchObject();
     drupal_goto(api_url($item));
   }
   else {
     // Wildcard search.
-    $result = pager_query("SELECT b.branch_id, b.branch_name, b.project, b.project_title, ad.* FROM {api_branch} b INNER JOIN {api_documentation} ad ON b.branch_id = ad.branch_id WHERE b.branch_name = '%s' AND ad.title LIKE '%%%s%%' ORDER BY ad.object_type, ad.title", 50, 0, NULL, $branch_name, str_replace(array('_', '%'), array('\_', '\%'), $search_text));
-    return api_render_listing($result, t('No search results found.'), TRUE, TRUE) . theme('pager', NULL, 50, 0);
+    $query = db_select('api_branch', 'b');
+    $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
+    $query->fields('b', array('branch_name', 'project', 'project_title'))
+      ->fields('d')
+      ->condition('b.branch_name', $branch_name)
+      ->condition('ad.title', '%' .str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
+      ->orderBy('ad.title', 'ASC')
+      ->extend('PagerDefault')
+      ->limit(50);
+
+    $result = $query->execute();
+    return api_render_listing($result, t('No search results found.'), TRUE, TRUE) . theme('pager');
   }
 }
 
@@ -179,17 +215,24 @@ function api_search_listing($branch_name) {
 function api_page_projects() {
   $num_per_page = 50;
 
-  $result = pager_query("SELECT project_title, project FROM {api_branch} WHERE status = 1 GROUP BY project ORDER BY project_title", $num_per_page, 0, "SELECT COUNT(DISTINCT(project)) FROM {api_branch}");
+  $result = db_select('api_branch', 'b')
+    ->fields('b', array('project_title', 'project'))
+    ->condition('status', 1)
+    ->groupBy('project')
+    ->orderBy('project_title')
+    ->extend('PagerDefault')
+    ->limit(50)
+    ->execute();
 
   $links = array();
-  while ($project = db_fetch_object($result)) {
+  foreach ($result as $project) {
     $links[$project->project] = array(
       'title' => $project->project_title,
       'href' => 'api/' . $project->project,
     );
   }
 
-  return theme('links', $links, array('class' => 'api-project-links')) . theme('pager', NULL, $num_per_page);
+  return theme('links', array('links' => $links, 'attributes' => array('class' => 'api-project-links'))) . theme('pager');
 }
 
 /**
@@ -214,16 +257,25 @@ function api_page_file($file) {
   $code = api_link_code($file->code, $branch);
   $defined = $file->file_name;
 
-  $objects = api_render_listing(db_query("SELECT branch_id, title, object_name, summary, object_type, file_name, did FROM {api_documentation} WHERE file_name = '%s' AND branch_id = %d AND object_type IN ('constant', 'global', 'function', 'interface', 'class') AND class_did = 0 ORDER BY title", $file->object_name, $file->branch_id));
+  $result = db_select('api_documentation', 'd')
+    ->fields('d', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did'))
+    ->condition('file_name', $file->object_name)
+    ->condition('branch_id', $file->branch_id)
+    ->condition('class_did', 0)
+    ->condition('object_type', array('constant', 'global', 'function', 'interface', 'class'))
+    ->orderBy('title')
+    ->execute();
+
+  $objects = api_render_listing($result);
 
   // If this is a theme template, make reference link.
   $links = array();
   $theme_count = api_find_references($file->title, $branch, 'theme_invokes');
   if ($theme_count > 0) {
-    $links[] = theme('api_function_reference_link', 'theme_invokes', $theme_count, $file);
+    $links[] = theme('api_function_reference_link', array('type' => 'theme_invokes', 'count' => $theme_count, 'function' => $file));
   }
 
-  $output = theme('api_file_page', $file, $documentation, $objects, $code, $see, $related_topics, $defined, $links);
+  $output = theme('api_file_page', array('object' => $file, 'documentation' => $documentation, 'objects' => $objects, 'code' => $code, 'see' => $see, 'related_topics' => $related_topics, 'defined' => $defined, 'call_links' => $links));
   $output .= _api_add_comments($file);
   return $output;
 }
@@ -240,12 +292,17 @@ function api_page_file($file) {
  * @see api_menu()
  */
 function api_page_branch($branch) {
-  $result = db_query("SELECT documentation FROM {api_documentation} WHERE branch_id = %d AND object_type = 'mainpage'", $branch->branch_id);
-  if ($docs = db_fetch_object($result)) {
+  $docs = db_select('api_documentation', 'd')
+    ->fields('d', array('documentation'))
+    ->condition('branch_id', $branch->branch_id)
+    ->condition('object_type', 'mainpage')
+    ->execute()
+    ->fetchObject();
+  if ($docs) {
     return api_link_documentation($docs->documentation, $branch);
   }
   else {
-    return theme('api_branch_default_page', $branch);
+    return theme('api_branch_default_page', array('branch' => $branch));
   }
 }
 
@@ -280,31 +337,61 @@ function api_page_listing($branch, $object_type, $switch_link = TRUE) {
   api_set_html_page_title(implode(' | ', $page_title));
 
   // Use the correct plural form to construct the URLs for the other branches.
-  // @todo Create a unit test for this to ensure there's no regression.
   $plural_type = $object_type . 's';
   $show_headings = FALSE;
 
   if ($object_type === 'group') {
-    $result = pager_query("SELECT * FROM {api_documentation} WHERE branch_id = %d AND object_type = '%s' ORDER BY title", 50, 0, NULL, $branch->branch_id, $object_type);
+    $result = db_select('api_documentation', 'd')
+      ->fields('d')
+      ->condition('branch_id', $branch->branch_id)
+      ->condition('object_type', 'group')
+      ->orderBy('title')
+      ->extend('PagerDefault')
+      ->limit(50)
+      ->execute();
   }
   elseif ($object_type === 'class') {
     $plural_type = 'classes';
     $show_headings = TRUE;
-    $result = pager_query("SELECT * FROM {api_documentation} WHERE branch_id = %d AND (object_type = 'class' OR object_type = 'interface') AND class_did = 0 ORDER BY title", 50, 0, NULL, $branch->branch_id);
+    $result = db_select('api_documentation', 'd')
+      ->fields('d')
+      ->condition('branch_id', $branch->branch_id)
+      ->condition('object_type', array('class', 'interface'))
+      ->condition('class_did', 0)
+      ->orderBy('title')
+      ->extend('PagerDefault')
+      ->limit(50)
+      ->execute();
   }
   elseif ($object_type === 'file') {
     // Order by path + file name, not base name of file.
-    $result = pager_query("SELECT * FROM {api_documentation} WHERE branch_id = %d AND object_type = '%s' AND class_did = 0 ORDER BY object_name", 50, 0, NULL, $branch->branch_id, $object_type);
+    $result = db_select('api_documentation', 'd')
+      ->fields('d')
+      ->condition('branch_id', $branch->branch_id)
+      ->condition('object_type', 'file')
+      ->condition('class_did', 0)
+      ->orderBy('object_name')
+      ->extend('PagerDefault')
+      ->limit(50)
+      ->execute();
   }
   else {
-    $result = pager_query("SELECT * FROM {api_documentation} WHERE branch_id = %d AND object_type = '%s' AND class_did = 0 ORDER BY title", 50, 0, NULL, $branch->branch_id, $object_type);
+    $result = db_select('api_documentation', 'd')
+      ->fields('d')
+      ->condition('branch_id', $branch->branch_id)
+      ->condition('object_type', $object_type)
+      ->condition('class_did', 0)
+      ->orderBy('title')
+      ->extend('PagerDefault')
+      ->limit(50)
+      ->execute();
   }
 
   $suffix = '';
   if ($switch_link) {
     $suffix = api_other_projects_link();
   }
-  return api_render_listing($result, NULL, $show_headings, $object_type !== 'file' && $object_type !== 'group') . theme('pager', NULL, 50, 0) . $suffix;
+  return api_render_listing($result, NULL, $show_headings, $object_type !== 'file' && $object_type !== 'group') . theme('pager') . $suffix;
 }
 
 /**
@@ -316,8 +403,12 @@ function api_page_listing($branch, $object_type, $switch_link = TRUE) {
  */
 function api_other_projects_link() {
   // Figure out how many different projects there are.
-  $count = db_result(db_query('SELECT COUNT(DISTINCT(project)) FROM {api_branch} WHERE status=1'));
-
+  $count = db_select('api_branch', 'b')
+    ->condition('status', 1)
+    ->groupBy('project')
+    ->countQuery()
+    ->execute()
+    ->fetchField();
   if ($count > 1) {
     return '<p class="api-switch"><strong>' . l(t('Other projects'), 'api/projects') . '</strong></p>';
   }
@@ -347,15 +438,24 @@ function api_page_function($function) {
   $last_signature = '';
   $signatures = array();
   $n = 0;
-  $result = db_query("SELECT d.branch_id, d.file_name, d.object_type, d.object_name, f.signature, d.class_did FROM {api_documentation} d INNER JOIN {api_function} f ON f.did = d.did INNER JOIN {api_branch} b ON d.branch_id = b.branch_id WHERE d.object_type = 'function' AND d.title = '%s' AND b.status = 1 ORDER BY b.weight", $function->title);
-  while ($signature = db_fetch_object($result)) {
+  $query = db_select('api_documentation', 'd')
+    ->fields('d', array('branch_id', 'file_name', 'object_type', 'object_name', 'class_did'));
+  $f = $query->innerJoin('api_function', 'f', 'f.did = d.did');
+  $query->fields($f, array('signature'));
+  $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
+  $query->condition('d.object_type', 'function')
+    ->condition('d.title', $function->title)
+    ->condition($b . '.status', 1)
+    ->orderBy($b . '.weight');
+  $result = $query->execute();
+  foreach ($result as $signature) {
     $signature_branch = $branches[$signature->branch_id];
     $branch_label = $signature_branch->branch_name . ' ' . basename($signature->file_name);
     $active = ($signature->branch_id === $function->branch_id && $signature->file_name == $function->file_name);
 
     // Build up the function prefix/class/name. Note that token_get_all() does
     // not work unless the code starts with the open PHP token.
-    $tokens = token_get_all('<' . '?php '. $signature->signature);
+    $tokens = token_get_all('<' . '?php ' . $signature->signature);
 
     // Remove open PHP token.
     array_shift($tokens);
@@ -445,10 +545,10 @@ function api_page_function($function) {
     $signature = $info['name'] . $info['other'][-1];
     foreach ($signature_info[$n]['arguments'] as $key => $argument) {
       if (in_array($argument, $old)) {
-        $signature .= '<del>'. $argument .'</del>';
+        $signature .= '<del>' . $argument . '</del>';
       }
       elseif (in_array($argument, $new)) {
-        $signature .= '<ins>'. $argument .'</ins>';
+        $signature .= '<ins>' . $argument . '</ins>';
       }
       else {
         $signature .= $argument;
@@ -477,12 +577,12 @@ function api_page_function($function) {
   foreach (array('calls', 'references', 'implementations', 'invokes', 'theme_invokes') as $type) {
     $call_count = api_find_references($function->object_name, $branch, $type, TRUE, $function->did);
     if ($call_count > 0) {
-      $links[] = theme('api_function_reference_link', $type, $call_count, $function);
+      $links[] = theme('api_function_reference_link', array('type' => $type, 'count' => $call_count, 'function' => $function));
     }
   }
 
   // Put it all together and theme the output.
-  $output = theme('api_function_page', $branch, $function, $signatures, $documentation, $parameters, $return, $related_topics, $links, $code, $see, $throws);
+  $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'throws' => $throws));
   $output .= _api_add_comments($function);
   return $output;
 }
@@ -512,18 +612,26 @@ function api_page_function($function) {
  */
 function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0) {
   $branch_id = $branch->branch_id;
-  $base_query = '';
+  $base_query = NULL;
   $args = array();
 
   if ($type == 'calls') {
     // Use reference storage to find functions that call this one.
-    $base_query = "FROM {api_reference_storage} r LEFT JOIN {api_documentation} d ON r.from_did = d.did WHERE d.branch_id = %d AND d.did <> %d AND (r.object_type = 'function' OR r.object_type = 'member-class' OR r.object_type = 'computed-member') AND r.object_name = '%s'";
-    $args = array($branch_id, $exclude_did, $name);
+    $base_query = db_select('api_reference_storage', 'r');
+    $d = $base_query->leftJoin('api_documentation', 'd', 'r.from_did = d.did');
+    $base_query->condition($d . '.branch_id', $branch_id)
+      ->condition($d . '.did', $exclude_did, '<>')
+      ->condition('r.object_type', array('function', 'member-class', 'computed-member'))
+      ->condition('r.object_name', $name);
   }
   elseif ($type == 'references') {
     // Use reference storage to find functions that use this name as a string.
-    $base_query = "FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did WHERE r.object_type = 'potential callback' AND r.object_name = '%s' AND d.branch_id = %d AND d.did <> %d";
-    $args = array($name, $branch_id, $exclude_did);
+    $base_query = db_select('api_reference_storage', 'r');
+    $d = $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+    $base_query->condition($d . '.branch_id', $branch_id)
+      ->condition($d . '.did', $exclude_did, '<>')
+      ->condition('r.object_type', 'potential callback')
+      ->condition('r.object_name', $name);
   }
   elseif ($type == 'implementations') {
     // Use pattern matching to find functions that look like implementations of
@@ -532,8 +640,11 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // _ has to be escaped in this query.
     if (strpos($name, 'hook_') === 0) {
       $hook_name = substr($name, 5);
-      $base_query = "FROM {api_documentation} d WHERE d.object_name LIKE '%%\_%s' AND d.object_name NOT LIKE '\_%%' AND d.branch_id = %d AND d.did <> %d AND d.object_type = 'function'";
-      $args = array($hook_name, $branch_id, $exclude_did);
+      $base_query = db_select('api_documentation', 'd')
+        ->condition('d.object_name', '%\_' . $hook_name, 'LIKE')
+        ->condition('d.object_name', '\_%', 'NOT LIKE')
+        ->condition('d.branch_id', $branch_id)
+        ->condition('d.did', $exclude_did, '<>');
     }
   }
   elseif ($type == 'theme_invokes') {
@@ -553,8 +664,12 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       // We could have calls to things like theme('name') or theme('name__sub')
       // recorded in the references. Match either. Note _ escaping for LIKE
       // queries.
-      $base_query = "FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did WHERE (r.object_name = '%s' OR r.object_name LIKE '%s\_\_%%') AND r.object_type = 'potential theme' AND d.branch_id = %d AND d.did <> %d";
-      $args = array($theme_name, $theme_name, $branch_id, $exclude_did);
+      $base_query = db_select('api_reference_storage', 'r');
+      $d = $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+      $base_query->condition($d . '.branch_id', $branch_id)
+        ->condition($d . '.did', $exclude_did, '<>')
+        ->condition('r.object_type', 'potential theme')
+        ->condition(db_or()->condition('r.object_name', $theme_name)->condition('r.object_name', $theme_name . '\_\_%', 'LIKE'));
     }
   }
   elseif ($type == 'invokes') {
@@ -566,43 +681,44 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // object_type 'potential hook'; in the last case it is 'potential alter'.
     // So, we need to build a query that will find these matches between
     // $string (field object_name) and $name (passed into this function).
-    $or_clauses = array();
-    $args = array($branch_id, $exclude_did);
+    $or_clauses = db_or();
+    $found = FALSE;
 
     if (strpos($name, 'hook_') === 0) {
       $hook_name = substr($name, 5);
-      $or_clauses[] = "( r.object_type = 'potential hook' AND r.object_name = '%s' )";
-      $args[] = $hook_name;
+      $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $hook_name));
+      $found = TRUE;
       if (strpos($hook_name, 'user_') === 0) {
         $sub_hook_name = substr($hook_name, 5);
-        $or_clauses[] = "( r.object_type = 'potential hook' AND r.object_name = '%s' )";
-        $args[] = $sub_hook_name;
+        $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
       }
       elseif (strpos($hook_name, 'field_') === 0) {
         $sub_hook_name = substr($hook_name, 6);
-        $or_clauses[] = "( r.object_type = 'potential hook' AND r.object_name = '%s' )";
-        $args[] = $sub_hook_name;
+        $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
       }
       elseif (strrpos($hook_name, '_alter') === strlen($hook_name) - 6) {
         $sub_hook_name = substr($hook_name, 0, strlen($hook_name) - 6);
-        $or_clauses[] = "( r.object_type = 'potential alter' AND r.object_name = '%s' )";
-        $args[] = $sub_hook_name;
+        $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
       }
     }
     elseif (strpos($name, 'field_default_') === 0) {
       $hook_name = substr($name, 14);
-      $or_clauses[] = "( r.object_type = 'potential hook' AND r.object_name = '%s' )";
-      $args[] = $hook_name;
+      $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $hook_name));
+      $found = TRUE;
     }
 
     // If we found at least one match, run this query we've built.
-    if (count($or_clauses)) {
-      $base_query = " FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did WHERE d.branch_id = %d AND d.did <> %d AND (" . implode(' OR ', $or_clauses) . ")";
+    if ($found) {
+      $base_query = db_select('api_reference_storage', 'r');
+      $d = $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+      $base_query->condition($d . '.branch_id', $branch_id)
+        ->condition($d . '.did', $exclude_did, '<>')
+        ->condition($or_clauses);
     }
   }
 
   // See if we built a query to execute.
-  if (!strlen($base_query)) {
+  if (!is_null($base_query)) {
     if ($count) {
       return 0;
     }
@@ -613,14 +729,16 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
 
   // Execute the query.
   if ($count) {
-    // If we want a count, just return it.
-    return db_result(db_query("SELECT COUNT(*) $base_query", $args));
+    // We're looking for a count here.
+    return $base_query->countQuery()->execute()->fetchField();
   }
 
   // If we get here, we want to return a list.
-  $result = db_query("SELECT d.branch_id, d.object_name, d.title, d.summary, d.file_name, d.object_type $base_query ORDER BY d.title", $args);
+  $base_query->fields('d', array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type'))
+    ->orderBy('d.title', 'ASC');
+  $result = $base_query->execute();
   $list = array();
-  while ($object = db_fetch_object($result)) {
+  foreach ($result as $object) {
     $list[] = array(
       'function' => l($object->title, api_url($object)),
       'file' => api_file_link($object),
@@ -660,7 +778,7 @@ function api_page_function_calls($function, $type) {
     $note = '<p>' . t('Note: this list is generated by pattern matching, so it may include some functions that are not actually implementations of this hook.') . '</p>';
   }
 
-  return $note . theme('api_functions', $call_functions);
+  return $note . theme('api_functions', array('functions' => $call_functions));
 }
 
 /**
@@ -700,6 +818,7 @@ function api_page_simple_item($item, $type) {
     'property' => 'api_property_page',
   );
 
+  // TODO Please change this theme call to use an associative array for the $variables parameter.
   $output = theme($theme_hooks[$type], $branch, $item, $documentation, $code, $related_topics, $see, $var);
   $output .= _api_add_comments($item);
   return $output;
@@ -731,15 +850,30 @@ function api_page_class($class) {
   $hierarchy = api_class_hierarchy($class);
   $implements = array();
   if ($class->object_type === 'interface') {
-    $result = db_query("SELECT ad.did, ad.branch_id, ad.file_name, ad.object_type, ad.object_name FROM {api_reference_storage} ars INNER JOIN {api_documentation} ad ON ad.did = ars.from_did WHERE ars.to_did = %d AND ars.object_type = 'interface' GROUP BY ad.did ORDER BY ad.object_name", $class->did);
-    while ($object = db_fetch_object($result)) {
+    $query = db_select('api_reference_storage', 'ars');
+    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
+    $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
+      ->condition('ars.to_did', $class->did)
+      ->condition('ars.object_type', 'interface')
+      ->groupBy($ad . '.did')
+      ->orderBy($ad . '.object_name');
+    $result = $query->execute();
+    foreach ($result as $object) {
       $implements[] = l($object->object_name, api_url($object));
     }
-    $implements = theme('item_list', $implements);
+    $implements = theme('item_list', array('items' => $implements));
   }
 
-  $objects = api_render_listing(db_query("SELECT ad.branch_id, ad.title, ad.object_name, ad.summary, ad.object_type, ad.file_name, ao.overrides_did, ad.did FROM {api_members} am INNER JOIN {api_documentation} ad ON ad.did = am.did LEFT JOIN {api_overrides} ao ON ao.did = am.did WHERE am.class_did = %d ORDER BY title", $class->did));
-  $output = theme('api_class_page', $branch, $class, $documentation, $implements, $hierarchy, $objects, $code, $related_topics, $see);
+  $query = db_select('api_members', 'am');
+  $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
+  $query->fields($ad, array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did'));
+  $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = am.did');
+  $odid = $query->addField($ao, 'overrides_did');
+  $query->condition('am.class_did', $class->did)
+    ->orderBy($ad . '.title');
+  $objects = api_render_listing($query->execute());
+
+  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see));
   $output .= _api_add_comments($class);
 
   return $output;
@@ -764,9 +898,15 @@ function api_page_group($group) {
   $documentation = api_link_documentation($group->documentation, $branch);
   $see = api_link_documentation($group->see, $branch, NULL, TRUE);
 
-  $objects = api_render_listing(db_query("SELECT d.branch_id, d.object_name, d.title, d.summary, d.file_name, d.object_type, d.did FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.from_did = d.did WHERE r.object_type = 'group' AND r.to_did = %d ORDER BY d.object_name", $group->did));
+  $query = db_select('api_reference_storage', 'r');
+  $d = $query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+  $query->fields($d, array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type', 'did'))
+    ->condition('r.object_type', 'group')
+    ->condition('r.to_did', $group->did)
+    ->orderBy($d . '.object_name');
+  $objects = api_render_listing($query->execute());
 
-  $output = theme('api_group_page', $branch, $group, $documentation, $objects, $see);
+  $output = theme('api_group_page', array('branch' => $branch, 'object' => $group, 'documentation' => $documentation, 'objects' => $objects, 'see' => $see));
   $output .= _api_add_comments($group);
   return $output;
 }
@@ -793,7 +933,7 @@ function api_preprocess_api_object_page(&$variables) {
   // Note: branch is not defined for File pages, so don't try to create the
   // 'defined' section of the page.
   if (isset($variables['branch'])) {
-    $variables['defined'] = theme('api_defined', $variables['branch'], $variables['object']);
+    $variables['defined'] = theme('api_defined', array('branch' => $variables['branch'], 'object' => $variables['object']));
   }
 
   // Find alternative versions in different files and branches.
@@ -807,13 +947,21 @@ function api_preprocess_api_object_page(&$variables) {
   // files, the object name includes the path, so the matching needs to go on
   // the title instead of the object_name.
   if ($object->object_type == 'file') {
-    $result = db_query("SELECT ad.branch_id, ad.file_name, ad.object_type, ad.object_name FROM {api_documentation} ad WHERE ad.object_type = '%s' AND ad.title = '%s'", $variables['object']->object_type, $variables['object']->title);
+    $result = db_select('api_documentation', 'ad')
+      ->fields('ad', array('branch_id', 'file_name', 'object_type', 'object_name'))
+      ->condition('ad.object_type', $variables['object']->object_type)
+      ->condition('ad.title', $variables['object']->title)
+      ->execute();
   }
   else {
-    $result = db_query("SELECT ad.branch_id, ad.file_name, ad.object_type, ad.object_name FROM {api_documentation} ad WHERE ad.object_type = '%s' AND ad.object_name = '%s'", $variables['object']->object_type, $variables['object']->object_name);
+    $result = db_select('api_documentation', 'ad')
+      ->fields('ad', array('branch_id', 'file_name', 'object_type', 'object_name'))
+      ->condition('ad.object_type', $variables['object']->object_type)
+      ->condition('ad.object_name', $variables['object']->object_name)
+      ->execute();
   }
 
-  while ($alternative = db_fetch_object($result)) {
+  foreach ($result as $alternative) {
     // Group by project.
     if (!isset($alternatives[$branches[$alternative->branch_id]->project])) {
       $alternatives[$branches[$alternative->branch_id]->project] = array(
@@ -863,12 +1011,12 @@ function api_preprocess_api_object_page(&$variables) {
 function api_render_listing($result, $empty_message = NULL, $show_headings = TRUE, $link_file = FALSE) {
   // Group query result by object type.
   $list = array();
-  while ($object = db_fetch_object($result)) {
+  foreach ($result as $object) {
     $list[$object->object_type][$object->did] = $object;
   }
 
   if (count($list) === 0) {
-    return is_null($empty_message) ? '' : '<p><em>'. $empty_message .'</em></p>';
+    return is_null($empty_message) ? '' : '<p><em>' . $empty_message . '</em></p>';
   }
 
   $branches = api_get_branches();
@@ -900,7 +1048,7 @@ function api_render_listing($result, $empty_message = NULL, $show_headings = TRU
       $row[] = $summary;
       $rows[] = $row;
     }
-    $tables[$type] = theme('table', $header, $rows);
+    $tables[$type] = theme('table', array('header' => $header, 'rows' => $rows));
   }
 
   $headings = array(
@@ -998,7 +1146,7 @@ function api_class_hierarchy($class) {
   $child_output = '';
   $children = api_class_children($class);
   if (count($children)) {
-    $child_output = theme('item_list', $children);
+    $child_output = theme('item_list', array('items' => $children));
     $interesting = TRUE;
   }
 
@@ -1006,12 +1154,25 @@ function api_class_hierarchy($class) {
   $parent = $class;
   $first_parent = NULL;
   $parents = array();
-  while ($parent = db_fetch_object(db_query_range("SELECT ad.did, ad.branch_id, ad.file_name, ad.object_type, ad.object_name as object_name FROM {api_reference_storage} ars INNER JOIN {api_documentation} ad ON ad.did = ars.to_did WHERE ars.from_did = %d AND ars.object_type = 'class'", $parent->did, 0, 1))) {
-    $interesting = TRUE;
-    if (!isset($first_parent)) {
-      $first_parent = $parent;
+  $parent = 1;
+
+  while ($parent) {
+    // Query to find the next ancestor.
+    $query = db_select('api_reference_storage', 'ars');
+    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.to_did');
+    $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
+    ->condition('ars.from_did', $parent->did)
+    ->condition('ars.object_type', 'class');
+    $parent = $query->execute()->fetchObject();
+
+    // Save in the list.
+    if ($parent) {
+      $interesting = TRUE;
+      if (!isset($first_parent)) {
+        $first_parent = $parent;
+      }
+      $parents[] = api_class_hierarchy_line($parent);
     }
-    $parents[] = api_class_hierarchy_line($parent);
   }
 
   // If there was a parent class, find all of its children. These are this
@@ -1031,9 +1192,9 @@ function api_class_hierarchy($class) {
   $siblings[$class->did] .= $child_output;
 
   // Put it all together as a set of nested lists.
-  $output = theme('item_list', $siblings);
+  $output = theme('item_list', array('items' => $siblings));
   foreach ($parents as $parent) {
-    $output = theme('item_list', array( $parent . $output));
+    $output = theme('item_list', array('items' => array($parent . $output)));
   }
 
   return $output;
@@ -1051,8 +1212,15 @@ function api_class_hierarchy($class) {
  */
 function api_class_children($class) {
   $children = array();
-  $result = db_query("SELECT ad.did, ad.branch_id, ad.file_name, ad.object_type, ad.object_name FROM {api_reference_storage} ars INNER JOIN {api_documentation} ad ON ad.did = ars.from_did WHERE ars.to_did = %d AND ars.object_type = 'class' GROUP BY ars.from_did ORDER BY ad.object_name", $class->did);
-  while ($object = db_fetch_object($result)) {
+  $query = db_select('api_reference_storage', 'ars');
+  $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
+  $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
+    ->condition('ars.to_did', $class->did)
+    ->condition('ars.object_type', 'class')
+    ->groupBy('ars.from_did')
+    ->orderBy($ad . '.object_name');
+  $result = $query->execute();
+  foreach ($result as $object) {
     $children[$object->did] = api_class_hierarchy_line($object);
   }
 
@@ -1074,8 +1242,17 @@ function api_class_children($class) {
 function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
   // See if this class implements any interfaces.
   $interfaces = array();
-  $result = db_query("SELECT ad.did, ad.branch_id, ad.file_name, ad.object_type, ad.object_name as object_name, ars.object_name as ref_name FROM {api_reference_storage} ars LEFT JOIN {api_documentation} ad ON ad.did = ars.to_did WHERE ars.from_did = %d AND ars.object_type = 'interface' GROUP BY ars.to_did ORDER BY ad.object_name", $class->did);
-  while ($object = db_fetch_object($result)) {
+  $query = db_select('api_reference_storage', 'ars');
+  $ref_name = $query->addField('ars', 'object_name', 'ref_name');
+  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.did = ars.to_did');
+  $obj_name = $query->addField($ad, 'object_name', 'object_name');
+  $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
+    ->condition('ars.from_did', $class->did)
+    ->condition('ars.object_type', 'interface')
+    ->groupBy('ars.to_did')
+    ->orderBy($ad . '.object_name');
+  $result = $query->execute();
+  foreach ($result as $object) {
     if (isset($object->did) && $object->did) {
       // Interface exists as an object in the database, make a link.
       $interfaces[] = l($object->object_name, api_url($object));
@@ -1090,7 +1267,14 @@ function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
 
   // See if this class extends another class that isn't defined in our DB.
   $extends = '';
-  $parent = db_fetch_object(db_query_range("SELECT ad.did, ars.object_name FROM {api_reference_storage} ars LEFT JOIN {api_documentation} ad ON ad.did = ars.to_did WHERE ars.from_did = %d AND ars.object_type = 'class'", $class->did, 0, 1));
+  $query = db_select('api_reference_storage', 'ars');
+  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.did = ars.to_did');
+  $did = $query->addField($ad, 'did');
+  $obj_name = $query->addField('ars', 'object_name');
+  $query->condition('ars.from_did', $class->did)
+    ->condition('ars.object_type', 'class')
+    ->range(0, 1);
+  $parent = $query->execute()->fetchObject();
   if (isset($parent) && is_object($parent) && is_null($parent->did)) {
     $extends = ' extends ' . $parent->object_name;
   }
@@ -1119,29 +1303,40 @@ function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
 function _api_add_comments($documentation_object) {
   $output = '';
 
-  if (module_exists('comment') && user_access('access comments') && variable_get('comment_api', COMMENT_NODE_READ_WRITE) != COMMENT_NODE_DISABLED) {
-    $output .= comment_render(node_load($documentation_object->did));
-    if (user_access('post comments')) {
-      $output .= comment_form_box(array('nid' => $documentation_object->did), t('Post new comment'));
-    }
-    elseif (array_key_exists(DRUPAL_AUTHENTICATED_RID, user_roles(TRUE, 'post comments'))) {
-      // If authenticated users can post comments.
-      $options = array(
-        'query' => drupal_get_destination() . urlencode('#comment-form'),
-      );
-      if (variable_get('user_register', 1)) {
-        // Users can register themselves.
-        $output .= t('<a href="@login">Login</a> or <a href="@register">register</a> to post comments', array('@login' => url('user/login', $options), '@register' => url('user/register', $options)));
+  if (module_exists('comment') && user_access('access comments') && variable_get('comment_api', COMMENT_NODE_OPEN) != COMMENT_NODE_HIDDEN) {
+    // Let the Comment module output the comments and comment form.
+    $additions = comment_node_page_additions(node_load($documentation_object->did));
+    // If the comment form wasn't included, see if authenticated users can post
+    // comments, and add a link saying to log in to post.
+    if (!isset($additions['comment_form'])) {
+      $roles = user_roles(TRUE, 'post_comments');
+      if (array_key_exists(DRUPAL_AUTHENTICATED_RID, $roles)) {
+        $options = array(
+          'query' => drupal_get_destination(),
+          'fragment' => 'comment-form',
+        );
+        if (variable_get('user_register', 1)) {
+          // Users can register themselves.
+          $additions['login_link'] = array(
+            '#type' => 'markup',
+            '#value' => t('<a href="@login">Log in</a> or <a href="@register">register</a> to post comments', array('@login' => url('user/login', $options), '@register' => url('user/register', $options))),
+          );
+        }
+        else {
+          // Only admins can add new users, no public registration.
+          $additions['login_link'] = array(
+            '#type' => 'markup',
+            '#value' => t('<a href="@login">Log in</a> to post comments', array('@login' => url('user/login', $options))),
+          );
+        }
       }
-      else {
-        // Only admins can add new users, no public registration.
-        $output .= t('<a href="@login">Login</a> to post comments', array('@login' => url('user/login', $options)));
-      }
     }
+    $output .= drupal_render($additions);
   }
 
   return $output;
 }
+
 
 /**
  * Lists the topics (groups) that contain the documentation object.
@@ -1159,13 +1354,19 @@ function api_related_topics($did, $branch) {
     t('Name'),
     t('Description'),
   );
+
+  $query = db_select('api_reference_storage', 'r');
+  $d = $query->innerJoin('api_documentation', 'd', "r.to_did = d.did AND d.object_type = 'group'");
+  $query->fields($d, array('branch_id', 'object_name', 'file_name', 'object_type', 'title', 'summary'))
+    ->condition('r.from_did', $did);
+  $result = $query->execute();
+
   $topics = array();
-  $result = db_query("SELECT d.branch_id, d.object_name, d.file_name, d.object_type, d.title, d.summary FROM {api_reference_storage} r INNER JOIN {api_documentation} d ON r.to_did = d.did AND d.object_type = 'group' WHERE r.from_did = %d", $did);
-  while ($group = db_fetch_object($result)) {
+  foreach ($result as $group) {
     $topics[l($group->title, api_url($group))] = api_link_documentation($group->summary, $branch);
   }
   if (count($topics) > 0) {
-    return theme('api_related_topics', $topics);
+    return theme('api_related_topics', array('topics' => $topics));
   }
   return '';
 }
@@ -1203,7 +1404,10 @@ function api_file_link($object) {
  *
  * @ingroup themeable
  */
-function theme_api_function_reference_link($type, $count, $function) {
+function theme_api_function_reference_link($variables) {
+  $type = $variables['type'];
+  $count = $variables['count'];
+  $function = $variables['function'];
   if (!isset($function->branch_id)) {
     return '';
   }
@@ -1215,13 +1419,13 @@ function theme_api_function_reference_link($type, $count, $function) {
   $branch = api_get_branch_by_id($function->branch_id);
 
   if ($function->object_type == 'file') {
-    $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/' . $type . '/'. $branch->branch_name;
+    $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/' . $type . '/' . $branch->branch_name;
   }
   else {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/function/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
   }
 
-  return '<h3>'. l($link_title, $link_path) .'</h3>';
+  return '<h3>' . l($link_title, $link_path) . '</h3>';
 }
 
 /**
