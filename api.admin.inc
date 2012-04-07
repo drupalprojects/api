@@ -9,24 +9,33 @@
  * Page callback: Generates the API module main admin page.
  *
  * @return
- *   HTML for the page.
+ *   Render array for the page.
  */
 function api_page_admin_overview() {
   // Display branch overview form.
-  $output = drupal_get_form('api_page_admin_form');
+  $output = array();
+  $output['admin_form'] = drupal_get_form('api_page_admin_form');
 
   // Display parsing status.
-  drupal_queue_include();
   $queue = DrupalQueue::get('api_parse');
   $num = $queue->numberOfItems();
-  $output .= '<p>' . format_plural($num, 'There is approximately @count parsing job waiting in the queue.', 'There are approximately @count parsing jobs waiting in the queue.') . '</p>';
+  $output['parse_status'] = array(
+    '#type' => 'markup',
+    '#markup' => '<p>' . format_plural($num, 'There is approximately @count parsing job waiting in the queue.', 'There are approximately @count parsing jobs waiting in the queue.') . '</p>',
+  );
 
   // Display library status.
   if (api_libraries_loaded(FALSE)) {
-    $output .= '<p>' . t('Required parsing libraries are present.') . '</p>';
+    $output['library_status'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('Required parsing libraries are present.') . '</p>',
+    );
   }
   else {
-    $output .= '<p>' . t('The Grammar Parser library is not present. You will not be able to parse API files until you install it. See README.txt for a link to installation instructions for this version of the API module.') . '</p>';
+    $output['library_status'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('The Grammar Parser library is not present. You will not be able to parse API files until you install it. See README.txt for a link to installation instructions for this version of the API module.') . '</p>',
+    );
   }
 
   return $output;
@@ -41,45 +50,50 @@ function api_page_admin_overview() {
  */
 function api_page_admin_form($form, &$form_state) {
   $branches = api_get_branches();
-  $form = array();
 
   if (count($branches) > 0) {
     $form['branches'] = array(
       '#theme' => 'api_branch_table',
     );
     foreach ($branches as $branch) {
+      $key = 'branch-' . $branch->branch_id;
       if ($branch->status) {
-        $form['branches'][$branch->branch_id]['default_branch'] = array(
+        $form['branches'][$key]['default_branch'] = array(
           '#type' => 'radio',
           '#default_value' => variable_get('api_default_branch', NULL),
           '#return_value' => $branch->branch_id,
         );
       }
       else {
-        $form['branches'][$branch->branch_id]['default_branch'] = array();
+        $form['branches'][$key]['default_branch'] = array();
       }
-      $form['branches'][$branch->branch_id]['project'] = array(
-        '#value' => $branch->project,
+      $form['branches'][$key]['project'] = array(
+        '#type' => 'markup',
+        '#markup' => $branch->project,
       );
-      $form['branches'][$branch->branch_id]['title'] = array(
-        '#value' => $branch->title,
+      $form['branches'][$key]['title'] = array(
+        '#type' => 'markup',
+        '#markup' => $branch->title,
       );
-      $form['branches'][$branch->branch_id]['branch_name'] = array(
-        '#value' => $branch->branch_name,
+      $form['branches'][$key]['branch_name'] = array(
+        '#type' => 'markup',
+        '#markup' => $branch->branch_name,
       );
       $ops = array();
       $ops[] = l(t('edit'), 'admin/config/api/branches/' . $branch->branch_id);
       if ($branch->type == 'files') {
         $ops[] = l(t('reparse'), 'admin/config/api/reparse/' . $branch->branch_id);
       }
-      $form['branches'][$branch->branch_id]['operations'] = array(
-        '#value' => implode(' ', $ops),
+      $form['branches'][$key]['operations'] = array(
+        '#type' => 'markup',
+        '#markup' => implode(' ', $ops),
       );
     }
   }
   else {
     $form['branches'] = array(
-      '#value' => '<p><em>' . t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/api/branches/new'))) . '</em></p>',
+      '#type' => 'markup',
+      '#markup' => '<p><em>' . t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/api/branches/new'))) . '</em></p>',
     );
   }
 
@@ -112,7 +126,7 @@ function theme_api_branch_table($variables) {
   foreach (element_children($element) as $key) {
     $row = array();
     foreach (element_children($element[$key]) as $child) {
-      $row[] = drupal_render_children($element[$key][$child]);
+      $row[] = drupal_render($element[$key][$child]);
     }
     $rows[] = $row;
   }
@@ -256,7 +270,8 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
   );
   if (is_numeric($branch_id)) {
     $form[] = array(
-      '#value' => l(t('Delete'), 'admin/config/api/branches/' . $branch->branch_id . '/delete'),
+      '#type' => 'markup',
+      '#markup' => l(t('Delete'), 'admin/config/api/branches/' . $branch->branch_id . '/delete'),
     );
   }
 

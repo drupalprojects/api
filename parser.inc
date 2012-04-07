@@ -1355,7 +1355,6 @@ function api_shutdown() {
   // Save JSON autocomplete cache
   $directory = file_directory_path();
   if (is_dir($directory) && is_writable($directory) && (variable_get('file_downloads', FILE_DOWNLOADS_PUBLIC) == FILE_DOWNLOADS_PUBLIC)) {
-    drupal_queue_include();
 
     $path = file_create_path('api');
     file_prepare_directory($path, FILE_CREATE_DIRECTORY);
@@ -1523,8 +1522,6 @@ function api_update_branch_files($branch) {
         $new = TRUE;
       }
       if ($parse) {
-        drupal_queue_include();
-
         $queue = DrupalQueue::get('api_parse');
         $queue->createItem(array('parser' => $parse_functions[$matches[1]], 'path' => $path, 'branch' => $branch, 'file' => $file_name, 'branch_name' => $branch->branch_name));
 
