@@ -363,6 +363,10 @@ function api_enable() {
     );
     api_save_branch($branch);
   }
+
+  // Make sure that the comment body field exists for our fake node type.
+  $info = (object) array('type' => 'api');
+  _comment_body_field_create($info);
 }
 
 /**
@@ -370,6 +374,14 @@ function api_enable() {
  */
 function api_update_last_removed() {
   return 6116;
+}
+
+/**
+ * Ensures that the comment body field exists.
+ */
+function api_update_7100() {
+  $info = (object) array('type' => 'api');
+  _comment_body_field_create($info);
 }
 
 /**

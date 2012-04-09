@@ -232,7 +232,7 @@ function api_page_projects() {
     );
   }
 
-  return theme('links', array('links' => $links, 'attributes' => array('class' => 'api-project-links'))) . theme('pager');
+  return theme('links', array('links' => $links, 'attributes' => array('class' => array('api-project-links')))) . theme('pager');
 }
 
 /**
@@ -313,28 +313,41 @@ function api_page_branch($branch) {
  *   Object representing branch to generate the listing for.
  * @param $object_type
  *   Type of object to list ('file', 'group', etc.).
- * @param $switch_link
- *   TRUE to include link to switch projects; FALSE to not include it.
+ * @param $is_page
+ *   TRUE if this is on its own page, FALSE if it is included in another page.
  *
  * @return
  *   HTML for the listing page.
  */
-function api_page_listing($branch, $object_type, $switch_link = TRUE) {
+function api_page_listing($branch, $object_type, $is_page = TRUE) {
 
   // Set the HTML page title and breadcrumb.
-  $breadcrumb = array(
-    l(t('Home'), '<front>'),
-    l(t('API reference'), 'api/' . $branch->project),
-    l($branch->title, 'api/' . $branch->project . '/' . $branch->branch_name),
-  );
-  drupal_set_breadcrumb($breadcrumb);
-  $title = drupal_get_title();
-  $page_title = array(
-    check_plain($title),
-    check_plain($branch->title),
-    check_plain(variable_get('site_name', 'Drupal')),
-  );
-  api_set_html_page_title(implode(' | ', $page_title));
+  if ($is_page) {
+    $breadcrumb = array(
+      l(t('Home'), '<front>'),
+      l(t('API reference'), 'api/' . $branch->project),
+      l($branch->title, 'api/' . $branch->project . '/' . $branch->branch_name),
+    );
+    drupal_set_breadcrumb($breadcrumb);
+
+    $titles = array(
+      'class' => t('Classes and interfaces'),
+      'constant' => t('Constants'),
+      'file' => t('Files'),
+      'function' => t('Functions'),
+      'global' => t('Globals'),
+      'group' => t('Topics'),
+    );
+    $title = $titles[$object_type];
+    drupal_set_title($title);
+
+    $page_title = array(
+      check_plain($title),
+      check_plain($branch->title),
+      check_plain(variable_get('site_name', 'Drupal')),
+    );
+    api_set_html_page_title(implode(' | ', $page_title));
+  }
 
   // Use the correct plural form to construct the URLs for the other branches.
   $plural_type = $object_type . 's';
@@ -388,9 +401,10 @@ function api_page_listing($branch, $object_type, $switch_link = TRUE) {
   }
 
   $suffix = '';
-  if ($switch_link) {
+  if ($is_page) {
     $suffix = api_other_projects_link();
   }
+
   return api_render_listing($result, NULL, $show_headings, $object_type !== 'file' && $object_type !== 'group') . theme('pager') . $suffix;
 }
 
@@ -718,7 +732,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   }
 
   // See if we built a query to execute.
-  if (!is_null($base_query)) {
+  if (is_null($base_query)) {
     if ($count) {
       return 0;
     }
@@ -818,8 +832,7 @@ function api_page_simple_item($item, $type) {
     'property' => 'api_property_page',
   );
 
-  // TODO Please change this theme call to use an associative array for the $variables parameter.
-  $output = theme($theme_hooks[$type], $branch, $item, $documentation, $code, $related_topics, $see, $var);
+  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'var' => $var));
   $output .= _api_add_comments($item);
   return $output;
 }

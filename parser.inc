@@ -1214,7 +1214,7 @@ function api_shutdown() {
     while ($parent = array_shift($parents)) {
       $query = db_select('api_reference_storage', 'ars')
         ->fields('ars', array('to_did'));
-      $ad = $query->leftJoin('api_documentation', 'ad', "ad.class_did = ars.to_did AND ad.object_type = ':obj_type' AND ad.member_name = ':mem_name'", array(':obj_type' => $object->object_type, ':mem_name' => $object->member_name));
+      $ad = $query->leftJoin('api_documentation', 'ad', "ad.class_did = ars.to_did AND ad.object_type = :obj_type AND ad.member_name = :mem_name", array(':obj_type' => $object->object_type, ':mem_name' => $object->member_name));
       $query->fields($ad, array('did', 'summary', 'documentation', 'see', 'var', 'class_did'));
       $af = $query->leftJoin('api_function', 'af', 'af.did = ' . $ad . '.did');
       $query->fields($af, array('parameters', 'return_value'))
@@ -1317,16 +1317,18 @@ function api_shutdown() {
   $m_objtype = $select2->addField($memberd, 'object_type', 'm_objtype');
   $m_objname = $select2->addField($memberd, 'object_name', 'm_objname');
   $mm = $select->innerJoin($select2, 'mm', 'mm.' . $m_name . ' = r.object_name AND mm.' . $m_cdid . ' = ' . $d . '.class_did');
-  $select->addField($mm, $m_objname, 'object_name');
+  $select->addField($mm, $m_objname, 'object_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
-  $select->addExpression("'computed-member'", 'object_type');
   $select->addField('r', 'from_did', 'from_did');
+  // Note: SelectQuery adds expressions to the query at the end of the field
+  // list.
+  $select->addExpression("'computed-member'", 'object_type');
   $select->addExpression(0, 'to_did');
   $select->condition('r.object_type', 'member-self')
     ->condition($mm . '.' . $m_objname, 'function');
 
   db_insert('api_reference_storage')
-    ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'to_did'))
+    ->fields(array('object_name', 'branch_id', 'from_did', 'object_type', 'to_did'))
     ->from($select)
     ->execute();
 
@@ -1341,14 +1343,16 @@ function api_shutdown() {
   $parentd = $select->innerJoin('api_documentation', 'parentd', 'parentd.did = parentm.did AND parentd.member_name = r.object_name');
   $select->condition('r.object_type', 'member-parent')
     ->condition('parentd.object_type', 'function');
-  $select->addField($parentd, 'object_name');
+  $select->addField($parentd, 'object_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
-  $select->addExpression("'computed-member'", 'object_type');
   $select->addField('r', 'from_did', 'from_did');
   $select->addField($parentd, 'did', 'to_did');
+  // Note: SelectQuery adds expressions to the query at the end of the field
+  // list.
+  $select->addExpression("'computed-member'", 'object_type');
 
   db_insert('api_reference_storage')
-    ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'to_did'))
+    ->fields(array('object_name', 'branch_id', 'from_did', 'to_did', 'object_type'))
     ->from($select)
     ->execute();
 
