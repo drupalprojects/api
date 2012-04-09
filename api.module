@@ -305,6 +305,7 @@ function api_menu() {
   $items['api/suggest/%/%menu_tail'] = array(
     'page callback' => 'api_suggest',
     'page arguments' => array(2, 3),
+    'load arguments' => array('%map', '%index'),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
@@ -334,6 +335,7 @@ function api_menu() {
         'title' => $branch->branch_name,
         'page callback' => 'api_search_listing',
         'page arguments' => array($branch->branch_name, 3),
+        'load arguments' => array('%map', '%index'),
         'access arguments' => array('access API reference'),
         'type' => MENU_LOCAL_TASK,
         'file' => 'api.pages.inc',
@@ -624,6 +626,7 @@ function api_menu() {
   $items['api/file/%menu_tail'] = array(
     'page callback' => 'api_file_redirect',
     'page arguments' => array(2),
+    'load arguments' => array('%map', '%index'),
     'access callback' => TRUE,
     'file' => 'legacy.inc',
   );

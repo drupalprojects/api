@@ -156,7 +156,7 @@ function api_search_listing($branch_name) {
   $search_text = func_get_args();
   array_shift($search_text);
   $search_text = implode('/', $search_text);
-  $title = t('Search for %search', array('%search' => $search_text));
+  $title = t('Search for !search', array('!search' => $search_text));
   drupal_set_title($title);
   $branches = api_get_branches_by_name($branch_name);
   if (isset($branches[0])) {
@@ -179,9 +179,9 @@ function api_search_listing($branch_name) {
   $query = db_select('api_branch', 'b');
   $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
   $query->fields('b', array('branch_name', 'project', 'project_title'))
-    ->fields('d')
+    ->fields($ad)
     ->condition('b.branch_name', $branch_name)
-    ->condition('ad.title', $search_text);
+    ->condition($ad . '.title', $search_text);
 
   $count = $query->countQuery()->execute()->fetchField();
   if ($count === 1) {
@@ -194,10 +194,10 @@ function api_search_listing($branch_name) {
     $query = db_select('api_branch', 'b');
     $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
     $query->fields('b', array('branch_name', 'project', 'project_title'))
-      ->fields('d')
+      ->fields($ad)
       ->condition('b.branch_name', $branch_name)
-      ->condition('ad.title', '%' .str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
-      ->orderBy('ad.title', 'ASC')
+      ->condition($ad . '.title', '%' .str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
+      ->orderBy($ad . '.title', 'ASC')
       ->extend('PagerDefault')
       ->limit(50);
 
@@ -1087,7 +1087,6 @@ function api_class_hierarchy($class) {
   $parent = $class;
   $first_parent = NULL;
   $parents = array();
-  $parent = 1;
 
   while ($parent) {
     // Query to find the next ancestor.
