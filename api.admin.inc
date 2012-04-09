@@ -80,9 +80,9 @@ function api_page_admin_form($form, &$form_state) {
         '#markup' => $branch->branch_name,
       );
       $ops = array();
-      $ops[] = l(t('edit'), 'admin/config/api/branches/' . $branch->branch_id);
+      $ops[] = l(t('edit'), 'admin/config/development/api/branches/' . $branch->branch_id);
       if ($branch->type == 'files') {
-        $ops[] = l(t('reparse'), 'admin/config/api/reparse/' . $branch->branch_id);
+        $ops[] = l(t('reparse'), 'admin/config/development/api/reparse/' . $branch->branch_id);
       }
       $form['branches'][$key]['operations'] = array(
         '#type' => 'markup',
@@ -93,7 +93,7 @@ function api_page_admin_form($form, &$form_state) {
   else {
     $form['branches'] = array(
       '#type' => 'markup',
-      '#markup' => '<p><em>' . t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/api/branches/new'))) . '</em></p>',
+      '#markup' => '<p><em>' . t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/development/api/branches/new'))) . '</em></p>',
     );
   }
 
@@ -157,7 +157,7 @@ function api_reset_queue_form($form, &$form_state) {
 
   $form = array();
 
-  return confirm_form($form, t('Are you sure you want to reset the parse queue?'), 'admin/config/api', t('Files will be added back to the queue as necessary at the next cron run.'));
+  return confirm_form($form, t('Are you sure you want to reset the parse queue?'), 'admin/config/development/api', t('Files will be added back to the queue as necessary at the next cron run.'));
 }
 
 /**
@@ -169,7 +169,7 @@ function api_reset_queue_form_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     api_reset_parse_queue();
   }
-  $form_state['redirect'] = 'admin/config/api';
+  $form_state['redirect'] = 'admin/config/development/api';
 }
 
 /**
@@ -182,11 +182,11 @@ function api_admin_new_branch_page() {
   return '<h3>' . t('Select branch type') . '</h3>' . theme('links', array('links' => array(
       'files' => array(
         'title' => t('Files'),
-        'href' => 'admin/config/api/branches/new/files',
+        'href' => 'admin/config/development/api/branches/new/files',
       ),
       'php' => array(
         'title' => t('PHP functions'),
-        'href' => 'admin/config/api/branches/new/php',
+        'href' => 'admin/config/development/api/branches/new/php',
       ),
     )));
 }
@@ -271,7 +271,7 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
   if (is_numeric($branch_id)) {
     $form[] = array(
       '#type' => 'markup',
-      '#markup' => l(t('Delete'), 'admin/config/api/branches/' . $branch->branch_id . '/delete'),
+      '#markup' => l(t('Delete'), 'admin/config/development/api/branches/' . $branch->branch_id . '/delete'),
     );
   }
 
@@ -405,7 +405,7 @@ function api_branch_edit_form_submit($form, &$form_state) {
   api_save_branch($branch);
 
   drupal_set_message(t('Saved %branch_name.', array('%branch_name' => $branch->branch_name)));
-  $form_state['redirect'] = 'admin/config/api';
+  $form_state['redirect'] = 'admin/config/development/api';
 }
 
 /**
@@ -438,7 +438,7 @@ function api_clean_directory_list($list) {
  */
 function api_branch_delete_form($form, $form_state, $branch_id) {
   $branch = api_get_branch_by_id($branch_id);
-  return confirm_form(array('#branch' => $branch), t('Are you sure you want to delete %branch_name?', array('%branch_name' => $branch->branch_name)), 'admin/config/api', NULL, t('Delete'));
+  return confirm_form(array('#branch' => $branch), t('Are you sure you want to delete %branch_name?', array('%branch_name' => $branch->branch_name)), 'admin/config/development/api', NULL, t('Delete'));
 }
 
 /**
@@ -473,7 +473,7 @@ function api_branch_delete_form_submit($form, &$form_state) {
   }
 
   menu_rebuild();
-  $form_state['redirect'] = 'admin/config/api';
+  $form_state['redirect'] = 'admin/config/development/api';
 }
 
 /**
@@ -529,5 +529,5 @@ function api_admin_reparse($branch_id) {
   $branch = api_get_branch_by_id($branch_id);
 
   drupal_set_message(t('@num files in branch @branch set to reparse, starting at next cron run', array('@num' => $num, '@branch' => $branch->branch_name)), $type);
-  drupal_goto('admin/config/api/branches');
+  drupal_goto('admin/config/development/api/branches');
 }

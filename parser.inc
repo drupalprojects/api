@@ -1141,7 +1141,7 @@ function api_reference($branch, $to_type, $to_name, $from_did) {
   // Don't make references to built-in PHP functions.
   if ($to_type == 'function' && !isset($is_php_function[$to_name])) {
     $query = db_select('api_documentation', 'd')
-      ->fields('d', 'did');
+      ->fields('d', array('did'));
     $b = $query->innerJoin('api_branch', 'b', "b.branch_id = d.branch_id AND b.type = 'php'");
     $query->condition('d.object_name', $to_name);
     $is_php_function[$to_name] = $query->execute()->fetchField();
@@ -1316,14 +1316,14 @@ function api_shutdown() {
   $m_cdid = $select2->addField('m', 'class_did', 'm_cdid');
   $m_objtype = $select2->addField($memberd, 'object_type', 'm_objtype');
   $m_objname = $select2->addField($memberd, 'object_name', 'm_objname');
-  $mm = $select->innerJoin($select2, 'mm', 'mm.m_name = r.object_name AND mm.cdid = ' . $d . '.class_did');
+  $mm = $select->innerJoin($select2, 'mm', 'mm.' . $m_name . ' = r.object_name AND mm.' . $m_cdid . ' = ' . $d . '.class_did');
   $select->addField($mm, $m_objname, 'object_name');
-  $select->addFied('r', 'branch_id', 'branch_id');
+  $select->addField('r', 'branch_id', 'branch_id');
   $select->addExpression("'computed-member'", 'object_type');
   $select->addField('r', 'from_did', 'from_did');
   $select->addExpression(0, 'to_did');
   $select->condition('r.object_type', 'member-self')
-    ->condition($mm . '.m_obj_name', 'function');
+    ->condition($mm . '.' . $m_objname, 'function');
 
   db_insert('api_reference_storage')
     ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'to_did'))
@@ -1342,7 +1342,7 @@ function api_shutdown() {
   $select->condition('r.object_type', 'member-parent')
     ->condition('parentd.object_type', 'function');
   $select->addField($parentd, 'object_name');
-  $select->addFied('r', 'branch_id', 'branch_id');
+  $select->addField('r', 'branch_id', 'branch_id');
   $select->addExpression("'computed-member'", 'object_type');
   $select->addField('r', 'from_did', 'from_did');
   $select->addField($parentd, 'did', 'to_did');
@@ -1547,7 +1547,7 @@ function api_update_branch_files($branch) {
         else {
           // Update the 'queued' field in the {api_file} table so this does not
           // get queued again.
-          $file->queued = time(),
+          $file->queued = time();
           drupal_write_record('api_file', $file, 'did');
         }
       }
@@ -1710,7 +1710,7 @@ function api_new_documentation_node() {
   $node->type = 'api';
   $node->uid = 0;
   if (module_exists('comment')) {
-    $node->comment = COMMENT_NODE_READ_WRITE;
+    $node->comment = COMMENT_NODE_OPEN;
   }
   node_save($node);
 

@@ -76,7 +76,7 @@ function api_help($path, $arg) {
 <p>Indexing of PHP functions is also supported. If the site has internet access, then the default settings for the \'PHP Manual\' section should work fine. For local development environments that have a PHP manual installed, you can edit the paths to point to the appropriate locations.</p>
 
 <p>The module indexes code branches during cron runs, so make sure the site has cron functionality set up properly.</p>
-', array('!api_settings_page' => l(t('API settings page'), 'admin/config/api'), '!doxygen_link' => l('http://drupal.org/node/1354', 'http://drupal.org/node/1354')));
+', array('!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'), '!doxygen_link' => l('http://drupal.org/node/1354', 'http://drupal.org/node/1354')));
   }
 }
 
@@ -207,7 +207,7 @@ function api_menu() {
   }
 
   // Admin
-  $items['admin/config/api'] = array(
+  $items['admin/config/development/api'] = array(
     'title' => 'API reference',
     'description' => 'Configure branches for documentation.',
     'access callback' => 'user_access',
@@ -215,19 +215,19 @@ function api_menu() {
     'page callback' => 'api_page_admin_overview',
     'file' => 'api.admin.inc',
   );
-  $items['admin/config/api/branches'] = array(
+  $items['admin/config/development/api/branches'] = array(
     'title' => 'Branches',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  $items['admin/config/api/branches/list'] = array(
+  $items['admin/config/development/api/branches/list'] = array(
     'title' => 'List',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
   );
-  $items['admin/config/api/branches/new'] = array(
+  $items['admin/config/development/api/branches/new'] = array(
     'title' => 'New branch',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
@@ -235,7 +235,7 @@ function api_menu() {
     'file' => 'api.admin.inc',
     'type' => MENU_LOCAL_TASK,
   );
-  $items['admin/config/api/branches/reset_queue'] = array(
+  $items['admin/config/development/api/branches/reset_queue'] = array(
     'title' => 'Reset parse queue',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
@@ -244,7 +244,7 @@ function api_menu() {
     'file' => 'api.admin.inc',
     'type' => MENU_LOCAL_TASK,
   );
-  $items['admin/config/api/branches/new/%'] = array(
+  $items['admin/config/development/api/branches/new/%'] = array(
     'title' => 'New branch',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
@@ -253,7 +253,7 @@ function api_menu() {
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
-  $items['admin/config/api/branches/%'] = array(
+  $items['admin/config/development/api/branches/%'] = array(
     'title' => 'Edit branch',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
@@ -262,7 +262,7 @@ function api_menu() {
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
-  $items['admin/config/api/reparse/%'] = array(
+  $items['admin/config/development/api/reparse/%'] = array(
     'title' => 'Reparse branch',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
@@ -272,7 +272,7 @@ function api_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['admin/config/api/branches/%/delete'] = array(
+  $items['admin/config/development/api/branches/%/delete'] = array(
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'drupal_get_form',
@@ -280,13 +280,15 @@ function api_menu() {
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
+
   if (module_exists('comment')) {
-    $items['admin/config/api/comments'] = array(
+    $items['admin/config/development/api/comments'] = array(
       'title' => 'Comments',
       'access arguments' => array('administer API reference'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('api_comments_settings_form'),
       'file' => 'api.admin.inc',
+      'type' => MENU_LOCAL_TASK,
     );
   }
 
@@ -1313,7 +1315,7 @@ function api_query_node_access_alter($query) {
   $tables = $query->getTables();
   foreach ($tables as $alias => $table_info) {
     if (is_array($table_info) && isset($table_info['table']) && $table_info['table'] == 'node') {
-      $query->addCondition($alias . '.type', 'api', '<>');
+      $query->condition($alias . '.type', 'api', '<>');
     }
   }
 }
