@@ -482,19 +482,20 @@ function api_branch_delete_form_submit($form, &$form_state) {
  * @see api_comments_settings_form_submit()
  */
 function api_comments_settings_form($form, &$form_state) {
-  $type = new stdClass();
-  $type->type = 'api';
-  $form = array(
-    '#node_type' => $type,
-    'identity' => array(
-      'type' => array(
-        '#type' => 'value',
-        '#value' => 'api',
-      ),
-    ),
-  );
-  comment_form_alter($form, $form_state, 'node_type_form');
+  $type = node_type_set_defaults(array('type' => 'api', 'module' => 'api'));
+  $form['#node_type'] = $type;
+
+  // Let the Comment module add comment settings to the form.
+  if (module_exists('comment')) {
+    $form['type'] = 1;
+    comment_form_node_type_form_alter($form, $form_state);
+    unset($form['type']);
+  }
+
+  // Comment module puts the settings in a fieldset, but we don't need that.
   unset($form['comment']['#type']);
+
+  // Add a submit button.
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save comment settings'),

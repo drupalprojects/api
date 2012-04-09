@@ -377,7 +377,6 @@ function api_update_last_removed() {
  */
 function api_uninstall() {
   variable_del('api_default_branch');
-  variable_del('api_reference');
 
   db_delete('node')
   ->condition('type', 'api')

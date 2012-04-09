@@ -283,7 +283,7 @@ function api_menu() {
 
   if (module_exists('comment')) {
     $items['admin/config/development/api/comments'] = array(
-      'title' => 'Comments',
+      'title' => 'Comment settings',
       'access arguments' => array('administer API reference'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('api_comments_settings_form'),

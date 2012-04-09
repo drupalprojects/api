@@ -1710,7 +1710,7 @@ function api_new_documentation_node() {
   $node->type = 'api';
   $node->uid = 0;
   if (module_exists('comment')) {
-    $node->comment = COMMENT_NODE_OPEN;
+    $node->comment =  variable_get('comment_api', COMMENT_NODE_OPEN);
   }
   node_save($node);
 
