@@ -249,7 +249,7 @@ function api_menu() {
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('api_branch_edit_form', 5),
+    'page arguments' => array('api_branch_edit_form', 6),
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
@@ -258,7 +258,7 @@ function api_menu() {
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('api_branch_edit_form', 4),
+    'page arguments' => array('api_branch_edit_form', 5),
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
@@ -267,7 +267,7 @@ function api_menu() {
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'api_admin_reparse',
-    'page arguments' => array(4),
+    'page arguments' => array(5),
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
@@ -276,7 +276,7 @@ function api_menu() {
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('api_branch_delete_form', 4),
+    'page arguments' => array('api_branch_delete_form', 5),
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );

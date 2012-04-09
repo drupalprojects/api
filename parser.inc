@@ -1414,8 +1414,9 @@ function api_has_documentation($object) {
 function api_update_all_branches() {
   foreach (api_get_branches() as $branch) {
     $function = 'api_update_branch_' . $branch->type;
-    $function($branch);
-    watchdog('api', 'Updated %project branch %branch_name.', array('%branch_name' => $branch->branch_name, '%project' => $branch->project));
+    if ($function($branch)) {
+      watchdog('api', 'Updated %project branch %branch_name.', array('%branch_name' => $branch->branch_name, '%project' => $branch->project));
+    }
   }
 }
 
@@ -1427,10 +1428,31 @@ function api_update_all_branches() {
  *
  * @param $branch
  *   Object representing a PHP branch to update.
+ * @param $force
+ *   TRUE to force an update no matter what, and FALSE to update only if the
+ *   time threshold has been exceeded.
+ *
+ * @return
+ *   TRUE if the branch was updated, and FALSE if it was skipped due to not
+ *   needing to be run this time.
  *
  * @see api_update_all_branches()
  */
-function api_update_branch_php($branch) {
+function api_update_branch_php($branch, $force = FALSE) {
+  // See if we should really update this branch at all.
+  if (!$force) {
+    $last_run = variable_get('api_last_updated_' . $branch->branch_id, 0);
+    $now = time();
+    $add = 0;
+    if (isset($branch->update_time)) {
+      $add = $branch->update_time;
+    }
+    if ($last_run + $add > $now) {
+      // We shouldn't run this time.
+      return FALSE;
+    }
+  }
+
   $response = drupal_http_request($branch->summary);
   if ($response->code === '200') {
     $docblocks = array();
@@ -1449,6 +1471,7 @@ function api_update_branch_php($branch) {
       );
     }
     api_save_documentation($docblocks);
+    variable_set('api_last_updated_' . $branch->branch_id, time());
   }
 }
 
@@ -1489,6 +1512,9 @@ function api_parse_functions() {
  *
  * @param $branch
  *   Object representing a files branch to update.
+ *
+ * @return
+ *   TRUE to indicate that the branch was updated.
  *
  * @see api_update_all_branches()
  */
@@ -1582,6 +1608,8 @@ function api_update_branch_files($branch) {
     }
     api_schedule_shutdown();
   }
+
+  return TRUE;
 }
 
 /**

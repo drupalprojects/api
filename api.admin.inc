@@ -220,6 +220,7 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     $branch->excluded_directories = '';
     $branch->summary = '';
     $branch->path = '';
+    $branch->update_time = 1;
     $branch->status = TRUE;
   }
   $form = array(
@@ -335,6 +336,14 @@ function api_branch_edit_form_php(&$form, $branch) {
     '#default_value' => $branch->path,
     '#required' => TRUE,
     '#description' => t('The URL format used to build the link to PHP functions.  Use the variable <em>!function</em> in place of the function name.'),
+  );
+
+  $form['data']['update_time'] = array(
+    '#type' => 'select',
+    '#title' => t('Update frequency'),
+    '#description' => t('Updates happen during cron runs. This sets a minimum time to wait before updating.'),
+    '#default_value' => isset($branch->update_time) ? $branch->update_time : 1,
+    '#options' => array(1 => t('Every cron run')) + drupal_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
   );
 
   // PHP manual reference will never be visible in the UI.
