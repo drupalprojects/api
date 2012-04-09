@@ -1473,6 +1473,8 @@ function api_update_branch_php($branch, $force = FALSE) {
     api_save_documentation($docblocks);
     variable_set('api_last_updated_' . $branch->branch_id, time());
   }
+
+  return TRUE;
 }
 
 /**
