@@ -4,7 +4,7 @@
  * Tests various web pages of the API module.
  */
 
-include_once './'. drupal_get_path('module', 'api') .'/tests/api_test_case.php';
+include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
 
 /**
  * Tests the API module listing pages (functions, classes, etc.).
@@ -28,9 +28,9 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('sample_class_function', 0, 'sample_class_function is on functions list page');
     $this->assertText('For testing duplicate', 'duplicate_function description is on functions list page');
     $this->assertText('A sample function', 'sample_function description is on functions list page');
-    $this->assertLink('duplicates.php', 0,  'duplicates.php file name is on functions list page');
-    $this->assertLink('sample_insubdir_function', 0,  'subdir function is on functions list page');
-    $this->assertLink('sample-subdir.php', 0,  'sample-subdir.php file name is on functions list page');
+    $this->assertLink('duplicates.php', 0, 'duplicates.php file name is on functions list page');
+    $this->assertLink('sample_insubdir_function', 0, 'subdir function is on functions list page');
+    $this->assertLink('sample-subdir.php', 0, 'sample-subdir.php file name is on functions list page');
     $this->assertNoRaw('excluded_function', 'Excluded function is not on functions list page');
     $this->assertNoRaw('hidden_function', 'Hidden function is not on functions list page');
     $this->assertNoRaw('hidden_function_two', 'Second hidden function is not on functions list page');
@@ -52,8 +52,8 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('For testing duplicate constant linking', 'DUPLICATE_CONSTANT description is on constants list page');
     $this->assertText('A sample constant', 'SAMPLE_CONSTANT description is on constants list page');
     $this->assertLink('duplicates.php', 0, 'duplicates.php file name is on constants list page');
-    $this->assertLink('SAMPLE_CONSTANT_IN_SUB_DIR', 0,  'subdir constant is on constants list page');
-    $this->assertLink('sample-subdir.php', 0,  'sample-subdir.php file name is on constants list page');
+    $this->assertLink('SAMPLE_CONSTANT_IN_SUB_DIR', 0,   'subdir constant is on constants list page');
+    $this->assertLink('sample-subdir.php', 0,   'sample-subdir.php file name is on constants list page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
 
     // Verify constant/function links.
@@ -638,7 +638,7 @@ class ApiAdminPagesTestCase extends ApiWebPagesBaseTest {
    */
   function testAdminPages() {
     // Verify the branches overview page.
-    $this->drupalGet('admin/settings/api/branches');
+    $this->drupalGet('admin/config/development/api/branches');
 
     $this->assertText($this->branch_info['project'], 'Test project identifier appears');
     $this->assertText($this->branch_info['title'], 'Test branch title appears');
@@ -650,7 +650,7 @@ class ApiAdminPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('edit', 1, '2nd edit link appears');
     $this->assertLink('edit', 2, '3rd edit link appears');
     $this->clickLink('edit');
-    $this->assertURLContains('admin/settings/api/branches/2', 'Edit link went to the right place');
+    $this->assertURLContains('admin/config/development/api/branches/2', 'Edit link went to the right place');
     $this->assertRaw($this->branch_info['project'], 'Project name appears on edit page');
     $this->assertRaw($this->branch_info['branch_name'], 'Branch name appears on edit page');
     $this->assertRaw($this->branch_info['project_title'], 'Project title appears on edit page');
@@ -719,9 +719,9 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
       'project' => 'test2',
       'project_title' => 'Project 2',
       'title' => 'Project 2 6.x',
-      'directory' => drupal_get_path('module', 'api') .'/tests/sample2',
-      'excluded' => drupal_get_path('module', 'api') .'/tests/sample2/maybe_exclude',
-      ));
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample2',
+      'excluded' => drupal_get_path('module', 'api') . '/tests/sample2/maybe_exclude',
+    ));
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -776,8 +776,8 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
     // projects, and verify the right links are showing in the API
     // navigation block.
 
-    $this->drupalPost('admin/build/block/list', array(
-        'api_navigation[region]' => 'left'
+    $this->drupalPost('admin/structure/block/list', array(
+        'api_navigation[region]' => 'left',
       ),
       t('Save blocks')
     );
@@ -831,7 +831,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->branch_info = $this->setUpBranchUI('', TRUE, array(
       'branch_name' => 'long_6',
       'project_title' => 'Project Test',
-      ));
+    ));
 
     // Create a second "file" branch in a different branch on the same project.
     // Exclude the "maybe_exclude" directory so that this branch
@@ -840,9 +840,9 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
       'branch_name' => 'long_7',
       'project_title' => 'Project Test',
       'title' => 'Testing 7',
-      'directory' => drupal_get_path('module', 'api') .'/tests/sample2',
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample2',
       'excluded' => 'none',
-      ));
+    ));
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -908,7 +908,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     // Make sure the links go to the right place.
     $this->assertLinkURLSubstring('foo', 'extras.php/function/Sample', 'foo link exists', 'foo link went to the right place');
     // Note that there is also one Sample link in the breadcrumb.
-    $this->assertLinkURLSubstring('Sample',  'classes.php/class/Sample', 'First Sample link exists', 'First Sample link went to the right place', 1);
+    $this->assertLinkURLSubstring('Sample', 'classes.php/class/Sample', 'First Sample link exists', 'First Sample link went to the right place', 1);
     $this->assertLinkURLSubstring('Sample', 'extras.php/class/Sample', 'Second Sample link exists', 'Second Sample link went to the right place', 2);
     // Test the calling page.
     $this->clickLink('2 calls to Sample::foo()');

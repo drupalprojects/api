@@ -6,7 +6,7 @@
  */
 
 
-include_once './'. drupal_get_path('module', 'api') .'/tests/api_test_case.php';
+include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
 
 /**
  * Tests branch and object creation.
@@ -26,7 +26,7 @@ class ApiBranchCreation extends ApiTestCase {
   function testBranchObjects() {
     // Make sure we have the right number of doc objects.
     $branch = $this->getBranch();
-    $count = db_result(db_query("SELECT count(*) FROM {api_documentation} WHERE branch_id = %d", $branch->branch_id));
+    $count = db_query("SELECT count(*) FROM {api_documentation} WHERE branch_id = :branch_id", array(':branch_id' => $branch->branch_id))->fetchField();
     $this->assertEqual($count, 65, 'Found ' . $count . ' documentation objects.');
 
     // Check sample.php
@@ -101,13 +101,13 @@ class ApiBranchCreation extends ApiTestCase {
     // Check group samp_GRP-6.x
     $samples_group = api_object_load('samp_GRP-6.x', $branch, 'group', 'sample.php');
     $this->assertEqual($samples_group->summary, 'A sample group.', 'Group samples has summary ' . $samples_group->summary);
-    $count = db_result(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = %d AND to_did = %d AND object_type = 'group'", $branch->branch_id, $samples_group->did));
+    $count = db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND to_did = :to_did AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':to_did' => $samples_group->did, ':object_type' => 'group'))->fetchField();
     $this->assertEqual($count, 7, 'Group samples has ' . $count . ' members');
 
     // Check group class_samples
     $class_samples_group = api_object_load('class_samples', $branch, 'group', 'classes.php');
     $this->assertEqual($class_samples_group->summary, 'A sample group of classes. Should not include members.', 'Group class_samples has summary ' . $class_samples_group->summary);
-    $count = db_result(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = %d AND to_did = %d AND object_type = 'group'", $branch->branch_id, $class_samples_group->did));
+    $count = db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND to_did = :to_did AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':to_did' => $class_samples_group->did, ':object_type' => 'group'))->fetchField();
     $this->assertEqual($count, 10, 'Group class_samples has ' . $count . ' members.');
 
     // Check classes.php
@@ -151,8 +151,8 @@ class ApiBranchCreation extends ApiTestCase {
 
     // Check inheritance
     $subclass = api_object_load('SubSample', $branch, 'class', 'classes.php');
-    $this->assertEqual(db_result(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = %d AND from_did = %d AND to_did = %d AND object_type = 'interface'", $branch->branch_id, $class->did, $interface->did)), 1, 'Sample implements SampleInterface.');
-    $this->assertEqual(db_result(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = %d AND from_did = %d AND to_did = %d AND object_type = 'class'", $branch->branch_id, $subclass->did, $class->did)), 1, 'SubSample extends Sample.');
+    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND to_did = :to_did AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $class->did, ':to_did' => $interface->did, ':object_type' => 'interface'))->fetchField(), 1, 'Sample implements SampleInterface.');
+    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND to_did = :to_did AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $subclass->did, ':to_did' => $class->did, ':object_type' => 'class'))->fetchField(), 1, 'SubSample extends Sample.');
 
     // Check overrides
     $subSample_bar = api_object_load('SubSample::bar', $branch, 'function', 'classes.php');
@@ -163,9 +163,9 @@ class ApiBranchCreation extends ApiTestCase {
     $this->assertEqual($subSample_bar->documented_did, $sampleInterfaceTwo_bar->did, 'SubSample::bar() is documented by SampleInterfaceTwo::bar()');
 
     // Check membership
-    $result = db_query('SELECT did FROM {api_members} WHERE class_did = %d', $class->did);
+    $result = db_query('SELECT did FROM {api_members} WHERE class_did = :class_did', array(':class_did' => $class->did));
     $dids = array();
-    while ($row = db_fetch_object($result)) {
+    foreach ($result as $row) {
       $dids[$row->did] = TRUE;
     }
     $this->assertEqual(count($dids), 4, 'Found ' . count($dids) . ' members of Sample.');
@@ -173,9 +173,9 @@ class ApiBranchCreation extends ApiTestCase {
     $this->assertEqual($dids[$sample_constant->did], TRUE, 'Sample::constant is a member of Sample.');
     $this->assertEqual($dids[$sample_property->did], TRUE, 'Sample::property is a member of Sample.');
 
-    $result = db_query('SELECT did FROM {api_members} WHERE class_did = %d', $subclass->did);
+    $result = db_query('SELECT did FROM {api_members} WHERE class_did = :class_did', array(':class_did' => $subclass->did));
     $dids = array();
-    while ($row = db_fetch_object($result)) {
+    foreach ($result as $row) {
       $dids[$row->did] = TRUE;
     }
     $this->assertEqual(count($dids), 5, 'Found ' . count($dids) . ' members of SubSample.');

@@ -33,28 +33,23 @@ class ApiTestCase extends DrupalWebTestCase {
   }
 
   /**
-   * Sets up modules for API tests, and saves the default branch for teardown.
+   * Sets up modules for API tests, and a super-user.
    */
   function baseSetUp() {
-    // This is restored in the tearDown() function.
-    $this->default_branch = variable_get('api_default_branch', NULL);
-    variable_del('api_default_branch');
+    DrupalWebTestCase::setUp('ctools', 'api', 'node', 'gplib');
 
-    DrupalWebTestCase::setUp('drupal_queue', 'grammar_parser', 'ctools', 'api');
-
-    include_once drupal_get_path('module', 'api') .'/api.admin.inc';
-    include_once drupal_get_path('module', 'api') .'/parser.inc';
-    drupal_queue_include();
+    include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/api.admin.inc';
+    include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/parser.inc';
 
     // Set up a super-user.
     $this->super_user = $this->drupalCreateUser(array(
-        'access API reference',
-        'administer API reference',
-        'access content',
-        'access administration pages',
-        'administer blocks',
-        'administer nodes',
-      ));
+      'access API reference',
+      'administer API reference',
+      'access content',
+      'access administration pages',
+      'administer blocks',
+      'administer nodes',
+    ));
     $this->drupalLogin($this->super_user);
   }
 
@@ -82,8 +77,8 @@ class ApiTestCase extends DrupalWebTestCase {
       'project_title' => 'Project 6',
       'branch_name' => '6',
       'title' => 'Testing 6',
-      'directory' => drupal_get_path('module', 'api') .'/tests/sample',
-      'excluded' => drupal_get_path('module', 'api') .'/tests/sample/to_exclude',
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample',
+      'excluded' => drupal_get_path('module', 'api') . '/tests/sample/to_exclude',
     );
 
     // Save this information as a branch.
@@ -110,17 +105,6 @@ class ApiTestCase extends DrupalWebTestCase {
   }
 
   /**
-   * Overrides DrupalWebTestCase::tearDown().
-   *
-   * Ensures that the default branch doesn't get overridden by tests.
-   */
-  function tearDown() {
-    DrupalWebTestCase::tearDown();
-    // Aparently SimpleTest is leaky sometimes.
-    variable_set('api_default_branch', $this->default_branch);
-  }
-
-  /**
    * Returns the first branch in the branches list.
    */
   function getBranch() {
@@ -132,8 +116,8 @@ class ApiTestCase extends DrupalWebTestCase {
    * Makes sure all variables and branches have been reset.
    */
   function resetBranchesAndCache() {
-    cache_clear_all('variables', 'cache');
-    variable_init();
+    cache_clear_all('variables', 'cache_bootstrap', 'cache');
+    variable_initialize();
     api_get_branches(TRUE);
     menu_rebuild();
   }
@@ -184,7 +168,7 @@ class ApiTestCase extends DrupalWebTestCase {
    * Returns the number of files that have been marked as needing to be parsed.
    */
   function howManyToParse() {
-    return db_result(db_query('SELECT COUNT(*) from {api_file} WHERE modified < 100'));
+    return db_query('SELECT COUNT(*) from {api_file} WHERE modified < :modified', array(':modified' => 100))->fetchField();
   }
 }
 
@@ -251,8 +235,8 @@ class ApiWebPagesBaseTest extends ApiTestCase {
       'project_title' => 'Project 6',
       'branch_name' => '6',
       'title' => 'Testing 6',
-      'directory' => drupal_get_path('module', 'api') .'/tests/sample',
-      'excluded' => drupal_get_path('module', 'api') .'/tests/sample/to_exclude',
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample',
+      'excluded' => drupal_get_path('module', 'api') . '/tests/sample/to_exclude',
     );
 
     $info['data[directories]'] = $prefix . $info['directory'];
@@ -262,7 +246,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
     unset($info['directory']);
     unset($info['excluded']);
 
-    $this->drupalPost('admin/settings/api/branches/new/files',
+    $this->drupalPost('admin/config/development/api/branches/new/files',
       $info,
       t('Save branch')
     );
@@ -278,7 +262,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
         }
       }
 
-      $this->drupalPost('admin/settings/api/branches/list',
+      $this->drupalPost('admin/config/development/api/branches/list',
         array(
           'default_branch' => $this_id,
         ),
@@ -302,7 +286,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
       'data[path]' => 'http://example.com/function/!function',
     );
 
-    $this->drupalPost('admin/settings/api/branches/new/php',
+    $this->drupalPost('admin/config/development/api/branches/new/php',
       $info,
       t('Save branch')
     );
