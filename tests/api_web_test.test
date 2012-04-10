@@ -155,9 +155,18 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
   }
 
   /**
+   * Runs all tests in this section, so setUp() doesn't run multiple times.
+   */
+  function testAll() {
+    _testConstantPage();
+    _testFunctionPage();
+    _testGlobalPage();
+  }
+
+  /**
    * Tests that constant pages have the right information.
    */
-  function testConstantPage() {
+  function _testConstantPage() {
     // Visit a constant page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/constant/DUPLICATE_CONSTANT');
 
@@ -185,7 +194,7 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that function pages have the right information.
    */
-  function testFunctionPage() {
+  function _testFunctionPage() {
     // Visit a function page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/duplicate_function');
 
@@ -344,7 +353,7 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that global pages have the right information.
    */
-  function testGlobalPage() {
+  function _testGlobalPage() {
     // Visit a global page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/global/sample_global');
 
@@ -389,9 +398,18 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
   }
 
   /**
+   * Runs all the tests in this set, to avoid multiple setUp() calls.
+   */
+  function testAll() {
+    _testClassPages();
+    _testTopicPages();
+    _testFilePages();
+  }
+
+  /**
    * Tests that class pages have the right information.
    */
-  function testClassPage() {
+  function _testClassPages() {
     // Visit a class page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
 
@@ -515,7 +533,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that topic pages have the right information.
    */
-  function testTopicPages() {
+  function _testTopicPages() {
     // Test the Sample topic page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/group/samp_GRP-6.x');
     $this->assertText('A sample group', 'Sample topic description appears on the page');
@@ -558,7 +576,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that file pages have the right information.
    */
-  function testFilePages() {
+  function _testFilePages() {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/');
     $this->assertText('A sample file', 'Sample file description appears on the page');
     $this->assertTitleContains('sample.php', 'File page title includes file name');
@@ -851,9 +869,17 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
   }
 
   /**
+   * Runs all tests in this section, to avoid multiple calls to setUp().
+   */
+  function testAll() {
+    _testBranchesCallingFunctions();
+    _testBranchLinks();
+  }
+
+  /**
    * Tests that the list of functions calling this function is branch-specific.
    */
-  function testBranchesCallingFunctions() {
+  function _testBranchesCallingFunctions() {
     // Visit the sample.php function sample_function().
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function');
 
@@ -878,7 +904,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
   /**
    * Tests that the links between branches on pages are working.
    */
-  function testBranchLinks() {
+  function _testBranchLinks() {
     // Verify function-style linking.
     $this->drupalGet('api/' . $this->branch_info_2['project'] . '/sample2.php/function/sample_function/' . $this->branch_info_2['branch_name']);
     $this->assertRaw($this->branch_info['branch_name'] . ' sample.php', 'Other branch name and file name are shown');

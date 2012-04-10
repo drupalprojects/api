@@ -20,9 +20,18 @@ class ApiWebLinksTestCase extends ApiWebPagesBaseTest {
   }
 
   /**
+   * Runs all the tests in this section, so setUp() doesn't have to run again.
+   */
+  function testAll() {
+    _testInCodeLinks();
+    _testDocumentationLinks();
+    _testClassLinks();
+  }
+
+  /**
    * Tests that links are generated correctly in code.
    */
-  function testInCodeLinks() {
+  function _testInCodeLinks() {
     // Test a bunch of links on the sample_in_code_links page.
     $links = array(
       'sample_function' => 'sample.php/function/sample_function',
@@ -62,7 +71,7 @@ class ApiWebLinksTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that links are generated correctly in documentation.
    */
-  function testDocumentationLinks() {
+  function _testDocumentationLinks() {
     // Test a variety of links on the documentation page for sample_function().
     $links = array(
       'duplicate_function' => 'search/' . $this->branch_info['branch_name'] . '/duplicate_function',
@@ -94,7 +103,7 @@ class ApiWebLinksTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests a variety of class member links.
    */
-  function testClassLinks() {
+  function _testClassLinks() {
     $pages = array(
       'Sample::foo' => 'api/' . $this->branch_info['project'] . '/classes.php/function/Sample::foo',
       'Sample::baz' => 'api/' . $this->branch_info['project'] . '/classes.php/function/Sample::baz',
