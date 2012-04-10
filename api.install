@@ -177,6 +177,53 @@ function api_schema() {
     ),
   );
 
+  $schema['api_php_documentation'] = array(
+    'fields' => array(
+      'did' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'branch_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'object_name' => array(
+        'type' => 'varchar',
+        'length' => '127',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'member_name' => array(
+        'description' => 'For class members, the name without Class::',
+        'type' => 'varchar',
+        'length' => 127,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'object_type' => array(
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'documentation' => array(
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'indexes' => array(
+      'object_name' => array('object_name', 'branch_id', 'object_type'),
+      'object_type' => array('object_type'),
+      'branch_id' => array('branch_id'),
+      'member_name' => array('member_name'),
+    ),
+  );
+
   $schema['api_file'] = array(
     'fields' => array(
       'did' => array(
@@ -377,11 +424,85 @@ function api_update_last_removed() {
 }
 
 /**
- * Ensures that the comment body field exists.
+ * Ensure that the comment body field exists.
  */
 function api_update_7100() {
   $info = (object) array('type' => 'api');
   _comment_body_field_create($info);
+}
+
+/**
+ * Add the {api_php_documentation} table to the database.
+ */
+function api_update_7101() {
+  // Create new table.
+  db_create_table('api_php_documentation', array(
+    'fields' => array(
+      'did' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'branch_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'object_name' => array(
+        'type' => 'varchar',
+        'length' => '127',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'member_name' => array(
+        'description' => 'For class members, the name without Class::',
+        'type' => 'varchar',
+        'length' => 127,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'object_type' => array(
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'documentation' => array(
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'indexes' => array(
+      'object_name' => array('object_name', 'branch_id', 'object_type'),
+      'object_type' => array('object_type'),
+      'branch_id' => array('branch_id'),
+      'member_name' => array('member_name'),
+    ),
+  ));
+
+  // Populate from existing {api_documentation} records.
+  $branches = db_select('api_branch', 'b')
+    ->fields('b', array('branch_id'))
+    ->condition('b.type', 'php')
+    ->execute()
+    ->fetchCol();
+  $select = db_select('api_documentation', 'd')
+    ->fields('d', array('did', 'branch_id', 'object_name', 'member_name', 'object_type', 'documentation'))
+    ->condition('d.branch_id', $branches);
+  db_insert('api_php_documentation')
+    ->fields(array('did', 'branch_id', 'object_name', 'member_name', 'object_type', 'documentation'))
+    ->from($select)
+    ->execute();
+
+  // Delete existing {api_documentation} records from PHP branches.
+  db_delete('api_documentation')
+    ->condition('branch_id', $branches)
+    ->execute();
+
+  return 'Created and populated api_php_documentation table.';
 }
 
 /**

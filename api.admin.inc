@@ -473,6 +473,9 @@ function api_branch_delete_form_submit($form, &$form_state) {
   db_delete('api_documentation')
     ->condition('branch_id', $form['#branch']->branch_id)
     ->execute();
+  db_delete('api_php_documentation')
+    ->condition('branch_id', $form['#branch']->branch_id)
+    ->execute();
   db_delete('api_branch')
     ->condition('branch_id', $form['#branch']->branch_id)
     ->execute();

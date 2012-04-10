@@ -2124,9 +2124,9 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
 
   // If we get here, there wasn't a match. Try PHP functions.
   if ($use_php) {
-    $query = db_select('api_documentation', 'd')
-      ->fields('d', array('object_name', 'summary'));
-    $b = $query->innerJoin('api_branch', 'b', "b.branch_id = d.branch_id AND b.type = 'php'");
+    $query = db_select('api_php_documentation', 'd')
+      ->fields('d', array('object_name', 'documentation'));
+    $b = $query->innerJoin('api_branch', 'b', "b.branch_id = d.branch_id");
     $data = $query->addField($b, 'data');
     $query->condition('d.object_type', 'function')
       ->condition('d.object_name', $name);
@@ -2139,10 +2139,10 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
 
       $data = unserialize($info->data);
       $link = strtr($data['path'], array('!function' => $name));
-      return $prepend . l($text, $link, array('attributes' => array('title' => api_entity_decode($info->summary), 'class' => array('php-manual')))) . $append;
+      return $prepend . l($text, $link, array('attributes' => array('title' => api_entity_decode($info->documentation), 'class' => array('php-manual')))) . $append;
     }
   }
-  
+
   // If we get here, there still wasn't a match, so return non-linked text.
   if (isset($prepend_if_not_found)) {
     $prepend = $prepend_if_not_found;

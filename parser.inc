@@ -460,12 +460,13 @@ function api_save_documentation($docblocks) {
         break;
     }
 
+    db_delete('api_reference_storage')
+      ->condition('branch_id', $docblocks[0]['branch']->branch_id)
+      ->condition('object_type', 'group')
+      ->condition('from_did', $docblock['did'])
+      ->execute();
+
     if (isset($docblock['groups'])) {
-      db_delete('api_reference_storage')
-        ->condition('branch_id', $docblocks[0]['branch']->branch_id)
-        ->condition('object_type', 'group')
-        ->condition('from_did', $docblock['did'])
-        ->execute();
       foreach ($docblock['groups'] as $group_name) {
         api_reference($docblocks[0]['branch'], 'group', $group_name, $docblock['did']);
       }
@@ -502,6 +503,66 @@ function api_save_documentation($docblocks) {
   }
 
   api_schedule_shutdown();
+}
+
+/**
+ * Saves PHP branch documentation information to the database.
+ *
+ * @param $docblocks
+ *   An array containing information about functions found in the branch.
+ */
+function api_save_php_documentation($docblocks) {
+  // Make a list of the PHP functions we found last time. We'll remove any that
+  // were not here this time at the end.
+  $old_dids = db_select('api_php_documentation', 'd')
+    ->fields('d', array('did'))
+    ->condition('branch_id', $docblocks[0]['branch_id'])
+    ->execute()
+    ->fetchCol();
+
+  $dids = array();
+
+  foreach ($docblocks as $docblock) {
+    // See if this docblock already existed, and get its ID.
+    $docblock['did'] = db_select('api_php_documentation', 'd')
+      ->fields('d', array('did'))
+      ->condition('object_name', $docblock['object_name'])
+      ->condition('object_type', $docblock['object_type'])
+      ->condition('branch_id', $docblock['branch_id'])
+      ->execute()
+      ->fetchField();
+    if ($docblock['did'] > 0) {
+      _api_add_text_defaults($docblock, 'api_php_documentation');
+      drupal_write_record('api_php_documentation', $docblock, 'did');
+    }
+    else {
+      $docblock['did'] = api_new_php_doc_id();
+      _api_add_text_defaults($docblock, 'api_php_documentation');
+      drupal_write_record('api_php_documentation', $docblock);
+    }
+
+    $dids[] = $docblock['did'];
+  }
+
+  // Clean out functions we didn't find this time.
+  $old_dids = array_diff($old_dids, $dids);
+  if (count($old_dids) > 0) {
+    db_delete('api_php_documentation')
+      ->condition('did', $old_dids)
+      ->execute();
+  }
+}
+
+/**
+ * Returns a new ID for a PHP doc item.
+ */
+function api_new_php_doc_id() {
+  $select = db_select('api_php_documentation', 'p');
+  $select->addExpression('MAX(did)', 'a');
+  $ids = $select->groupBy('branch_id')
+    ->execute()
+    ->fetchCol();
+  return max($ids) + 1;
 }
 
 /**
@@ -1140,9 +1201,8 @@ function api_reference($branch, $to_type, $to_name, $from_did) {
 
   // Don't make references to built-in PHP functions.
   if ($to_type == 'function' && !isset($is_php_function[$to_name])) {
-    $query = db_select('api_documentation', 'd')
+    $query = db_select('api_php_documentation', 'd')
       ->fields('d', array('did'));
-    $b = $query->innerJoin('api_branch', 'b', "b.branch_id = d.branch_id AND b.type = 'php'");
     $query->condition('d.object_name', $to_name);
     $is_php_function[$to_name] = $query->execute()->fetchField();
   }
@@ -1302,7 +1362,6 @@ function api_shutdown() {
     }
   }
 
-
   // Figure out the member-self references in reference storage. Basically,
   // ChildClass::foo() calls $this->bar(). We need to figure out the ID of
   // $this->bar(), which could be on ChildClass::bar() or ParentClass::bar().
@@ -1371,8 +1430,10 @@ function api_shutdown() {
       $queue->createItem(array('path' => $old_file_path));
     }
 
-    $file_name = 'public://api/api-' . $branch_name . '-' . $date . '.json';
-    $saved = file_save_data($new_json, $file_name, FILE_EXISTS_REPLACE);
+    $file_name = 'api-' . $branch_name . '-' . $date . '.json';
+    $directory = 'public::/api';
+    file_prepare_directory($directory, FILE_CREATE_DIRECTORY);
+    $saved = file_unmanaged_save_data($new_json, $directory . '/' . $file_name, FILE_EXISTS_REPLACE);
     if ($saved) {
       variable_set('api_autocomplete_path_' . $branch_name, $saved);
     }
@@ -1456,21 +1517,25 @@ function api_update_branch_php($branch, $force = FALSE) {
   $response = drupal_http_request($branch->summary);
   if ($response->code === '200') {
     $docblocks = array();
-    preg_match_all('!^[a-zA-Z0-9_]+ ([a-zA-Z0-9_]+)\(.*\n.*$!m', $response->data, $function_matches, PREG_SET_ORDER);
+    preg_match_all('!^[a-zA-Z0-9_]* (' . API_RE_FUNCTION_IN_TEXT . ')\(.*\n.*$!m', $response->data, $function_matches, PREG_SET_ORDER);
     foreach ($function_matches as $function_match) {
+      $member_name = '';
+      if (($pos = strpos($function_match[1], '::')) > 0) {
+        $member_name = substr($function_match[1], $pos + 2);
+      }
       $docblocks[] = array(
-        'branch' => $branch,
-        'file_name' => $branch->summary,
+        'branch_id' => $branch->branch_id,
         'object_type' => 'function',
         'object_name' => $function_match[1],
-        'title' => $function_match[1],
         'documentation' => $function_match[0],
-        'references' => array(),
-        'content' => '',
-        'class' => '',
+        'member_name' => $member_name,
       );
     }
-    api_save_documentation($docblocks);
+
+    if (count($docblocks)) {
+      api_save_php_documentation($docblocks);
+    }
+
     variable_set('api_last_updated_' . $branch->branch_id, time());
   }
 
@@ -1717,6 +1782,12 @@ function _api_add_text_defaults(&$record, $table) {
         'see' => '',
         'var' => '',
         'throws' => '',
+      );
+      break;
+
+    case 'api_php_documentation':
+      $record += array(
+        'documentation' => '',
       );
       break;
 
