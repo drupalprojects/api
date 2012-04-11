@@ -1431,7 +1431,7 @@ function api_shutdown() {
     }
 
     $file_name = 'api-' . $branch_name . '-' . $date . '.json';
-    $directory = 'public::/api';
+    $directory = 'public://api';
     file_prepare_directory($directory, FILE_CREATE_DIRECTORY);
     $saved = file_unmanaged_save_data($new_json, $directory . '/' . $file_name, FILE_EXISTS_REPLACE);
     if ($saved) {
@@ -1517,18 +1517,14 @@ function api_update_branch_php($branch, $force = FALSE) {
   $response = drupal_http_request($branch->summary);
   if ($response->code === '200') {
     $docblocks = array();
-    preg_match_all('!^[a-zA-Z0-9_]* (' . API_RE_FUNCTION_IN_TEXT . ')\(.*\n.*$!m', $response->data, $function_matches, PREG_SET_ORDER);
+    preg_match_all('!^[a-zA-Z0-9_]* (' . DRUPAL_PHP_FUNCTION_PATTERN . ')\(.*\n.*$!m', $response->data, $function_matches, PREG_SET_ORDER);
     foreach ($function_matches as $function_match) {
-      $member_name = '';
-      if (($pos = strpos($function_match[1], '::')) > 0) {
-        $member_name = substr($function_match[1], $pos + 2);
-      }
       $docblocks[] = array(
         'branch_id' => $branch->branch_id,
         'object_type' => 'function',
         'object_name' => $function_match[1],
         'documentation' => $function_match[0],
-        'member_name' => $member_name,
+        'member_name' => '',
       );
     }
 
