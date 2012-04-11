@@ -562,7 +562,12 @@ function api_new_php_doc_id() {
   $ids = $select->groupBy('branch_id')
     ->execute()
     ->fetchCol();
-  return max($ids) + 1;
+
+  if (count($ids)) {
+    return max($ids) + 1;
+  }
+
+  return 1;
 }
 
 /**
@@ -1303,7 +1308,7 @@ function api_shutdown() {
     drupal_write_record('api_overrides', $override);
   }
 
-  // Save members
+  // Save members.
   while (list($class_did,  ) = each($changed_classes)) {
     // Add child classes to $changed_classes
     $result_children = db_select('api_reference_storage', 'ars')
@@ -1312,7 +1317,9 @@ function api_shutdown() {
       ->condition('from_did', 0, '<>')
       ->execute()
       ->fetchCol();
-    $changed_classes = array_fill_keys($result_children, TRUE);
+    foreach ($result_children as $new_class) {
+      $changed_classes[$new_class] = TRUE;
+    }
 
     // Walk up the tree to find members. Since methods, properties, and
     // constants can share names, do each separately.
@@ -1368,15 +1375,17 @@ function api_shutdown() {
   // The {api_methods} table keeps track of this.
 
   $select = db_select('api_reference_storage', 'r');
-  $d = $select->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+  $d = $select->innerJoin('api_documentation', 'd', 'r.from_did = %alias.did');
+
   $select2 = db_select('api_members', 'm');
-  $memberd = $select2->innerJoin('api_documentation', 'memberd', 'm.did = memberd.did');
+  $memberd = $select2->innerJoin('api_documentation', 'memberd', 'm.did = %alias.did');
   $m_name = $select2->addField($memberd, 'member_name', 'm_name');
   $m_cdid = $select2->addField('m', 'class_did', 'm_cdid');
   $m_objtype = $select2->addField($memberd, 'object_type', 'm_objtype');
   $m_objname = $select2->addField($memberd, 'object_name', 'm_objname');
-  $mm = $select->innerJoin($select2, 'mm', 'mm.' . $m_name . ' = r.object_name AND mm.' . $m_cdid . ' = ' . $d . '.class_did');
-  $select->addField($mm, $m_objname, 'object_name', 'object_name');
+  $mm = $select->innerJoin($select2, 'mm', "%alias.$m_name = r.object_name AND %alias.$m_cdid = $d.class_did");
+
+  $select->addField($mm, $m_objname, 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
   $select->addField('r', 'from_did', 'from_did');
   // Note: SelectQuery adds expressions to the query at the end of the field
@@ -1384,7 +1393,7 @@ function api_shutdown() {
   $select->addExpression("'computed-member'", 'object_type');
   $select->addExpression(0, 'to_did');
   $select->condition('r.object_type', 'member-self')
-    ->condition($mm . '.' . $m_objname, 'function');
+    ->condition($mm . '.' . $m_objtype, 'function');
 
   db_insert('api_reference_storage')
     ->fields(array('object_name', 'branch_id', 'from_did', 'object_type', 'to_did'))

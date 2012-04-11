@@ -69,7 +69,7 @@ function api_preprocess_api_object_page(&$variables) {
 
     $alternatives[$branches[$alternative->branch_id]->project][] = array(
       '#prefix' => '<li>',
-      '#value' => l($label, api_url($alternative)),
+      '#markup' => l($label, api_url($alternative)),
       '#weight' => $branches[$alternative->branch_id]->weight,
       '#suffix' => '</li>',
     );

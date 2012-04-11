@@ -1678,7 +1678,7 @@ function api_autocomplete($branch_name, $page = TRUE) {
  * Implements hook_cron().
  */
 function api_cron() {
-  include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/parser.inc';
+  module_load_include('inc', 'api', 'parser');
   api_update_all_branches();
 }
 
@@ -2088,6 +2088,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
   $results = $query->execute();
   $url = NULL;
   $options = array();
+  $url_name_matched = '';
   foreach ($results as $object) {
     // MySQL is not case-sensitive, so check the match for exact string.
     $matched = $object->match_name;
@@ -2095,8 +2096,11 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
       continue;
     }
 
-    if (isset($url)) {
-      // This is the second match, so make this a search.
+    // See if this matched name takes precidence over the previous one.
+    $priority = _api_match_priority($matched, $url_name_matched);
+
+    if (isset($url) && $priority == 0) {
+      // This is the second match at same priority, so make this a search.
       $url = 'api/search/' . $branch->branch_name . '/' . $matched;
       $options = array(
         'attributes' => array(
@@ -2104,9 +2108,8 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
           'class' => array('local'),
         ),
       );
-      break;
     }
-    else {
+    else if ($priority > 0) {
       $url = api_url($object);
       $options = array(
         'attributes' => array(
@@ -2114,6 +2117,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
           'class' => array('local'),
         ),
       );
+      $url_name_matched = $matched;
     }
   }
 
@@ -2152,6 +2156,52 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
   }
 
   return $prepend . $text . $append;
+}
+
+/**
+ * Checks if the name found has higher or lower priority than previous match.
+ *
+ * Helper function for api_link_name(), to distinguish between theme functions
+ * and theme templates.
+ *
+ * @param $current
+ *   Current matched string.
+ * @param $previous
+ *   Previous matched string.
+ *
+ * @return
+ *   1 if previous is empty or current has higher priority. 0 if they have
+ *   the same priority. -1 if current has lower priority.
+ */
+function _api_match_priority($current, $previous) {
+  if (strlen($previous) == 0) {
+    return 1;
+  }
+  if ($current == $previous) {
+    return 0;
+  }
+
+  // Theme templates have higher priority than theme functions.
+  $current_is_theme_function = (strpos($current, 'theme_') === 0);
+  $current_is_theme_template = (strpos($current, '.tpl.php') === strlen($current) - 8);
+  $previous_is_theme_function = (strpos($previous, 'theme_') === 0);
+  $previous_is_theme_template = (strpos($previous, '.tpl.php') === strlen($previous) - 8);
+  if ($current_is_theme_function && $previous_is_theme_template) {
+    return -1;
+  }
+  if ($current_is_theme_template && $previous_is_theme_function) {
+    return 1;
+  }
+
+  // Prefer the shorter item.
+  if (strlen($current) < strlen($previous)) {
+    return 1;
+  }
+  if (strlen($previous) < strlen($current)) {
+    return -1;
+  }
+  // All things being equal...
+  return 0;
 }
 
 /**
@@ -2394,10 +2444,27 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
     return $out->rowCount();
   }
 
-  // If we get here, it's a request to reparse just one file. See ANSI comment
-  // just above...
-  $out = db_query("UPDATE {api_file} SET modified = :mod_time WHERE EXISTS ( SELECT * FROM {api_documentation} d WHERE d.branch_id = :branch_id AND d.object_type = 'file' AND d.file_name = :fname AND d.did = {api_file}.did )", array(':mod_time' => $time_in_past, ':branch_id' => $branch_id, ':fname' => $branch_or_file));
-  return $out->rowCount();
+  // If we get here, it's a request to reparse just one file. So find the file
+  // ID, and then request its reparse.
+  $did = db_select('api_documentation', 'd')
+    ->fields('d', array('did'))
+    ->condition('file_name', $branch_or_file)
+    ->condition('object_type', 'file')
+    ->execute()
+    ->fetchField();
+
+  if ($did) {
+    $out = db_update('api_file')
+      ->fields(array(
+          'modified' => $time_in_past,
+        ))
+      ->condition('did', $did)
+      ->execute();
+
+    return $out->rowCount();
+  }
+
+  return 0;
 }
 
 /**

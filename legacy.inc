@@ -18,6 +18,10 @@ function api_file_redirect() {
   $branches = api_get_branches();
 
   $args = func_get_args();
+  if (count($args) == 1) {
+    $args = explode('/', $args[0]);
+  }
+
   $suffix = '';
   $file = new stdClass();
   $file->object_type = 'file';

@@ -56,7 +56,7 @@ function api_opensearch($branch_name) {
   $short_name = t('Drupal API @branch', array('@branch' => $branch_name));
   $description = t('Drupal @branch API documentation', array('@branch' => $branch_name));
   // We need to use a theme function, so initialize the theme system.
-  init_theme();
+  drupal_theme_initialize();
   if ($image = theme_get_setting('favicon')) {
     // Get rid of base_path that theme_get_setting() added.
     $image = substr($image, strlen(base_path()));
@@ -127,7 +127,7 @@ function api_page_function_dump($branch_name) {
   $query = db_select('api_documentation', 'd')
     ->fields('d', array('title', 'summary'));
   $f = $query->innerJoin('api_function', 'f', 'd.did = f.did');
-  $query->fields('f', array('f.sigature'));
+  $query->fields('f', array('signature'));
   $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
   $query->condition($b . '.branch_name', $branch_name)
     ->condition('d.object_type', 'function');
@@ -712,7 +712,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       }
       elseif (strrpos($hook_name, '_alter') === strlen($hook_name) - 6) {
         $sub_hook_name = substr($hook_name, 0, strlen($hook_name) - 6);
-        $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
+        $or_clauses->condition(db_and()->condition('r.object_type', 'potential alter')->condition('r.object_name', $sub_hook_name));
       }
     }
     elseif (strpos($name, 'field_default_') === 0) {
