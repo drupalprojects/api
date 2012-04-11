@@ -5,7 +5,7 @@
  * Tests for valid and invalid URLs (paths) for the API module.
  */
 
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests URLs to make sure they are handled correctly.
@@ -282,7 +282,7 @@ class ApiURLPatternsTest extends ApiTestCase {
       // Verify the expected links are on the page.
       if (isset($test['links'])) {
         foreach ($test['links'] as $text) {
-          $this->assertLink($text);
+          $this->assertLink($text, 0, "Link for $text found");
         }
       }
 
@@ -291,7 +291,7 @@ class ApiURLPatternsTest extends ApiTestCase {
         $url = $this->url;
         foreach ($test['aliases'] as $alias) {
           $this->drupalGet($alias);
-          $this->assertEqual($url, $this->url, 'Alias was redirected');
+          $this->assertEqual($url, $this->url, 'Alias ' . $alias . ' was redirected correctly');
         }
       }
     }

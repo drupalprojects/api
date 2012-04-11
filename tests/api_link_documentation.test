@@ -5,8 +5,7 @@
  * Tests for the api_link_documentation() function of the API module.
  */
 
-
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests the api_link_documentation() function.

@@ -4,7 +4,7 @@
  * Tests various web pages of the API module.
  */
 
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests the API module listing pages (functions, classes, etc.).
@@ -155,12 +155,31 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
   }
 
   /**
+   * Overrides ApiWebPagesBaseTest::setUp() so we have the PHP branch.
+   */
+  function setUp() {
+    $this->baseSetUp();
+
+    // Create a "file" branch with the sample code, from the admin interface.
+    $this->branch_info = $this->setUpBranchUI();
+
+    // Create a "php" branch with the sample PHP function list, from the admin
+    // interface.
+    $this->php_branch_info = $this->createPHPBranchUI();
+
+    // Parse the code.
+    $this->resetBranchesAndCache();
+    api_update_all_branches();
+    $this->processApiParseQueue();
+  }
+
+  /**
    * Runs all tests in this section, so setUp() doesn't run multiple times.
    */
   function testAll() {
-    _testConstantPage();
-    _testFunctionPage();
-    _testGlobalPage();
+    $this->_testConstantPage();
+    $this->_testFunctionPage();
+    $this->_testGlobalPage();
   }
 
   /**
@@ -401,9 +420,9 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
    * Runs all the tests in this set, to avoid multiple setUp() calls.
    */
   function testAll() {
-    _testClassPages();
-    _testTopicPages();
-    _testFilePages();
+    $this->_testClassPages();
+    $this->_testTopicPages();
+    $this->_testFilePages();
   }
 
   /**
@@ -666,7 +685,6 @@ class ApiAdminPagesTestCase extends ApiWebPagesBaseTest {
 
     $this->assertLink('edit', 0, 'Edit link appears');
     $this->assertLink('edit', 1, '2nd edit link appears');
-    $this->assertLink('edit', 2, '3rd edit link appears');
     $this->clickLink('edit');
     $this->assertURLContains('admin/config/development/api/branches/2', 'Edit link went to the right place');
     $this->assertRaw($this->branch_info['project'], 'Project name appears on edit page');
@@ -741,6 +759,9 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
       'excluded' => drupal_get_path('module', 'api') . '/tests/sample2/maybe_exclude',
     ));
 
+    // Remove built-in PHP branch.
+    $this->removePHPBranch();
+
     // Parse the code.
     $this->resetBranchesAndCache();
     api_update_all_branches();
@@ -795,7 +816,7 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
     // navigation block.
 
     $this->drupalPost('admin/structure/block/list', array(
-        'api_navigation[region]' => 'left',
+        'blocks[api_navigation][region]' => 'sidebar_first',
       ),
       t('Save blocks')
     );
@@ -862,6 +883,9 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
       'excluded' => 'none',
     ));
 
+    // Remove PHP branch.
+    $this->removePHPBranch();
+
     // Parse the code.
     $this->resetBranchesAndCache();
     api_update_all_branches();
@@ -872,8 +896,8 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
    * Runs all tests in this section, to avoid multiple calls to setUp().
    */
   function testAll() {
-    _testBranchesCallingFunctions();
-    _testBranchLinks();
+    $this->_testBranchesCallingFunctions();
+    $this->_testBranchLinks();
   }
 
   /**

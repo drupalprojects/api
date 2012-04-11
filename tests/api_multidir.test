@@ -5,7 +5,7 @@
  * Tests for multi-directory setup for the API module.
  */
 
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests that a multi-directory setup works.
@@ -32,6 +32,7 @@ class ApiMultiDirectoryTestCase extends ApiTestCase {
       'directory' => $prefix . drupal_get_path('module', 'api') . '/tests/sample' . "\n" . $prefix . drupal_get_path('module', 'api') . '/tests/sample2',
       'excluded' => $prefix . drupal_get_path('module', 'api') . '/tests/sample/to_exclude' . "\n" . $prefix . drupal_get_path('module', 'api') . '/tests/sample2/maybe_exclude',
     ));
+    $this->removePHPBranch();
 
     $this->resetBranchesAndCache();
     api_update_all_branches();

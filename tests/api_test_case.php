@@ -20,11 +20,12 @@ class ApiTestCase extends DrupalWebTestCase {
   protected $super_user;
 
   /**
-   * Default setup case: Sets up one branch using API calls, and parses.
+   * Default set up: Sets up branch using API calls, removes PHP branch, parses.
    */
   function setUp() {
     $this->baseSetUp();
     $this->setUpBranchAPICall();
+    $this->removePHPBranch();
 
     $this->resetBranchesAndCache();
     api_update_all_branches();
@@ -36,10 +37,10 @@ class ApiTestCase extends DrupalWebTestCase {
    * Sets up modules for API tests, and a super-user.
    */
   function baseSetUp() {
-    DrupalWebTestCase::setUp('ctools', 'api', 'node', 'gplib');
+    DrupalWebTestCase::setUp('api', 'ctools', 'gplib', 'node', 'comment');
 
-    include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/api.admin.inc';
-    include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/parser.inc';
+    module_load_include('inc', 'api', 'api.admin');
+    module_load_include('inc', 'api', 'parser');
 
     // Set up a super-user.
     $this->super_user = $this->drupalCreateUser(array(
@@ -102,6 +103,15 @@ class ApiTestCase extends DrupalWebTestCase {
     $this->assertEqual(variable_get('api_default_branch', 99), $branch->branch_id, 'Variable for default branch is set correctly');
 
     return $info;
+  }
+
+  /**
+   * Removes the PHP branch, which most tests do not need.
+   */
+  function removePHPBranch() {
+    db_delete('api_branch')
+      ->condition('type', 'php')
+      ->execute();
   }
 
   /**
@@ -190,14 +200,17 @@ class ApiWebPagesBaseTest extends ApiTestCase {
   /**
    * Overrides ApiTestCase::setUp().
    *
-   * Sets up the sample branch, using the administrative interface, and updates
-   * this and the default PHP branch.
+   * Sets up the sample branch, using the administrative interface, removes the
+   * default PHP branch, adds our fake PHP branch, and updates everything.
    */
   public function setUp() {
     $this->baseSetUp();
 
     // Create a "file" branch with the sample code, from the admin interface.
     $this->branch_info = $this->setUpBranchUI();
+
+    // Remove the default PHP branch, which most tests do not need.
+    $this->removePHPBranch();
 
     // Create a "php" branch with the sample PHP function list, from the admin
     // interface.

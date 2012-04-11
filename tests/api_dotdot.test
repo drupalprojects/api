@@ -5,7 +5,7 @@
  * Tests that files in .. directories work in the API module.
  */
 
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests that files in .. directories are scanned.
@@ -29,6 +29,7 @@ class ApiDotDotTestCase extends ApiTestCase {
     $prefix = '../' . $last . '/';
 
     $this->setUpBranchAPICall($prefix);
+    $this->removePHPBranch();
 
     $this->resetBranchesAndCache();
     api_update_all_branches();

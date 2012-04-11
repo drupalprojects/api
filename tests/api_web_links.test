@@ -5,7 +5,7 @@
  * Tests for links on pages of the API module.
  */
 
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests that links are generated correctly on API pages.
@@ -23,9 +23,9 @@ class ApiWebLinksTestCase extends ApiWebPagesBaseTest {
    * Runs all the tests in this section, so setUp() doesn't have to run again.
    */
   function testAll() {
-    _testInCodeLinks();
-    _testDocumentationLinks();
-    _testClassLinks();
+    $this->_testInCodeLinks();
+    $this->_testDocumentationLinks();
+    $this->_testClassLinks();
   }
 
   /**

@@ -4,8 +4,7 @@
  * Tests for the api_link_code() function of the API module.
  */
 
-
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests the api_link_code() function.
@@ -17,6 +16,19 @@ class ApiLinkCodeTest extends ApiTestCase {
       'description' => 'Test the api_link_code() function.',
       'group' => 'API Module',
     );
+  }
+
+  /**
+   * Overrides ApiTestCase::setUp() so we do have the PHP branch.
+   */
+  function setUp() {
+    $this->baseSetUp();
+    $this->setUpBranchAPICall();
+
+    $this->resetBranchesAndCache();
+    api_update_all_branches();
+    $count = $this->processApiParseQueue();
+    $this->assertEqual($count, 10, "10 files were parsed ($count)");
   }
 
   /**

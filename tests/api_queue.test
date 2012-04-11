@@ -5,7 +5,7 @@
  * Tests for the queue functionality of the API module.
  */
 
-include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'api') . '/tests/api_test_case.php';
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
  * Tests the queue functionality of the API module.
@@ -26,6 +26,7 @@ class ApiQueuesTestCase extends ApiTestCase {
 
     $this->baseSetUp();
     $this->setUpBranchAPICall();
+    $this->removePHPBranch();
     $this->resetBranchesAndCache();
   }
 
@@ -83,7 +84,7 @@ class ApiQueuesTestCase extends ApiTestCase {
 
     // Now try marking just one file to reparse.
     api_mark_for_reparse('sample.php');
-    $this->assertEqual($this->howManyToParse(), 1, '1 file marked for reparsing with file name');
+    $this->assertEqual($this->howManyToParse(), 1, $this->howManyToParse() . ' file marked for reparsing with file name');
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after marking for parsing');
 
     api_update_all_branches();
@@ -91,7 +92,7 @@ class ApiQueuesTestCase extends ApiTestCase {
 
     // Parse and verify empty again.
     $count = $this->processApiParseQueue(TRUE);
-    $this->assertEqual($count, 1, '1 item was processed in the queue');
+    $this->assertEqual($count, 1, $count . ' item(s) was processed in the queue');
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue has been emptied');
   }
 }
