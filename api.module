@@ -2461,7 +2461,7 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
       ->condition('did', $did)
       ->execute();
 
-    return $out->rowCount();
+    return $out;
   }
 
   return 0;
