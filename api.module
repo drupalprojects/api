@@ -2487,7 +2487,7 @@ function api_queue_parse_file($data) {
  *   Array of infomration about the file to be deleted.
  */
 function api_queue_file_delete($data) {
-  file_delete($data['path']);
+  file_unmanaged_delete($data['path']);
   watchdog('api', 'Remove expired API JSON, %path.', array('%path' => $data['path']));
 }
 
