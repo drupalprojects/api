@@ -984,3 +984,47 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->assertNoRaw('Sample::foo', 'Sample method name is not shown');
   }
 }
+
+/**
+ * Tests the API module search functionality.
+ */
+class ApiSearchTestCase extends ApiWebPagesBaseTest {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Search',
+      'description' => 'Tests search functionality for the API module.',
+      'group' => 'API Module',
+    );
+  }
+
+  /**
+   * Tests search functionality.
+   */
+  function testSearch() {
+    // Test a search that should go directly to the single result.
+    $this->drupalPost('api/search', array(
+        'search' => 'sample_function',
+      ),
+      t('Search'));
+    $this->assertURLContains('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function', 'Search went directly to sample_function page');
+
+    // Try it with the URL rather than visiting the search page.
+    $this->drupalGet('api/search/' . $this->branch_info['branch_name'] . '/sample_function');
+    $this->assertURLContains('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function', 'Search went directly to sample_function page');
+
+    // Now try it with a search that should have multiple results.
+    $this->drupalPost('api/search', array(
+        'search' => 'foo',
+      ),
+      t('Search'));
+    $this->assertURLContains('api/search/' . $this->branch_info['branch_name'] . '/foo', 'Search went to search results listing page');
+    $this->assertTitleContains('Search for foo', 'Search result listing has right title');
+    $this->assertText('Search for foo', 'Search result listing has title on page');
+    $this->assertLink('foo_sample_name', 0, 'foo_sample_name is listed');
+    $this->assertLink('Sample2InSubDir::foo2', 0, 'Sample2InSubdir::foo2 is listed');
+    $this->assertLink('Sample::foo', 0, 'Sample::foo is listed');
+    $this->assertLink('SampleInSubDir::foo', 0, 'SampleInSubDir::foo is listed');
+    $this->assertLink('SampleInSubDir::$foo', 0, 'SampleInSubDir::$foo is listed');
+  }
+}

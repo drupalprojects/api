@@ -184,7 +184,7 @@ function api_search_listing($branch_name) {
     ->condition($ad . '.title', $search_text);
 
   $count = $query->countQuery()->execute()->fetchField();
-  if ($count === 1) {
+  if ($count == 1) {
     // There is one exact match.
     $item = $query->execute()->fetchObject();
     drupal_goto(api_url($item));
