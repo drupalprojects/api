@@ -412,8 +412,10 @@ function api_enable() {
   }
 
   // Make sure that the comment body field exists for our fake node type.
-  $info = (object) array('type' => 'api');
-  _comment_body_field_create($info);
+  if (module_exists('comment')) {
+    $info = (object) array('type' => 'api');
+    _comment_body_field_create($info);
+  }
 }
 
 /**
