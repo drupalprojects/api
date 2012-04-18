@@ -51,7 +51,7 @@
   }
 ?>
   <h3><?php print t('API search'); ?></h3>
-   <?php print drupal_get_form('api_search_form', $branch); ?>
+   <?php print drupal_render(drupal_get_form('api_search_form', $branch)); ?>
    <?php print api_other_projects_link(); ?>
 <?php } ?>
 
