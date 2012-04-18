@@ -289,7 +289,7 @@ function api_schema() {
       'object_name' => array(
         'type' => 'varchar',
         'mysql_type' => 'varbinary(127)',
-        'pgsql_type' => 'bytea(127)',
+        'pgsql_type' => 'bytea',
         'length' => '127',
       ),
       'branch_id' => array(
