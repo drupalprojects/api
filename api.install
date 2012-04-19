@@ -284,12 +284,11 @@ function api_schema() {
   );
 
   $schema['api_reference_storage'] = array(
-    'documentation' => 'Keep track of references. For classes/interafaces, from_did extends to_did.',
+    'documentation' => 'Keep track of references.',
     'fields' => array(
       'object_name' => array(
         'type' => 'varchar',
         'mysql_type' => 'varbinary(127)',
-        'pgsql_type' => 'bytea',
         'length' => '127',
       ),
       'branch_id' => array(
@@ -513,6 +512,26 @@ function api_update_7101() {
 function api_update_7102() {
   $count = api_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
+
+/**
+ * Change the data type for the object_name field in {api_reference_storage}.
+ */
+function api_update_7103() {
+  // Update the field to the new definition.
+  db_drop_index('api_reference_storage', 'object_name');
+  db_change_field('api_reference_storage', 'object_name', 'object_name', array(
+      'type' => 'varchar',
+      'mysql_type' => 'varbinary(127)',
+      'length' => '127',
+    ),
+    array('indexes' => array('object_name' => array('object_name'))));
+
+  // Also reparse everything, because the old field definition left things
+  // in a bad state.
+  $count = api_mark_for_reparse();
+
+  return('object_name field updated in {api_reference_storage}, and everything marked for reparse.');
 }
 
 /**

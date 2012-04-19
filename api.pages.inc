@@ -870,7 +870,6 @@ function api_page_class($class) {
     $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
       ->condition('ars.to_did', $class->did)
       ->condition('ars.object_type', 'interface')
-      ->groupBy($ad . '.did')
       ->orderBy($ad . '.object_name');
     $result = $query->execute();
     foreach ($result as $object) {

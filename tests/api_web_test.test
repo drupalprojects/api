@@ -452,7 +452,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('Sample::constant', 0, 'Link to constant appears on class page');
     $this->assertText('A class constant.', 'Constant description appears on class page');
     $this->assertText('* Only implemented in children.', 'Source code appears on class page');
-    $this->assertText('implements InterfaceNotDefinedHere', 'Off-site interface listed in hierarchy');
+    $this->assertText('InterfaceNotDefinedHere', 'Off-site interface listed in hierarchy');
 
     // Click the links on the page and verify.
     $this->assertLinkURLSubstring('classes.php', $this->branch_info['project'] . '/classes.php', 'classes.php link exists', 'classes.php link went to the right place');
