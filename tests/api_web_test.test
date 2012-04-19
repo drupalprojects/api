@@ -290,10 +290,11 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     // Test the theme invokes page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_in_code_links');
     $this->clickLink('sample_one');
-    $this->clickLink('2 theme calls to theme_sample_one()');
-    $this->assertText('2 theme calls to theme_sample_one()', 'Page title is present');
+    $this->clickLink('3 theme calls to theme_sample_one()');
+    $this->assertText('3 theme calls to theme_sample_one()', 'Page title is present');
     $this->assertLink('sample_in_code_links', 0, 'Link to theme calling function is present');
     $this->assertLink('sample_one', 0, 'Link to second theme calling function is present');
+    $this->assertLink('sample-two.tpl.php', 0, 'Link to theme calling template file is present');
     $this->assertLink('theme_sample_one', 0, 'Breadcrumb link is present');
 
     // Test the theme invokes page from a template.
@@ -653,6 +654,10 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!textfile.txt/');
     $this->assertTitleContains('textfile.txt', 'Text file page has right title');
     $this->assertText('This is a sample text file for testing.', 'Text file page displays the text');
+
+    // Now try the one-function file.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/onefunction.php/');
+    $this->assertLink('only_function_in_file', 0, 'Function link is present from one-function file.');
   }
 }
 
@@ -719,8 +724,8 @@ class ApiAdminPagesTestCase extends ApiWebPagesBaseTest {
     // Now we should be back on the listing page. Test the reparse link.
     $this->assertTrue($this->howManyToParse() == 0, 'No files are marked to parse before clicking link');
     $this->clickLink('reparse');
-    $this->assertText('10 files in branch ' . $this->branch_info['branch_name'] . ' set to reparse, starting at next cron run', 'Confirmation found after clicking reparse link');
-    $this->assertTrue($this->howManyToParse() == 10, '10 files are marked to parse after clicking reparse link');
+    $this->assertText('11 files in branch ' . $this->branch_info['branch_name'] . ' set to reparse, starting at next cron run', 'Confirmation found after clicking reparse link');
+    $this->assertTrue($this->howManyToParse() == 11, '11 files are marked to parse after clicking reparse link');
   }
 }
 

@@ -30,7 +30,7 @@ class ApiTestCase extends DrupalWebTestCase {
     $this->resetBranchesAndCache();
     api_update_all_branches();
     $count = $this->processApiParseQueue();
-    $this->assertEqual($count, 10, "10 files were parsed ($count)");
+    $this->assertEqual($count, 11, "11 files were parsed ($count)");
   }
 
   /**
@@ -120,6 +120,25 @@ class ApiTestCase extends DrupalWebTestCase {
   function getBranch() {
     $branches = api_get_branches();
     return reset($branches);
+  }
+
+  /**
+   * Asserts the right number of documentation objects are in the given branch.
+   *
+   * @param $branch
+   *   Branch object to look in. Omit to use the default branch.
+   * @param $num
+   *   Number of objects to assert. Omit to use the current number that should
+   *   be present for the default branch.
+   */
+  function assertObjectCount($branch = NULL, $num = 67) {
+    if (is_null($branch)) {
+      $branch = $this->getBranch();
+    }
+
+    $count = db_query("SELECT count(*) FROM {api_documentation} WHERE branch_id = :branch_id", array(':branch_id' => $branch->branch_id))->fetchField();
+
+    $this->assertEqual($count, $num, 'Found ' . $count . ' documentation objects (should be ' . $num . ')');
   }
 
   /**

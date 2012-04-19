@@ -115,6 +115,7 @@ function api_parse_php_file($docblock) {
     // This is a text file or template file with no declarations of functions,
     // constants, etc. But we do want to track references in it.
     $docblock['code'] = api_format_php($docblock['source'], $docblock['references'], TRUE);
+
     api_save_documentation(array($docblock));
     // Free up memory.
     $reader->reset();
@@ -148,7 +149,7 @@ function api_parse_php_file($docblock) {
   // This is usually the case for theme templates.
   if (count($references) > 0 &&
     (count($docblocks) == 1 ||
-      (count($docblocks) == 2 && $docblocks[1]['object_type'] = '' && strpos($docblocks[1]['content'], '@file') !== FALSE))) {
+      (count($docblocks) == 2 && $docblocks[1]['object_type'] == '' && strpos($docblocks[1]['content'], '@file') !== FALSE))) {
     $docblocks[0]['references'] = $references;
   }
 
@@ -182,6 +183,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
   while ($current != NULL) {
     $statement = $current->data;
     $type = is_object($statement) ? $statement->type : $statement['type'];
+
     // Common processing.
     switch ($type) {
       case T_ASSIGNMENT: // Class property
@@ -196,6 +198,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
       case T_GLOBAL:
         $docblock = $default_block;
         $docblock['object_type'] = isset($object_types[(int) $type]) ? $object_types[(int) $type] : $editor->statementTypeToString($statement);
+
         $class_prefix = empty($default_block['class']) ? '' : $default_block['class'] . '::';
         if ($type == T_GLOBAL || $type == T_ASSIGNMENT) {
           $docblock['member_name'] = preg_replace('/^\$/', '', $editor->statementOperandToText($statement));
@@ -272,6 +275,7 @@ function api_save_documentation($docblocks) {
       break;
     }
   }
+
   foreach ($docblocks as $docblock) {
     if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $docblock['content'])) {
       preg_match('/' . API_RE_TAG_START . 'mainpage (.*?)\n/', $docblock['content'], $mainpage_matches);
@@ -401,6 +405,7 @@ function api_save_documentation($docblocks) {
       ->condition('branch_id', $docblocks[0]['branch']->branch_id)
       ->execute()
       ->fetchField();
+
     if ($docblock['did'] > 0) {
       _api_add_text_defaults($docblock, 'api_documentation');
       drupal_write_record('api_documentation', $docblock, 'did');
