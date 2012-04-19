@@ -372,7 +372,7 @@ function api_save_documentation($docblocks) {
 
       // Find @var, a class or variable type name.
       $docblock['var'] = '';
-      if (preg_match('/' . API_RE_TAG_START . 'var\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $match)) {
+      if (preg_match('/' . API_RE_TAG_START . 'var\s(.*?)\n/s', $docblock['content'], $match)) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
         $docblock['var'] = trim($match[1]);
       }

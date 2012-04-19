@@ -25,6 +25,12 @@ class Sample extends ClassNotDefinedHere implements SampleInterface {
    * A property.
    *
    * @var SampleInterface
+   *
+   * Some text to go after the var line to verify that it gets put into the
+   * body of the documentation and not as part of the var. It also should be
+   * longer than 255 characters just as an added check, because the var will not
+   * hold that much text. So it rambles a bit, but it's important nonetheless.
+   * Just a bit more text and it is done.
    */
   private $property = 'variable value';
 

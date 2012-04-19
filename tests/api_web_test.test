@@ -472,6 +472,8 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('SampleInterface', 0, 'Link to type appears on property page');
     $this->assertText('A property', 'Description appears on property page');
     $this->assertText('variable value', 'Code appears on property page');
+    $this->assertText('Some text to go after the var line', 'After-var text appears');
+    $this->assertText('Just a bit more text and it is done.', 'More after-var text appears');
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->clickLink('Sample::baz');
