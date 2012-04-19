@@ -215,14 +215,16 @@ function api_search_listing($branch_name) {
 function api_page_projects() {
   $num_per_page = 50;
 
-  $result = db_select('api_branch', 'b')
-    ->fields('b', array('project_title', 'project'))
+  $query = db_select('api_branch', 'b')
+    ->fields('b', array('project'));
+  $query->addExpression('MIN(project_title)', 'project_title');
+  $query
     ->condition('status', 1)
     ->groupBy('project')
     ->orderBy('project_title')
     ->extend('PagerDefault')
-    ->limit(50)
-    ->execute();
+    ->limit(50);
+  $result = $query->execute();
 
   $links = array();
   foreach ($result as $project) {
@@ -1149,7 +1151,6 @@ function api_class_children($class) {
   $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
     ->condition('ars.to_did', $class->did)
     ->condition('ars.object_type', 'class')
-    ->groupBy('ars.from_did')
     ->orderBy($ad . '.object_name');
   $result = $query->execute();
   foreach ($result as $object) {
@@ -1181,7 +1182,6 @@ function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
   $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
     ->condition('ars.from_did', $class->did)
     ->condition('ars.object_type', 'interface')
-    ->groupBy('ars.to_did')
     ->orderBy($ad . '.object_name');
   $result = $query->execute();
   foreach ($result as $object) {
