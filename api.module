@@ -162,32 +162,8 @@ function api_menu() {
   $items = array();
   $branches = api_get_branches();
   if (count($branches)) {
-    $default_branch = $branches[variable_get('api_default_branch', NULL)];
-    $projects = array();
-    // We need a default branch for each project. If a project has a branch_name
-    // matching $default_branch, use that. Otherwise, use the max. This assumes
-    // branch names like '5' and '6'.
-    foreach ($branches as $branch) {
-      if ($branch->status) {
-        if (!isset($projects[$branch->project])) {
-          $projects[$branch->project] = array(
-            'max branch' => $branch->branch_name,
-            'use branch' => NULL,
-          );
-        }
-        else {
-          $projects[$branch->project]['max branch'] = max($projects[$branch->project]['max branch'], $branch->branch_name);
-        }
-        if ($branch->branch_name === $default_branch->branch_name) {
-          $projects[$branch->project]['use branch'] = $branch->branch_name;
-        }
-      }
-    }
-    foreach (array_keys($projects) as $project) {
-      if (is_null($projects[$project]['use branch'])) {
-        $projects[$project]['use branch'] = $projects[$project]['max branch'];
-      }
-    }
+    $default_branch = api_get_branch_by_id();
+    $projects = _api_make_menu_projects();
 
     // Part 1: No object, Default branch
     $items['api/search'] = array(
@@ -497,7 +473,7 @@ function api_menu() {
           'page callback' => 'api_page_branch',
           'page arguments' => array($branch),
           'access arguments' => array('access API reference'),
-          'type' => $branch->branch_id === $default_branch->branch_id ? MENU_NORMAL_ITEM : MENU_CALLBACK,
+          'type' => $branch->branch_id === $default_branch->branch_id ? MENU_NORMAL_ITEM : MENU_SUGGESTED_ITEM,
           'file' => 'api.pages.inc',
         );
       }
@@ -517,7 +493,7 @@ function api_menu() {
           'page callback' => 'api_page_listing',
           'access arguments' => array('access API reference'),
           'page arguments' => array($branch, 'function'),
-          'type' => MENU_CALLBACK,
+          'type' => MENU_SUGGESTED_ITEM,
           'file' => 'api.pages.inc',
         );
       }
@@ -535,7 +511,7 @@ function api_menu() {
           'page callback' => 'api_page_listing',
           'access arguments' => array('access API reference'),
           'page arguments' => array($branch, 'constant'),
-          'type' => MENU_CALLBACK,
+          'type' => MENU_SUGGESTED_ITEM,
           'file' => 'api.pages.inc',
         );
       }
@@ -553,7 +529,7 @@ function api_menu() {
           'page callback' => 'api_page_listing',
           'access arguments' => array('access API reference'),
           'page arguments' => array($branch, 'global'),
-          'type' => MENU_CALLBACK,
+          'type' => MENU_SUGGESTED_ITEM,
           'file' => 'api.pages.inc',
         );
       }
@@ -571,7 +547,7 @@ function api_menu() {
           'page callback' => 'api_page_listing',
           'access arguments' => array('access API reference'),
           'page arguments' => array($branch, 'file'),
-          'type' => MENU_CALLBACK,
+          'type' => MENU_SUGGESTED_ITEM,
           'file' => 'api.pages.inc',
         );
       }
@@ -589,7 +565,7 @@ function api_menu() {
           'page callback' => 'api_page_listing',
           'access arguments' => array('access API reference'),
           'page arguments' => array($branch, 'class'),
-          'type' => MENU_CALLBACK,
+          'type' => MENU_SUGGESTED_ITEM,
           'file' => 'api.pages.inc',
         );
       }
@@ -607,7 +583,7 @@ function api_menu() {
           'page callback' => 'api_page_listing',
           'access arguments' => array('access API reference'),
           'page arguments' => array($branch, 'group'),
-          'type' => MENU_CALLBACK,
+          'type' => MENU_SUGGESTED_ITEM,
           'file' => 'api.pages.inc',
         );
       }
@@ -746,6 +722,45 @@ function api_menu() {
   );
 
   return $items;
+}
+
+/**
+ * Returns a list of projects with their default branches, for use in menus.
+ *
+ * Basically, we need to define a default branch for each project. If a project
+ * has a branch_name matching the global default_branch, use that. Otherwise,
+ * use the max, so that if the branch names are 5, 6, 7, etc., we use 7.
+ */
+function _api_make_menu_projects() {
+  $branches = api_get_branches();
+  $default_branch = api_get_branch_by_id();
+  $projects = array();
+
+  foreach ($branches as $branch) {
+    if ($branch->status) {
+      if (!isset($projects[$branch->project])) {
+        $projects[$branch->project] = array(
+          'max branch' => $branch->branch_name,
+          'use branch' => NULL,
+        );
+      }
+      else {
+        $projects[$branch->project]['max branch'] = max($projects[$branch->project]['max branch'], $branch->branch_name);
+      }
+
+      if ($branch->branch_name === $default_branch->branch_name) {
+        $projects[$branch->project]['use branch'] = $branch->branch_name;
+      }
+    }
+  }
+
+  foreach (array_keys($projects) as $project) {
+    if (is_null($projects[$project]['use branch'])) {
+      $projects[$project]['use branch'] = $projects[$project]['max branch'];
+    }
+  }
+
+  return $projects;
 }
 
 /**
@@ -1357,26 +1372,34 @@ function api_block_view($delta) {
 
     case 'navigation':
       if (user_access('access API reference') && !empty($branch)) {
+        // Figure out if this is the default branch for this project, the same
+        // way the menu system decides.
+
+        $default_branch = api_get_branch_by_id();
+        $projects = _api_make_menu_projects();
+        $is_default = ($branch->branch_name === $projects[$branch->project]['use branch']);
+        $suffix = ($is_default) ? '' : '/' . $branch->branch_name;
+
         $links = array();
-        $links[] = l($branch->title, 'api/' . $branch->project . '/' . $branch->branch_name);
+        $links[] = l($branch->title, 'api/' . $branch->project . $suffix);
         $counts = api_listing_counts($branch);
         if ($counts['constants'] > 0) {
-          $links[] = l(t('Constants'), 'api/' . $branch->project . '/constants/' . $branch->branch_name);
+          $links[] = l(t('Constants'), 'api/' . $branch->project . '/constants' . $suffix);
         }
         if ($counts['classes'] > 0) {
-          $links[] = l(t('Classes'), 'api/' . $branch->project . '/classes/' . $branch->branch_name);
+          $links[] = l(t('Classes'), 'api/' . $branch->project . '/classes' . $suffix);
         }
         if ($counts['files'] > 0) {
-          $links[] = l(t('Files'), 'api/' . $branch->project . '/files/' . $branch->branch_name);
+          $links[] = l(t('Files'), 'api/' . $branch->project . '/files' . $suffix);
         }
         if ($counts['functions'] > 0) {
-          $links[] = l(t('Functions'), 'api/' . $branch->project . '/functions/' . $branch->branch_name);
+          $links[] = l(t('Functions'), 'api/' . $branch->project . '/functions' . $suffix);
         }
         if ($counts['globals'] > 0) {
-          $links[] = l(t('Globals'), 'api/' . $branch->project . '/globals/' . $branch->branch_name);
+          $links[] = l(t('Globals'), 'api/' . $branch->project . '/globals' . $suffix);
         }
         if ($counts['groups'] > 0) {
-          $links[] = l(t('Topics'), 'api/' . $branch->project . '/groups/' . $branch->branch_name);
+          $links[] = l(t('Topics'), 'api/' . $branch->project . '/groups' . $suffix);
         }
 
         return array(
