@@ -314,7 +314,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
   function createPHPBranchUI() {
     $info = array(
       'branch_name' => 'php2',
-      'data[summary]' => url(drupal_get_path('module', 'api') . '/tests/php_sample/funcsummary.txt', array('absolute' => TRUE)),
+      'data[summary]' => url('<front>', array('absolute' => TRUE )) . '/' . drupal_get_path('module', 'api') . '/tests/php_sample/funcsummary.txt',
       'data[path]' => 'http://example.com/function/!function',
     );
 
