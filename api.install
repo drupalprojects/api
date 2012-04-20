@@ -392,9 +392,10 @@ function api_enable() {
     ->fields('b', array('branch_name'))
     ->condition('branch_name', 'php')
     ->range(0,1)
-    ->execute();
+    ->execute()
+    ->fetchCol();
 
-  if ($result->rowCount() < 1) {
+  if (count($result) < 1) {
     // Create new PHP branch.
     $branch = new stdClass();
     $branch->type = 'php';
