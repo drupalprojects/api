@@ -98,20 +98,16 @@ EOD;
  * @see api_menu()
  */
 function api_suggest($branch) {
-  $matches = array();
   $search = func_get_args();
   array_shift($search);
   $query = db_select('api_documentation', 'd')
     ->fields('d', array('title'));
   $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
-  $result = $query->condition('d.title', '%' . implode('/', str_replace('_', '\_', $search)) . '%', 'LIKE')
+  $matches = $query->condition('d.title', '%' . implode('/', str_replace('_', '\_', $search)) . '%', 'LIKE')
     ->condition('b.branch_name', $branch)
     ->range(0, 10)
-    ->execute();
-
-  foreach ($result as $r) {
-    $matches[] = $r->title;
-  }
+    ->execute()
+    ->fetchCol();
   print drupal_json_output(array($search, array_values(array_unique($matches))));
 }
 
@@ -746,7 +742,8 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   // Execute the query.
   if ($count) {
     // We're looking for a count here.
-    return $base_query->countQuery()->execute()->fetchField();
+    $base_query->addExpression('COUNT(*)', 'num');
+    return $base_query->execute()->fetchField();
   }
 
   // If we get here, we want to return a list.
@@ -882,9 +879,10 @@ function api_page_class($class) {
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
   $query->fields($ad, array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did'));
   $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = am.did');
-  $odid = $query->addField($ao, 'overrides_did');
-  $query->condition('am.class_did', $class->did)
-    ->orderBy($ad . '.title');
+  $query
+    ->fields($ao, array('overrides_did'))
+    ->condition('am.class_did', $class->did)
+    ->orderBy('ad.title');
   $objects = api_render_listing($query->execute());
 
   $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see));
@@ -1178,10 +1176,11 @@ function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
   $ref_name = $query->addField('ars', 'object_name', 'ref_name');
   $ad = $query->leftJoin('api_documentation', 'ad', 'ad.did = ars.to_did');
   $obj_name = $query->addField($ad, 'object_name', 'object_name');
-  $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
+  $query
+    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
     ->condition('ars.from_did', $class->did)
     ->condition('ars.object_type', 'interface')
-    ->orderBy($ad . '.object_name');
+    ->orderBy('ad.object_name');
   $result = $query->execute();
   foreach ($result as $object) {
     if (isset($object->did) && $object->did) {
@@ -1200,9 +1199,10 @@ function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
   $extends = '';
   $query = db_select('api_reference_storage', 'ars');
   $ad = $query->leftJoin('api_documentation', 'ad', 'ad.did = ars.to_did');
-  $did = $query->addField($ad, 'did');
-  $obj_name = $query->addField('ars', 'object_name');
-  $query->condition('ars.from_did', $class->did)
+  $query
+    ->fields($ad, array('did'))
+    ->fields('ars', array('object_name'))
+    ->condition('ars.from_did', $class->did)
     ->condition('ars.object_type', 'class')
     ->range(0, 1);
   $parent = $query->execute()->fetchObject();
