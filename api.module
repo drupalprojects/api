@@ -1033,7 +1033,7 @@ function api_object_load($object_name_or_did, $branch, $object_type, $file_name 
   $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = ad.did');
   $query
     ->fields('ad')
-    ->fields($ao, array('documented_did', 'overrides_did', 'root_did'))
+    ->fields($ao, array('documented_did', 'overrides_did'))
     ->condition('ad.object_type', $object_type)
     ->condition('ad.branch_id', $branch->branch_id);
 
@@ -2251,48 +2251,53 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
 
   // Figure out what class we're looking for a member of, and build a query.
   // $member_type is one of: parent, self, variable, or class-NAME.
-  $result = NULL;
-
+  // Convert parent and specific class names to a 'self' reference, by finding
+  // the class documentation IDs it could be.
+  // @todo Use namespaces eventually.
   if ($member_type == 'parent') {
-    // We're looking for a member of the parent class. Find the class doc ID.
     $query = db_select('api_reference_storage', 'ars');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.to_did');
-    $did = $query->addField($ad, 'did');
-    $query->condition('ars.from_did', $class_did)
-      ->condition('ars.object_type', 'class');
-    $item = $query->execute()->fetchObject();
-    if ($item) {
-      $class_did = $item->$did;
-      $member_type = 'self';
+    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.object_name = ars.object_name AND ad.branch_id = ars.branch_id');
+    $query
+      ->fields($ad, array('did'))
+      ->condition('ars.from_did', $class_did)
+      ->condition('ars.object_type', 'class')
+      ->condition('ad.object_type', 'class');
+    $class_did = $query->execute()->fetchCol();
+    $member_type = 'self';
+    if (count($class_did) == 1) {
+      $class_did = array_pop($class_did);
     }
-    else {
+    elseif (count($class_did) == 0) {
       // There is no parent class recorded (probably a built-in PHP class).
       $member_type = 'none';
     }
   }
   elseif (strpos($member_type, 'class-') === 0) {
-    // We're looking for a specific class. Find the class doc ID.
+    // We're looking for a specific class. Find the class doc ID, or all class
+    // doc IDs it could be.
     $class_name = substr($member_type, 6);
     $query = db_select('api_documentation', 'ad')
       ->fields('ad', array('did'))
       ->condition('object_type', 'class')
       ->condition('branch_id', $branch->branch_id)
       ->condition('object_name', $class_name);
-    $item = $query->execute()->fetchObject();
-    if ($item) {
-      $class_did = $item->did;
-      $member_type = 'self';
+    $class_did = $query->execute()->fetchCol();
+    $member_type = 'self';
+    if (count($class_did) == 1) {
+      $class_did = array_pop($class_did);
     }
-    else {
-      // Class name doesn't exist (probably a built-in PHP class).
+    elseif (count($class_did) == 0) {
+      // This specific class is not recorded (probably a built-in PHP class).
       $member_type = 'none';
     }
   }
 
+  $result = NULL;
   if ($member_type == 'self') {
-    // Looking for a member of a particular class. Note that we use the
-    // {api_members} table here, since it includes members inherited from
-    // parent classes.
+    // Looking for a member of a particular class, or one of several classes
+    // with the same name. Use the {api_members} table to find the right
+    // method, since it includes members inherited from parent classes.
+    // @todo Eventually use namespaces here?
     $query = db_select('api_members', 'am');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
     $query->fields('ad', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did', 'member_name'))

@@ -11,6 +11,7 @@ stylesheets[all][] = jquery-autocomplete/jquery.autocomplete.css
 scripts[] = api.js
 scripts[] = jquery-autocomplete/jquery.autocomplete.js
 files[] = tests/api_dotdot.test
+files[] = tests/api_duplicates.test
 files[] = tests/api_legacy.test
 files[] = tests/api_link_code.test
 files[] = tests/api_link_documentation.test
