@@ -1293,7 +1293,7 @@ function api_preprocess_html(&$variables) {
 function api_init() {
   $branch = api_get_active_branch();
   if (isset($branch)) {
-    drupal_add_js(array('apiAutoCompletePath' => base_path() . variable_get('api_autocomplete_path_' . $branch->branch_name, 'api/autocomplete/' . $branch->branch_name)), array('type' => 'setting', 'scope' => JS_DEFAULT));
+    drupal_add_js(array('apiAutoCompletePath' => file_create_url(variable_get('api_autocomplete_path_' . $branch->branch_name, 'api/autocomplete/' . $branch->branch_name))), array('type' => 'setting', 'scope' => JS_DEFAULT));
   }
 
   // Add OpenSearch autodiscovery links.
