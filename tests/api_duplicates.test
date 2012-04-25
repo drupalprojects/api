@@ -15,7 +15,7 @@ class ApiDuplicatesTestCase extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Duplicates',
       'description' => 'Tests that duplicate classes, interfaces, and groups work.',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 

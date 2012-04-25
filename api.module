@@ -165,7 +165,7 @@ function api_menu() {
 
     // Part 1: No object, Default branch
     $items['api/search'] = array(
-      'title' => 'API Search',
+      'title' => 'API search',
       'page callback' => 'drupal_get_form',
       'page arguments' => array('api_search_form', $default_branch),
       'access arguments' => array('access API reference'),
@@ -183,7 +183,7 @@ function api_menu() {
   // Admin
   $items['admin/config/development/api'] = array(
     'title' => 'API reference',
-    'description' => 'Configure branches for documentation.',
+    'description' => 'Configure branches for API documentation.',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'api_page_admin_overview',
@@ -1058,10 +1058,10 @@ function api_object_load($object_name_or_did, $branch, $object_type, $file_name 
   }
 
   // Execute the query, and store in cache if it's successful.
-  $query = $query->range(0,1);
+  $query = $query->range(0, 1);
   $result = $query->execute();
   $result_object = NULL;
-  foreach($result as $result_object) {
+  foreach ($result as $result_object) {
     // Grab documentation from documented parent.
     if (!empty($result_object->documented_did) && $result_object->documented_did !== $result_object->did) {
       $documented_object = api_object_load((int) $result_object->documented_did, $branch, $object_type);
@@ -1308,7 +1308,7 @@ function api_init() {
     $result = db_select('api_documentation', 'd')
       ->fields('d', array('branch_id', 'object_type', 'file_name', 'object_name'))
       ->condition('did', $node->nid)
-      ->range(0,1)
+      ->range(0, 1)
       ->execute()
       ->fetchObject();
     drupal_goto(api_url($result));
@@ -1727,7 +1727,7 @@ function api_link_code($code, $branch, $class_did = NULL) {
  *   Documentation with function names formatted as links.
  */
 function api_link_documentation($documentation, $branch, $class_did = NULL, $aggressive_classes = FALSE) {
-  $filter = new StdClass();
+  $filter = new stdClass();
   $filter->callback = '_filter_url';
   $filter->settings = array( 'filter_url_length' => 72);
 
@@ -2120,7 +2120,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
         ),
       );
     }
-    else if ($priority > 0) {
+    elseif ($priority > 0) {
       $url = api_url($object);
       $options = array(
         'attributes' => array(

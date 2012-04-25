@@ -377,7 +377,7 @@ function api_enable() {
   $result = db_select('api_branch', 'b')
     ->fields('b', array('branch_name'))
     ->condition('branch_name', 'php')
-    ->range(0,1)
+    ->range(0, 1)
     ->execute()
     ->fetchCol();
 
@@ -518,7 +518,7 @@ function api_update_7103() {
   // in a bad state.
   $count = api_mark_for_reparse();
 
-  return('object_name field updated in {api_reference_storage}, and everything marked for reparse.');
+  return 'object_name field updated in {api_reference_storage}, and everything marked for reparse.';
 }
 
 /**

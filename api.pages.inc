@@ -192,7 +192,7 @@ function api_search_listing($branch_name) {
     $query->fields('b', array('branch_name', 'project', 'project_title'))
       ->fields($ad)
       ->condition('b.branch_name', $branch_name)
-      ->condition($ad . '.title', '%' .str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
+      ->condition($ad . '.title', '%' . str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
       ->orderBy($ad . '.title', 'ASC')
       ->extend('PagerDefault')
       ->limit(50);

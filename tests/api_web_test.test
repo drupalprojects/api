@@ -14,7 +14,7 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Listing pages',
       'description' => 'Tests listing pages for the API module.',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 
@@ -150,7 +150,7 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Simple item pages',
       'description' => 'Tests simple item pages (function, constant, etc.) for the API module.',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 
@@ -413,7 +413,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Complex item pages',
       'description' => 'Tests complex item pages (class, topic, file) for the API module.',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 
@@ -671,7 +671,7 @@ class ApiAdminPagesTestCase extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Admin pages',
       'description' => 'Tests admin pages for the API module.',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 
@@ -760,7 +760,7 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Empty listing page links',
       'description' => 'Tests that links to empty listing pages are not made. Also tests multiple projects setup.',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 
@@ -881,7 +881,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Multiple branches functionality',
       'description' => 'Tests that the multiple-branch setup works correctly',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 
@@ -1016,7 +1016,7 @@ class ApiSearchTestCase extends ApiWebPagesBaseTest {
     return array(
       'name' => 'Search',
       'description' => 'Tests search functionality for the API module.',
-      'group' => 'API Module',
+      'group' => 'API module',
     );
   }
 

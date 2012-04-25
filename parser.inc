@@ -611,7 +611,7 @@ function api_replace_references($branch, $did, $name, $references) {
   // Remove any existing references.
   db_delete('api_reference_storage')
     ->condition('branch_id', $branch->branch_id)
-    ->condition('object_type', array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'member-parent','member-self', 'member', 'member-class'))
+    ->condition('object_type', array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'member-parent', 'member-self', 'member', 'member-class'))
     ->condition('from_did', $did)
     ->execute();
 
