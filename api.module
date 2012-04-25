@@ -2493,8 +2493,9 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
 function api_queue_parse_file($data) {
   module_load_include('inc', 'api', 'parser');
 
-  api_parse_file($data['parser'], $data['path'], $data['branch'], $data['file']);
   watchdog('api', 'API parse %branch %file', array('%branch' => $data['branch_name'], '%file' => $data['file']));
+
+  api_parse_file($data['parser'], $data['path'], $data['branch'], $data['file']);
 }
 
 /**
