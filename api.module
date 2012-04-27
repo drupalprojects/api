@@ -1326,7 +1326,10 @@ function api_query_node_access_alter($query) {
   $tables = $query->getTables();
   foreach ($tables as $alias => $table_info) {
     if (is_array($table_info) && isset($table_info['table']) && $table_info['table'] == 'node') {
-      $query->condition($alias . '.type', 'api', '<>');
+      $or = db_or()
+        ->isNull($alias . '.type')
+        ->condition($alias . '.type', 'api', '<>');
+      $query->condition($or);
     }
   }
 }
