@@ -12,6 +12,9 @@
  *   Render array for the page.
  */
 function api_page_admin_overview() {
+  // Turn on cron for the API module.
+  variable_set('api_do_cron', 1);
+
   // Display branch overview form.
   $output = array();
   $output['admin_form'] = drupal_get_form('api_page_admin_form');
@@ -513,6 +516,14 @@ function api_comments_settings_form($form, &$form_state) {
     '#value' => t('Save comment settings'),
   );
 
+  // Add a link to apply the current settings to new nodes.
+  if (module_exists('comment')) {
+    $form['apply_link'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . l(t('Apply current default comment settings to existing API pages'), 'admin/config/development/api/comments/apply') . '</p>',
+    );
+  }
+
   return $form;
 }
 
@@ -526,6 +537,37 @@ function api_comments_settings_form_submit($form, &$form_state) {
     }
   }
   drupal_set_message(t('Saved API comment settings.'));
+}
+
+/**
+ * Applies current default comment settings to existing API nodes.
+ */
+function api_apply_comment_settings() {
+  if (module_exists('comment')) {
+    $setting = variable_get('comment_api', 2);
+    db_update('node')
+      ->condition('type', 'api')
+      ->fields(array('comment' => $setting))
+      ->execute();
+    // This is a query using a WHERE EXISTS, and there is no apparent way
+    // to write it using the database API, so use ANSI syntax.
+    db_query("UPDATE {node_revision} SET comment = :comment_setting WHERE EXISTS ( SELECT * FROM {node} n WHERE n.type = 'api')", array(':comment_setting' => $setting));
+    // Clear the cache so node_load doesn't load old versions.
+    entity_get_controller('node')->resetCache();
+
+    // Might as well also make sure that the body field exists for comments.
+    if ($setting != 0) {
+      $info = (object) array('type' => 'api');
+      _comment_body_field_create($info);
+    }
+
+    drupal_set_message(t('Applied default comment settings to existing API pages'));
+  }
+  else {
+    drupal_set_message(t('The Comment module is not enabled. No settings changed'));
+  }
+
+  drupal_goto('admin/config/development/api/comments');
 }
 
 /**

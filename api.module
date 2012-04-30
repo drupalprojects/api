@@ -264,6 +264,14 @@ function api_menu() {
       'file' => 'api.admin.inc',
       'type' => MENU_LOCAL_TASK,
     );
+
+    $items['admin/config/development/api/comments/apply'] = array(
+      'title' => 'Apply comment settings',
+      'access arguments' => array('administer API reference'),
+      'page callback' => 'api_apply_comment_settings',
+      'file' => 'api.admin.inc',
+      'type' => MENU_CALLBACK,
+    );
   }
 
   // OpenSearch metadata callback.
@@ -1692,8 +1700,23 @@ function api_autocomplete($branch_name, $page = TRUE) {
  * Implements hook_cron().
  */
 function api_cron() {
-  module_load_include('inc', 'api', 'parser');
-  api_update_all_branches();
+  // Do not do cron unless there is at least one non-PHP branch, or if the
+  // API admin page has been visited at least once.
+  $doit = variable_get('api_do_cron', 1);
+  if (!$doit) {
+    $branches = api_get_branches();
+    foreach ($branches as $branch) {
+      if ($branch->type != 'php') {
+        $doit = TRUE;
+        break;
+      }
+    }
+  }
+
+  if ($doit) {
+    module_load_include('inc', 'api', 'parser');
+    api_update_all_branches();
+  }
 }
 
 /**

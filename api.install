@@ -395,6 +395,10 @@ function api_enable() {
       'path' => 'http://php.net/!function',
     );
     api_save_branch($branch);
+
+    // Turn off cron runs until the API administration page has been visited,
+    // because it can take a long time to parse the PHP branch.
+    variable_set('api_do_cron', 0);
   }
 
   // Make sure that the comment body field exists for our fake node type.
@@ -415,8 +419,10 @@ function api_update_last_removed() {
  * Ensure that the comment body field exists.
  */
 function api_update_7100() {
-  $info = (object) array('type' => 'api');
-  _comment_body_field_create($info);
+  if (module_exists('comment')) {
+    $info = (object) array('type' => 'api');
+    _comment_body_field_create($info);
+  }
 }
 
 /**
@@ -563,6 +569,7 @@ function api_update_7106() {
  */
 function api_uninstall() {
   variable_del('api_default_branch');
+  variable_del('api_do_cron');
 
   db_delete('node')
   ->condition('type', 'api')
