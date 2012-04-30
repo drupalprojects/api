@@ -20,7 +20,7 @@
  *   File name to store in the database for this file.
  */
 function api_parse_file($callback, $file_path, $branch, $file_name) {
-  $basename = strpos($file_name, '/') ? substr($file_name, strrpos($file_name, '/') + 1) : $file_name;
+  $basename = drupal_basename($file_name);
   $docblock = array(
     'object_name' => $file_name,
     'branch' => $branch,
@@ -648,6 +648,14 @@ function api_format_documentation($documentation, $auto_p = TRUE) {
     return '';
   }
 
+  // Check for Unicode, which screws everything up.
+  // @todo Maybe there is something more sensible that can be done, but for
+  // now, two-byte characters cause PDO database crashes, and also display
+  // problems, so just punt.
+  if (strlen($documentation) != drupal_strlen($documentation)) {
+    return t('Non-displayable characters.');
+  }
+
   $documentation = check_plain($documentation);
 
   // @link full URLs.
@@ -865,6 +873,15 @@ function api_documentation_summary($documentation) {
  *   HTML-formatted code, with spans enclosing various PHP elements.
  */
 function api_format_php($code, &$references, $number = FALSE, $track_references = TRUE) {
+
+  // Check for Unicode, which screws everything up.
+  // @todo Maybe there is something more sensible that can be done, but for
+  // now, two-byte characters cause PDO database crashes, and also display
+  // problems, so just punt.
+  if (strlen($code) != drupal_strlen($code)) {
+    return t('Non-displayable characters.');
+  }
+
   $output = '';
 
   if (!defined('T_ML_COMMENT')) {
@@ -1680,7 +1697,7 @@ function api_update_branch_files($branch) {
           $doc = array(
             'object_name' => $file_name,
             'file_name' => $file_name,
-            'title' => strpos($file_name, '/') ? substr($file_name, strrpos($file_name, '/') + 1) : $file_name,
+            'title' => drupal_basename($file_name),
             'object_type' => 'file',
             'branch_id' => $branch->branch_id,
             'queued' => time(),

@@ -1,0 +1,70 @@
+<?php
+
+/**
+ * @file
+ * Tests that some "special" files can be dealt with.
+ */
+
+module_load_include('php', 'api', 'tests/api_test_case');
+
+/**
+ * Tests that files containing two-byte Unicode characters can be dealt with.
+ */
+class ApiUnicodeTestCase extends ApiWebPagesBaseTest {
+  public static function getInfo() {
+    return array(
+      'name' => 'Unicode',
+      'description' => 'Tests that files containing two-byte Unicode characters can be dealt with.',
+      'group' => 'API module',
+    );
+  }
+
+  function setUp() {
+    $this->baseSetUp();
+
+    // Set up a files branch, but do not exclude the usual directories.
+    $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/special_files', 'excluded' => ''));
+
+    // We don't need the PHP branch for this test, so for speed, remove it.
+    $this->removePHPBranch();
+
+    // Parse the code.
+    $this->resetBranchesAndCache();
+    api_update_all_branches();
+    $this->processApiParseQueue();
+  }
+
+  /**
+   * Tests that files with Unicode can be dealt with.
+   */
+  function testUnicode() {
+    // Verify that both files are present on the Files page.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
+    $this->assertLink('AllUnicodeChars.txt', 0, 'Unicode text file is there');
+    $this->assertLink('ClassWithUnicode.php', 0, 'Unicode class file is there');
+    $this->assertText(t('Non-displayable characters.'), 'Non-displayable message is there');
+    $this->assertText('Tests that Unicode characters can be dealt with.', 'Class file description is there');
+
+    // Verify the text file page.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/AllUnicodeChars.txt');
+    $this->assertText(t('Non-displayable characters.'), 'Non-displayable message is there');
+    $this->assertText('AllUnicodeChars.txt', 'File name is there');
+
+    // Verify the class is listed on the classes page.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes');
+    $this->assertLink('CacheArray', 0, 'Link to class is there');
+    $this->assertText(t('Non-displayable characters.'), 'Non-displayable message is there');
+
+    // Click through to the class page and verify the methods are shown.
+    $this->clickLink('CacheArray');
+    $this->assertText(t('Non-displayable characters.'), 'Non-displayable message is there');
+    $this->assertText('CacheArray implements ArrayAccess', 'Class hierarchy is shown');
+    $this->assertLink('CacheArray::$cid', 0, 'Property link is shown');
+    $this->assertText('A cid to pass to', 'Property description is shown.');
+    $this->assertLink('CacheArray::persist', 0, 'Method link is shown');
+    $this->assertText('Flags an offset value', 'Method description is shown');
+    $this->assertText('$this', 'Source code is shown');
+    $this->assertText('written to the persistent', 'Source code is shown');
+    $this->assertText('keysToPersist', 'Source code is shown');
+  }
+}
