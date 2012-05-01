@@ -18,6 +18,7 @@ files[] = tests/api_legacy.test
 files[] = tests/api_link_code.test
 files[] = tests/api_link_documentation.test
 files[] = tests/api_multidir.test
+files[] = tests/api_node_access.test
 files[] = tests/api_objects.test
 files[] = tests/api_queue.test
 files[] = tests/api_special_files.test
