@@ -90,11 +90,24 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
         'API parse ' . $this->branch_info['branch_name'],
       ), array('Updated php branch php'));
 
-    // Go ahead and parse the rest of the sample branch.
-    module_load_include('inc', 'api', 'api.admin');
-    module_load_include('inc', 'api', 'parser');
-    api_update_all_branches();
-    $this->processApiParseQueue();
+    // Run cron a few times more, which should be enough to parse the rest of
+    // the sample branch. If the next test is failing, try adding more cron
+    // runs.
+    $this->cronRun();
+    $this->cronRun();
+    $this->cronRun();
+    $this->drupalGet('admin/config/development/api');
+    $this->assertText('0 parsing jobs', 'Parsing is complete');
+
+    // Spot check to verify that the shutdown function has run and all files are
+    // parsed: check a class page and see if methods are there, and check a
+    // function page and verify that calls are there.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/SubSample');
+    $this->assertLink('Sample::baz', 0, 'Inherited method is shown');
+    $this->assertLink('SubSample::bar', 0, 'Direct method is shown');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function');
+    $this->assertLink('1 call to sample_function()', 0, 'Calling link is shown');
+    $this->assertLink("1 string reference to 'sample_function'", 0, 'String reference link is shown');
 
     // Turn on the comment module. Change settings so that comments are allowed.
     // Verify that a comment can be added. Note that the Comments test covers
@@ -133,10 +146,10 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
 
     // Set the PHP branch to update every cron run, and verify it gets updated
     // at next cron run.
-    $this->drupalGet('admin/config/development/api');
-    $this->clickLink('edit');
+    $this->drupalGet('admin/config/development/api/branches');
+    $this->clickLink('edit', 1);
     $this->drupalPost(NULL, array(
-        'data[update_time]' => 0,
+        'data[update_time]' => 1,
       ),
       t('Save branch'));
     $this->resetBranchesAndCache();
@@ -144,7 +157,6 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     $this->checkAndClearLog(array(
         'Cron run completed',
         'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
-        'API parse ' . $this->branch_info['branch_name'],
         'Updated php branch php',
       ));
   }

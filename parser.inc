@@ -1269,7 +1269,7 @@ function api_schedule_shutdown() {
   static $scheduled = FALSE;
 
   if (!$scheduled) {
-    register_shutdown_function('api_shutdown');
+    drupal_register_shutdown_function('api_shutdown');
     $scheduled = TRUE;
   }
 }
