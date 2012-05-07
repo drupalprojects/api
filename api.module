@@ -1146,6 +1146,7 @@ function api_theme() {
         'code' => NULL,
         'see' => NULL,
         'throws' => NULL,
+        'class' => NULL,
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
       'path' => drupal_get_path('module', 'api') . '/templates',
@@ -1160,6 +1161,7 @@ function api_theme() {
         'code' => NULL,
         'related_topics' => NULL,
         'see' => NULL,
+        'class' => NULL,
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
       'path' => drupal_get_path('module', 'api') . '/templates',
@@ -1189,6 +1191,7 @@ function api_theme() {
         'related_topics' => NULL,
         'see' => NULL,
         'var' => NULL,
+        'class' => NULL,
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
       'path' => drupal_get_path('module', 'api') . '/templates',
@@ -1256,6 +1259,16 @@ function api_theme() {
       ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'file' => 'api.theme.inc',
+    ),
+    'api_class_section' => array(
+      'variables' => array(
+        'class' => NULL,
+        'branch' => NULL,
+      ),
+      'path' => drupal_get_path('module', 'api') . '/templates',
+      'template' => 'api-class-section',
+      'file' => 'api.theme.inc',
+      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_class_section'),
     ),
   );
 }

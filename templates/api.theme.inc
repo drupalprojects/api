@@ -21,6 +21,18 @@ function api_preprocess_api_defined(&$variables) {
 }
 
 /**
+ * Preprocesses theme('api_class_section').
+ *
+ * Sets up variables for the class link and summary line.
+ */
+function api_preprocess_api_class_section(&$variables) {
+  $class = $variables['class'];
+  $branch = $variables['branch'];
+  $variables['class_link'] = l($class->title, api_url($class));
+  $variables['class_info'] = $class->summary;
+}
+
+/**
  * Preprocesses a documentation item page.
  */
 function api_preprocess_api_object_page(&$variables) {

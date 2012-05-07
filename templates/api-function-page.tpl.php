@@ -11,6 +11,7 @@
  * - $return: Function return value documentation.
  * - $override: If this is an override, the text to show for that.
  * - $throws: Documentation of thown exceptions.
+ * - $class: If this is a method, the text for the class section.
  * - $see: See also documentation.
  * - $related_topics: Related topics documentation.
  * - $call_links: Links to calling functions, hook implementations, etc.
@@ -99,6 +100,11 @@ foreach ($call_links as $link) {
 
 <h3><?php print t('File'); ?></h3>
  <?php print $defined; ?>
+
+<?php if ($class) : ?>
+  <h3><?php print t('Class'); ?></h3>
+  <?php print $class; ?>
+<?php endif; ?>
 
 <h3><?php print t('Code'); ?></h3>
 <?php print $code; ?>

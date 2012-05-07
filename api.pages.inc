@@ -583,6 +583,7 @@ function api_page_function($function) {
   $throws = api_link_documentation($function->throws, $branch, $function->class_did, TRUE);
   $code = api_link_code($function->code, $branch, $function->class_did);
   $related_topics = api_related_topics($function->did, $branch);
+  $class = api_class_section($function, $branch);
 
   // Build reference links.
   $links = array();
@@ -594,7 +595,7 @@ function api_page_function($function) {
   }
 
   // Put it all together and theme the output.
-  $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'throws' => $throws));
+  $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'throws' => $throws, 'class' => $class));
   $output .= _api_add_comments($function);
   return $output;
 }
@@ -825,13 +826,15 @@ function api_page_simple_item($item, $type) {
     $var = api_link_name($item->var, $branch, '', '', $item->class_did);
   }
 
+  $class = api_class_section($item, $branch);
+
   $theme_hooks = array(
     'constant' => 'api_constant_page',
     'global' => 'api_global_page',
     'property' => 'api_property_page',
   );
 
-  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'var' => $var));
+  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'var' => $var, 'class' => $class));
   $output .= _api_add_comments($item);
   return $output;
 }
@@ -1397,4 +1400,30 @@ function api_reference_text($type, $count, $function) {
   }
 
   return '';
+}
+
+/**
+ * Creates a section documenting which class a member is from.
+ *
+ * @param $item
+ *   Documentation item for the member.
+ * @param $branch
+ *   Branch the item is in.
+ *
+ * @return
+ *   HTML for the section, or FALSE if it is not a class member.
+ */
+function api_class_section($item, $branch) {
+  if (!isset($item->class_did) || !$item->class_did) {
+    return FALSE;
+  }
+
+  $class = api_object_load((int) $item->class_did, $branch, array('class', 'interface'));
+
+  if (is_null($class)) {
+    print "returning FALSE";
+    return FALSE;
+  }
+
+  return theme('api_class_section', array('class' => $class, 'branch' => $branch));
 }

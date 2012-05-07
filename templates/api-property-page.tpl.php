@@ -11,6 +11,7 @@
  * - $documentation: Documentation from the comment header of the property.
  * - $see: See also documentation.
  * - $defined: HTML reference to file that defines this property.
+ * - $class: The text for the class section.
  * - $code: HTML-formatted declaration of this property.
  * - $related_topics: List of related groups/topics.
  * - $branch: Object with information about the branch.
@@ -56,6 +57,11 @@
 
 <h3><?php print t('File'); ?></h3>
  <?php print $defined; ?>
+
+<?php if ($class) : ?>
+  <h3><?php print t('Class'); ?></h3>
+  <?php print $class; ?>
+<?php endif; ?>
 
 <h3><?php print t('Code'); ?></h3>
 <?php print $code; ?>
