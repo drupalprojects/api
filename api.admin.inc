@@ -198,7 +198,8 @@ function api_admin_new_branch_page() {
  * Form constructor for the edit form for a branch.
  *
  * @param $branch_id
- *   ID of the branch to edit, or NULL to add a new branch.
+ *   ID of the branch to edit, or the type of branch to add a new branch
+ *   ('files' or 'php').
  *
  * @see api_branch_edit_form_files()
  * @see api_branch_edit_form_php()
@@ -462,20 +463,7 @@ function api_branch_delete_form_submit($form, &$form_state) {
     ->condition('branch_id', $form['#branch']->branch_id)
     ->execute()
     ->fetchCol();
-  if (count($dids) > 0) {
-    db_delete('api_file')
-      ->condition('did', $dids)
-      ->execute();
-    db_delete('api_function')
-      ->condition('did', $dids)
-      ->execute();
-  }
-  db_delete('api_reference_storage')
-    ->condition('branch_id', $form['#branch']->branch_id)
-    ->execute();
-  db_delete('api_documentation')
-    ->condition('branch_id', $form['#branch']->branch_id)
-    ->execute();
+  api_delete_items($dids);
   db_delete('api_php_documentation')
     ->condition('branch_id', $form['#branch']->branch_id)
     ->execute();
@@ -487,7 +475,9 @@ function api_branch_delete_form_submit($form, &$form_state) {
     variable_set('api_default_branch', NULL);
   }
 
-  menu_rebuild();
+  api_reset_parse_queue();
+  api_reset_branches();
+
   $form_state['redirect'] = 'admin/config/development/api';
 }
 

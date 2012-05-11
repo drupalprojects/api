@@ -158,27 +158,6 @@ function api_get_branch_names($_reset = FALSE) {
  */
 function api_menu() {
   $items = array();
-  $branches = api_get_branches();
-  if (count($branches)) {
-    $default_branch = api_get_branch_by_id();
-    $projects = _api_make_menu_projects();
-
-    // Part 1: No object, Default branch
-    $items['api/search'] = array(
-      'title' => 'API search',
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('api_search_form', $default_branch),
-      'access arguments' => array('access API reference'),
-      'type' => MENU_SUGGESTED_ITEM,
-    );
-    $items['apis'] = array(
-      'title' => 'API search',
-      'page callback' => 'api_search_redirect',
-      'access arguments' => array('access API reference'),
-      'type' => MENU_CALLBACK,
-      'file' => 'api.pages.inc',
-    );
-  }
 
   // Admin
   $items['admin/config/development/api'] = array(
@@ -274,6 +253,35 @@ function api_menu() {
     );
   }
 
+  // The rest of the menu items require there to be at least one non-PHP
+  // branch.
+  $branches = api_get_branches();
+  if (!count($branches)) {
+    return $items;
+  }
+
+  $default_branch = api_get_branch_by_id();
+  $projects = _api_make_menu_projects();
+  if (!count($projects)) {
+    return $items;
+  }
+
+  // Default search pages.
+  $items['api/search'] = array(
+    'title' => 'API search',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_search_form', $default_branch),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_SUGGESTED_ITEM,
+  );
+  $items['apis'] = array(
+    'title' => 'API search',
+    'page callback' => 'api_search_redirect',
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+
   // OpenSearch metadata callback.
   $items['api/opensearch/%'] = array(
     'page callback' => 'api_opensearch',
@@ -311,7 +319,7 @@ function api_menu() {
     'file' => 'api.pages.inc',
   );
 
-  foreach (api_get_branches() as $branch) {
+  foreach ($branches as $branch) {
     if ($branch->status) {
       $items['api/search/' . $branch->branch_name . '/%menu_tail'] = array(
         'title' => $branch->branch_name,
@@ -470,7 +478,7 @@ function api_menu() {
 
   foreach ($branches as $branch) {
     if ($branch->status) {
-      $is_default = ($branch->branch_name === $projects[$branch->project]['use branch']);
+      $is_default = !is_null($default_branch) && ($branch->branch_name === $projects[$branch->project]['use branch']);
 
       // Main branch page
       if ($is_default) {
@@ -739,11 +747,19 @@ function api_menu() {
  */
 function _api_make_menu_projects() {
   $branches = api_get_branches();
+  if (!count($branches)) {
+    return array();
+  }
+
   $default_branch = api_get_branch_by_id();
+  if (is_null($default_branch)) {
+    return array();
+  }
+
   $projects = array();
 
   foreach ($branches as $branch) {
-    if ($branch->status) {
+    if ($branch->status && $branch->type == 'files') {
       if (!isset($projects[$branch->project])) {
         $projects[$branch->project] = array(
           'max branch' => $branch->branch_name,
@@ -1570,19 +1586,39 @@ function api_save_branch($branch) {
   }
   else {
     drupal_write_record('api_branch', $branch, 'branch_id');
+    if ($branch->type == 'files') {
+      // If we've just updated a files branch, we need to reset the parse
+      // queue, because there are possibly some files set up to parse that
+      // should not be parsed (if the directories to be parsed changed).
+      api_reset_parse_queue();
+    }
   }
 
-  // Reweight all branches.
+  api_reset_branches();
+}
+
+/**
+ * Fixes up branches, after one is updated, added, or deleted.
+ */
+function api_reset_branches() {
+  // Reset the branch lists.
   api_get_branch_names(TRUE);
   $branches = api_get_branches(TRUE);
+
+  // Reweight all branches.
   usort($branches, 'api_branch_sort');
   $weight = 0;
   foreach ($branches as $branch) {
+    // Attempt to set a default branch, if possible.
+    if ($branch->status && $branch->type == 'files' && is_null(variable_get('api_default_branch', NULL))) {
+      variable_set('api_default_branch', $branch->branch_id);
+    }
     $branch->weight = $weight;
     $weight += 1;
     drupal_write_record('api_branch', $branch, 'branch_id');
   }
 
+  // Rebuild the menu system.
   menu_rebuild();
 }
 
@@ -1634,7 +1670,7 @@ function api_get_active_branch() {
       }
     }
     if (!isset($branch)) {
-      if (!is_null($default_branch)) {
+      if (!is_null($default_branch) && isset($branches[$default_branch])) {
         $branch = $branches[$default_branch];
       }
       else {
@@ -2587,4 +2623,59 @@ function api_libraries_loaded($watchdog = TRUE) {
   }
 
   return $loaded;
+}
+
+
+/**
+ * Completely deletes an array of documentation items.
+ *
+ * All records pertaining to the items, including nodes and comments, are
+ * removed.
+ *
+ * @param $dids
+ *   Array of the IDs of the items to delete.
+ */
+function api_delete_items($dids) {
+  $count = count($dids);
+  if ($count < 1) {
+    return;
+  }
+
+  // Delete items in batches of 100, because placeholder queries can be
+  // a problem.
+  $done = 0;
+  while ($done < $count) {
+    $this_batch = array_slice($dids, $done, 100);
+    $done += 100;
+
+    db_delete('api_documentation')
+      ->condition(db_or()
+        ->condition('did', $this_batch)
+        ->condition('class_did', $this_batch)
+      )
+      ->execute();
+    db_delete('api_members')
+      ->condition(db_or()
+        ->condition('did', $this_batch)
+        ->condition('class_did', $this_batch)
+      )
+      ->execute();
+    db_delete('api_file')
+      ->condition('did', $this_batch)
+      ->execute();
+    db_delete('api_function')
+      ->condition('did', $this_batch)
+      ->execute();
+    db_delete('api_reference_storage')
+      ->condition('from_did', $this_batch)
+      ->execute();
+    db_delete('api_overrides')
+      ->condition(db_or()
+        ->condition('did', $this_batch)
+        ->condition('overrides_did', $this_batch)
+        ->condition('documented_did', $this_batch)
+      )
+      ->execute();
+    node_delete_multiple($this_batch);
+  }
 }

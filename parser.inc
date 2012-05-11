@@ -20,6 +20,15 @@
  *   File name to store in the database for this file.
  */
 function api_parse_file($callback, $file_path, $branch, $file_name) {
+  // This usually happens from a queue call. Reload the branch and verify that
+  // it still exists.
+  $new_branch = api_get_branch_by_id($branch->branch_id);
+  if (is_null($new_branch)) {
+    watchdog('api', 'Invalid branch requested in API parse %branch %file', array('%branch' => $branch->branch_name, '%file' => $file_name), WATCHDOG_ERROR);
+    return;
+  }
+  $branch = $new_branch;
+
   $basename = drupal_basename($file_name);
   $docblock = array(
     'object_name' => $file_name,
@@ -500,26 +509,7 @@ function api_save_documentation($docblocks) {
 
   // Clean out all of the doc objects from this file that no longer exist.
   $old_dids = array_diff($old_dids, $dids);
-  if (count($old_dids) > 0) {
-    db_delete('api_documentation')
-      ->condition('did', $old_dids)
-      ->execute();
-    db_delete('api_file')
-      ->condition('did', $old_dids)
-      ->execute();
-    db_delete('api_function')
-      ->condition('did', $old_dids)
-      ->execute();
-    db_delete('api_reference_storage')
-      ->condition('from_did', $old_dids)
-      ->execute();
-    db_delete('api_overrides')
-      ->condition(db_or()
-        ->condition('did', $old_dids)
-        ->condition('overrides_did', $old_dids)
-      )
-      ->execute();
-  }
+  api_delete_items($old_dids);
 
   api_schedule_shutdown();
 }
@@ -1726,20 +1716,7 @@ function api_update_branch_files($branch) {
       ->condition('branch_id', $branch->branch_id)
       ->execute()
       ->fetchCol();
-    foreach ($dids as $did) {
-      db_delete('api_documentation')
-        ->condition('did', $did)
-        ->execute();
-      db_delete('api_file')
-        ->condition('did', $did)
-        ->execute();
-      db_delete('api_function')
-        ->condition('did', $did)
-        ->execute();
-      db_delete('api_reference_storage')
-        ->condition('from_did', $did)
-        ->execute();
-    }
+    api_delete_items($dids);
     api_schedule_shutdown();
   }
 

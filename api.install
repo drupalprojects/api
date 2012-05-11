@@ -565,13 +565,47 @@ function api_update_7106() {
 }
 
 /**
- * Remove variables on uninstall.
+ * Remove variables and other data on uninstall.
  */
 function api_uninstall() {
-  variable_del('api_default_branch');
-  variable_del('api_do_cron');
+  // Delete stored auto-complete files.
+  file_unmanaged_delete_recursive('public://api');
 
-  db_delete('node')
-  ->condition('type', 'api')
-  ->execute();
+  // Delete variables: some wildcards and some exact variable names.
+  $names = array('api_default_branch', 'api_do_cron', 'comment_api');
+  $names = db_select('variable', 'v')
+    ->condition(db_or()
+      ->condition('name', 'api\_autocomplete\_path\_%', 'LIKE')
+      ->condition('name', 'comment\_%\_api', 'LIKE')
+      ->condition('name', 'api\_last\_updated\_%', 'LIKE')
+    )
+    ->fields('v', array('name'))
+    ->execute()
+    ->fetchCol();
+  $names[] = 'api_default_branch';
+  $names[] = 'api_do_cron';
+  $names[] = 'comment_api';
+  foreach ($names as $name) {
+    variable_del($name);
+  }
+
+  // Remove all tasks from the parse and delete queues.
+  $queue = DrupalQueue::get('api_parse');
+  $queue->deleteQueue();
+  $queue = DrupalQueue::get('api_delete');
+  $queue->deleteQueue();
+
+  // Delete all API nodes, in batches of 100.
+  $nids = db_select('node', 'n')
+    ->condition('type', 'api')
+    ->fields('n', array('nid'))
+    ->execute()
+    ->fetchCol();
+  $count = count($nids);
+  $done = 0;
+  while ($done < $count) {
+    $this_batch = array_slice($nids, $done, 100);
+    $done += 100;
+    node_delete_multiple($this_batch);
+  }
 }
