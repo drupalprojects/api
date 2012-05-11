@@ -22,7 +22,7 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
   function setUp() {
     $this->baseSetUp();
 
-    // Set up a new super-user and a regular user.
+    // Set up a new super-user.
     $this->super_user = $this->drupalCreateUser(array(
       'access API reference',
       'administer API reference',
