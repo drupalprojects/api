@@ -45,6 +45,9 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePHPBranch();
+
+    // Add one node to the database.
+    $this->drupalCreateNode();
   }
 
   /**
@@ -55,8 +58,11 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
       'api_documentation' => 0,
       'api_php_documentation' => 0,
       'api_function' => 0,
+      'api_members' => 0,
+      'api_overrides' => 0,
+      'api_reference_storage' => 0,
       'api_file' => 0,
-      'node' => 0,
+      'node' => 1,
       'comment' => 0,
     );
     $this->verifyCounts($counts, 0, 'No branches');
@@ -68,7 +74,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // Run the branch update function and verify counts. There should be
     // records for each file.
     api_update_all_branches();
-    $counts['node'] = 12;
+    $counts['node'] = 13;
     $counts['api_documentation'] = 12;
     $counts['api_file'] = 12;
     $this->verifyCounts($counts, 12, 'Add and update branch with no exclusion');
@@ -86,10 +92,13 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // Parse everything and verify counts.
     api_update_all_branches();
     $this->processApiParseQueue();
-    $counts['node'] = 67;
+    $counts['node'] = 68;
     $counts['api_documentation'] = 67;
     $counts['api_file'] = 11;
     $counts['api_function'] = 30;
+    $counts['api_members'] = 30;
+    $counts['api_overrides'] = 22;
+    $counts['api_reference_storage'] = 84;
     $this->verifyCounts($counts, 0, 'Parse the branch');
 
     // Add one comment in the main directory and one in the subdirectory, and
@@ -129,7 +138,10 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_file'] = 7;
     $counts['api_documentation'] = 41;
     $counts['api_function'] = 21;
-    $counts['node'] = 41;
+    $counts['node'] = 42;
+    $counts['api_members'] = 13;
+    $counts['api_overrides'] = 8;
+    $counts['api_reference_storage'] = 64;
     $this->verifyCounts($counts, 0, 'Exclude subdirectory');
 
     $this->drupalGet('api/' . $default_branch->project . '/classes.php/class/Sample');
@@ -143,7 +155,10 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_file'] = 0;
     $counts['api_documentation'] = 0;
     $counts['api_function'] = 0;
-    $counts['node'] = 0;
+    $counts['node'] = 1;
+    $counts['api_members'] = 0;
+    $counts['api_overrides'] = 0;
+    $counts['api_reference_storage'] = 0;
     $this->verifyCounts($counts, 0, 'Branch deleted');
 
     // Attempt to call api_parse_file on a file in the deleted branch. Verify
@@ -185,7 +200,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // At this point, the API tables should be gone, so only test node
     // and comment tables.
     $counts = array(
-      'node' => 0,
+      'node' => 1,
       'comment' => 0,
     );
     $this->verifyCounts($counts, 0, 'Uninstalled');
