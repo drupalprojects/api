@@ -129,7 +129,13 @@ class ApiURLPatternsTest extends ApiTestCase {
         'url' => 'api/' . $project_name . '/subdirectory!classes-subdir.php/class/SampleInSubDir/' . $branch_name,
         'aliases' => array('api/' . $project_name . '/subdirectory--classes-subdir.php/class/SampleInSubDir/' . $branch_name),
         'text' => array('implements', 'A public property for testing', 'Sample class in a subdirectory', 'SampleInSubDir', 'Only implemented in children', 'A class constant in a subdirectory', 'subdirectory/', 'Classes in a subdirectory test', 'A sample group of classes.'),
-        'links' => array('SampleInterface', 'SubInSubDirSample', 'SampleInSubDir::$property_in_sub_dir', 'SampleInSubDir::baz', 'SampleInSubDir::constant', 'classes-subdir.php', 'Class Samples'),
+        'links' => array('SampleInterface', 'Expanded class hierarchy of SampleInSubDir', 'SampleInSubDir::$property_in_sub_dir', 'SampleInSubDir::baz', 'SampleInSubDir::constant', 'classes-subdir.php', 'Class Samples'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!classes-subdir.php/class/hierarchy/SampleInSubDir/' . $branch_name,
+        'aliases' => array(),
+        'text' => array('implements', 'Expanded class hierarchy of SampleInSubDir'),
+        'links' => array('SampleInSubDir', 'SampleInterface', 'SubInSubDirSample', 'SampleInterfaceTwo'),
       ),
       array(
         'url' => 'api/' . $project_name . '/subdirectory!sample-subdir.php/constant/SAMPLE_CONSTANT_IN_SUB_DIR/' . $branch_name,
