@@ -104,17 +104,17 @@ function api_preprocess_api_object_page(&$variables) {
  * This theme hook is used for the "N functions call function()" and "N
  * functions implement hook()" links on function pages.
  *
- * @param $type
- *   The type of reference link, one of:
- *   - 'calls': Function calls.
- *   - 'implementations': Hook implementations.
- *   - 'theme_invokes': Theme calls to a function or file.
- *   - 'invokes': Calls to module_invokes and similar functions.
- *   - 'references': String references to a function name.
- * @param $count
- *   The number of referenced items.
- * @param $function
- *   The function or file object being referenced.
+ * @param $variables
+ *   Associative array of variables to use, with the following elements:
+ *   - type: The type of reference link, one of:
+ *     - 'calls': Function calls.
+ *     - 'implementations': Hook implementations.
+ *     - 'theme_invokes': Theme calls to a function or file.
+ *     - 'invokes': Calls to module_invokes and similar functions.
+ *     - 'references': String references to a function name.
+ *     - 'hierarchy': Class hierarchy.
+ *   - count: The number of referenced items.
+ *   - function: The function, class, or file object being referenced.
  *
  * @ingroup themeable
  */
@@ -135,6 +135,9 @@ function theme_api_function_reference_link($variables) {
 
   if ($function->object_type == 'file') {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/' . $type . '/' . $branch->branch_name;
+  }
+  elseif ($function->object_type == 'class') {
+    $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/class/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
   }
   else {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/function/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;

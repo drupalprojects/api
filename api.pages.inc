@@ -796,6 +796,24 @@ function api_page_function_calls($function, $type) {
 }
 
 /**
+ * Page callback: Displays a full class hierarchy.
+ *
+ * @param $class
+ *   Documentation object representing the class to display.
+ *
+ * @return
+ *   HTML output for the page.
+ */
+function api_page_class_hierarchy($class) {
+  $branch = api_get_branch_by_id($class->branch_id);
+
+  $call_title = api_reference_text('hierarchy', 0, $class);
+  api_object_title_and_breadcrumb($branch, $class, $call_title, TRUE);
+
+  return api_class_hierarchy($class, 'full');
+}
+
+/**
  * Page callback: Displays documentation for an item (constant, global, etc.).
  *
  * This function can be used to display "simple" items (items without listings,
@@ -1068,35 +1086,35 @@ function api_object_title_and_breadcrumb($branch, $object, $title = NULL, $objec
 }
 
 /**
- * Renders a class hierarchy, showing ancestors, siblings, and direct children.
+ * Renders a class hierarchy, either full or partial.
  *
  * @param $class
  *   Class object with at least did, branch_id, file_name, object_type, and
  *   object_name properties.
+ * @param $type
+ *   One of the following strings to indicate what type of hierarchy:
+ *   - 'full': Full hierarchy, showing all parents, siblings, children, etc.
+ *   - 'ancestors': Only direct ancestors of this class.
  *
  * @return
  *   HTML string containing the class hierarchy, or an empty string if the
  *   only thing to display would be the class itself.
  */
-function api_class_hierarchy($class) {
+function api_class_hierarchy($class, $type = 'ancestors') {
   $branch = api_get_branch_by_id($class->branch_id);
-
-  // Keep track of whether this class has anything interesting in the
-  // hierarchy.
-  $interesting = FALSE;
 
   // See if this class has any children.
   $child_output = '';
-  $children = api_class_children($class);
-  if (count($children)) {
-    $child_output = theme('item_list', array('items' => $children));
-    $interesting = TRUE;
+  if ($type == 'full') {
+    $children = api_class_children($class, $class->did);
+    if (count($children)) {
+      $child_output = theme('item_list', array('items' => $children));
+    }
   }
 
   // Find the direct-line extends ancestors of this class.
   $parent = $class;
-  $first_parent = NULL;
-  $parents = array();
+  $current = $class;
 
   while ($parent) {
     // Query to find the next ancestor.
@@ -1114,43 +1132,32 @@ function api_class_hierarchy($class) {
     $results = $query->execute()->fetchAll();
     $count = count($results);
     if ($count < 1) {
+      $parent = api_class_hierarchy_line($current, $class->did);
       break;
     }
-    $interesting = TRUE;
     $parent = array_pop($results);
     if ($count == 1) {
-      if (!isset($first_parent)) {
-        $first_parent = $parent;
+      if ($type == 'full') {
+        $siblings = api_class_children($parent, $class->did);
       }
-      $parents[] = api_class_hierarchy_line($parent);
+      else {
+        $siblings = array($current->did => api_class_hierarchy_line($current, $class->did));
+      }
+      $siblings[$current->did] .= $child_output;
+      $child_output = theme('item_list', array('items' => $siblings));
+      $current = $parent;
     }
     else {
       // Multiple results. Add a line indicating a search.
-      $parents[] = l(t('Multiple classes named @classname', array('@classname' => $parent->object_name)), 'api/search/' . $branch->branch_name . '/' . check_plain($parent->object_name));
+      $parent = l(t('Multiple classes named @classname', array('@classname' => $parent->object_name)), 'api/search/' . $branch->branch_name . '/' . check_plain($parent->object_name));
       break;
     }
   }
 
-  // If there was a parent class, find all of its children. These are this
-  // class's siblings.
-  if (isset($first_parent)) {
-    $siblings = api_class_children($first_parent);
-  }
-  else {
-    $siblings = array($class->did => api_class_hierarchy_line($class, $interesting));
-    // Check and see if there was anything interesting to display.
-    if (!strlen($siblings[$class->did])) {
-      return '';
-    }
-  }
+  $output = theme('item_list', array('items' => array($parent . $child_output)));
 
-  // Add this class's children to this class's line in the siblings.
-  $siblings[$class->did] .= $child_output;
-
-  // Put it all together as a set of nested lists.
-  $output = theme('item_list', array('items' => $siblings));
-  foreach ($parents as $parent) {
-    $output = theme('item_list', array('items' => array($parent . $output)));
+  if ($type != 'full') {
+    $output .= '<p>' . theme('api_function_reference_link', array('type' => 'hierarchy', 'count' => 0, 'function' => $class)) . '</p>';
   }
 
   return $output;
@@ -1161,12 +1168,14 @@ function api_class_hierarchy($class) {
  *
  * @param $class
  *   Documentation object for the class.
+ * @param $current_did
+ *   Documentation ID of the class on the current page.
  *
  * @return
  *   Array of children. Keys are class names, and values are output
  *   of api_class_hierarchy_line().
  */
-function api_class_children($class) {
+function api_class_children($class, $current_did = 0) {
   // @todo Use namespaces. Currently we are just matching on the class name,
   // so if any class is declared as class A extends B, and B matches this
   // class's name, we're assuming that it's the same B.
@@ -1182,7 +1191,7 @@ function api_class_children($class) {
     ->orderBy('ad.object_name');
   $result = $query->execute();
   foreach ($result as $object) {
-    $children[$object->did] = api_class_hierarchy_line($object);
+    $children[$object->did] = api_class_hierarchy_line($object, $current_did);
   }
 
   return $children;
@@ -1193,15 +1202,19 @@ function api_class_children($class) {
  *
  * @param $class
  *   Documentation object for the class to render.
- * @param $even_if_uninteresting
- *   If TRUE (default), generate a line even if it only displays this class.
- *   If FALSE, return an empty string if there is only this class to display.
+ * @param $current_did
+ *   Documentation ID of the class that the current page is showing. If this
+ *   class is being shown, it will have an 'active' class on the link.
  *
  * @return
  *   HTML for this class in the class hierarchy.
  */
-function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
+function api_class_hierarchy_line($class, $current_did = 0) {
   $branch = api_get_branch_by_id($class->branch_id);
+  $classes = array();
+  if ($class->did == $current_did) {
+    $classes[] = 'active';
+  }
 
   // See if this class implements any interfaces.
   $interfaces = array();
@@ -1249,11 +1262,7 @@ function api_class_hierarchy_line($class, $even_if_uninteresting = TRUE) {
     $extends = ' extends ' . $parent->object_name;
   }
 
-  if (!$even_if_uninteresting && !strlen($extends) && !count($interfaces)) {
-    return '';
-  }
-
-  $output = l($class->object_name, api_url($class)) . $extends;
+  $output = l($class->object_name, api_url($class), array('attributes' => array('class' => $classes))) . $extends;
   if (count($interfaces) > 0) {
     $output .= ' implements ' . implode(', ', $interfaces);
   }
@@ -1365,10 +1374,11 @@ function api_file_link($object) {
  *   - 'theme_invokes': Theme calls to a function or file.
  *   - 'invokes': Calls to module_invokes and similar functions.
  *   - 'references': String references to a function name.
+ *   - 'hierarchy': Class hierarchy ($count is ignored).
  * @param $count
  *   The number of referenced items.
  * @param $function
- *   The function or file object being referenced.
+ *   The function, class, or file object being referenced.
  *
  * @return
  *   Text to be used as the link to the reference listing page, or the title
@@ -1386,17 +1396,20 @@ function api_reference_text($type, $count, $function) {
   if ($type == 'calls') {
     return format_plural($count, '1 call to !name', '@count calls to !name', array('!name' => $name_to_use));
   }
-  elseif ($type == 'implementations') {
+  if ($type == 'implementations') {
     return format_plural($count, '1 function implements !name', '@count functions implement !name', array('!name' => $name_to_use));
   }
-  elseif ($type == 'theme_invokes') {
+  if ($type == 'theme_invokes') {
     return format_plural($count, '1 theme call to !name', '@count theme calls to !name', array('!name' => $name_to_use));
   }
-  elseif ($type == 'invokes') {
+  if ($type == 'invokes') {
     return format_plural($count, '1 invocation of !name', '@count invocations of !name', array('!name' => $name_to_use));
   }
   if ($type == 'references') {
     return format_plural($count, '1 string reference to !name', '@count string references to !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'hierarchy') {
+    return t('Expanded class hierarchy of !name', array('!name' => $name_to_use));
   }
 
   return '';
