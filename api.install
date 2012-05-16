@@ -409,6 +409,22 @@ function api_enable() {
 }
 
 /**
+ * Implements hook_disable().
+ */
+function api_disable() {
+  // If there are any files branches in the database, warn the user about
+  // uninstalling the module.
+  $file_branches = db_select('api_branch', 'b')
+    ->fields('b', array('branch_id'))
+    ->condition('type', 'files')
+    ->execute()
+    ->fetchCol();
+  if (count($file_branches) > 0) {
+    drupal_set_message(t('If you plan to uninstall the API module (removing all its data), you need to first re-enable the API module and delete all the branches from the administration screen. The data deletion will otherwise run out of time if you attempt to do it all during the uninstall process.'));
+  }
+}
+
+/**
  * Implements hook_update_last_removed();
  */
 function api_update_last_removed() {
@@ -576,7 +592,7 @@ function api_update_7107( &$sandbox) {
   $sandbox['#finished'] = 0;
 
   // See if this is the first pass, and do the fast updates.
-  if (isset($sandbox['total'])) {
+  if (!isset($sandbox['total'])) {
     // This variable can be left over from a Drupal 6 upgrade.
     variable_del('node_preview_api');
 
@@ -686,6 +702,8 @@ function api_uninstall() {
   $queue->deleteQueue();
 
   // Delete all API nodes, in batches of 100.
+  // This might run out of time, but we warned about it in hook_disable(),
+  // so just plunge ahead and hope for the best.
   $nids = db_select('node', 'n')
     ->condition('type', 'api')
     ->fields('n', array('nid'))

@@ -981,6 +981,10 @@ function api_cron_queue_info() {
       'worker callback' => 'api_queue_file_delete',
       'time' => 15,
     ),
+    'api_node_delete' => array(
+      'worker callback' => 'api_queue_node_delete',
+      'time' => 15,
+    ),
   );
 }
 
@@ -2589,8 +2593,19 @@ function api_queue_parse_file($data) {
  *   Array of infomration about the file to be deleted.
  */
 function api_queue_file_delete($data) {
+  watchdog('api', 'Removing expired API JSON, %path.', array('%path' => $data['path']));
   file_unmanaged_delete($data['path']);
-  watchdog('api', 'Remove expired API JSON, %path.', array('%path' => $data['path']));
+}
+
+/**
+ * Deletes obsolete nodes.
+ *
+ * @param $data
+ *   Array with element 'nids' giving the IDs of the nodes to delete.
+ */
+function api_queue_node_delete($data) {
+  watchdog('api', 'Removing a batch of %count obsolete nodes.', array('%count' => count($data['nids'])));
+  node_delete_multiple($data['nids']);
 }
 
 /**
@@ -2639,19 +2654,34 @@ function api_libraries_loaded($watchdog = TRUE) {
  * Completely deletes an array of documentation items.
  *
  * All records pertaining to the items, including nodes and comments, are
- * removed.
+ * removed. If there are a lot, the batch API may be invoked, or a job may
+ * be queued.
  *
  * @param $dids
  *   Array of the IDs of the items to delete.
+ * @param $interactive
+ *   TRUE if the batch_set() can be used if there are too many items to delete;
+ *   FALSE if queue jobs need to be set up instead.
+ *
+ * @return
+ *   TRUE if the items were deleted directly; FALSE if a batch or queue job
+ *   was set up to delete some of them. In this case, in interactive mode, the
+ *   calling function needs to ensure that the batch is processed. This is
+ *   automatic if it's part of a form submission handler, but not otherwise.
  */
-function api_delete_items($dids) {
+function api_delete_items($dids, $interactive = TRUE) {
+  // Count the cumulative effect of calls in this page request.
+  static $total_count = 0;
+
+  // If there's nothing to do, return early.
   $count = count($dids);
   if ($count < 1) {
-    return;
+    return TRUE;
   }
 
-  // Delete items in batches of 100, because placeholder queries can be
-  // a problem.
+  // Delete the items from the {api_documentation} table in batches of 100,
+  // because placeholder queries can be a problem. This is fast though, so do
+  // not worry about batching.
   $done = 0;
   while ($done < $count) {
     $this_batch = array_slice($dids, $done, 100);
@@ -2663,28 +2693,61 @@ function api_delete_items($dids) {
         ->condition('class_did', $this_batch)
       )
       ->execute();
-    db_delete('api_members')
-      ->condition(db_or()
-        ->condition('did', $this_batch)
-        ->condition('class_did', $this_batch)
-      )
-      ->execute();
-    db_delete('api_file')
-      ->condition('did', $this_batch)
-      ->execute();
-    db_delete('api_function')
-      ->condition('did', $this_batch)
-      ->execute();
-    db_delete('api_reference_storage')
-      ->condition('from_did', $this_batch)
-      ->execute();
-    db_delete('api_overrides')
-      ->condition(db_or()
-        ->condition('did', $this_batch)
-        ->condition('overrides_did', $this_batch)
-        ->condition('documented_did', $this_batch)
-      )
-      ->execute();
-    node_delete_multiple($this_batch);
+  }
+
+  // Clean up the rest of the API tables. This is also fast.
+  db_query("DELETE FROM {api_file} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_file}.did )");
+  db_query("DELETE FROM {api_function} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_function}.did )");
+  db_query("DELETE FROM {api_members} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_members}.did )");
+  db_query("DELETE FROM {api_overrides} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_overrides}.did )");
+  db_query("DELETE FROM {api_reference_storage} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_reference_storage}.from_did )");
+
+  // The slow part is deleting the nodes. If there are more than 100 to delete
+  // during this page request, do them using batch/queue jobs.
+  $total_count += $count;
+  if ($total_count < 100) {
+    node_delete_multiple($dids);
+    return TRUE;
+  }
+
+  // If we get here, we need to use batch/queue to delete the nodes.
+  if ($interactive) {
+    batch_set(array('operations' => array(array('_api_delete_nodes_batch', array($dids)))));
+  }
+  else {
+    $queue = DrupalQueue::get('api_node_delete');
+    $done = 0;
+    while ($done < $count) {
+      $this_batch = array_slice($dids, $done, 100);
+      $done += 100;
+      $queue->createItem(array('nids' => $this_batch));
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Deletes API nodes using the Batch API.
+ *
+ * @param $nids
+ *   IDs of the nodes to delete.
+ * @param $context
+ *   Batch context.
+ */
+function _api_delete_nodes_batch($nids, &$context) {
+  if (!isset($context['sandbox']['progress'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = count($nids);
+    $context['sandbox']['nids'] = $nids;
+  }
+
+  $this_batch = array_slice($context['sandbox']['nids'], $context['sandbox']['progress'], 100);
+  $context['sandbox']['progress'] += count($this_batch);
+  node_delete_multiple($this_batch);
+  $context['finished'] = min(1, $context['sandbox']['progress'] / $context['sandbox']['max']);
+  if (!count($this_batch)) {
+    // Just make sure we don't run an endless loop here.
+    $context['finished'] = 1;
   }
 }

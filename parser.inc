@@ -509,7 +509,7 @@ function api_save_documentation($docblocks) {
 
   // Clean out all of the doc objects from this file that no longer exist.
   $old_dids = array_diff($old_dids, $dids);
-  api_delete_items($old_dids);
+  api_delete_items($old_dids, FALSE);
 
   api_schedule_shutdown();
 }
@@ -1716,7 +1716,7 @@ function api_update_branch_files($branch) {
       ->condition('branch_id', $branch->branch_id)
       ->execute()
       ->fetchCol();
-    api_delete_items($dids);
+    api_delete_items($dids, FALSE);
     api_schedule_shutdown();
   }
 
