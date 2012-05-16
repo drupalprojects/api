@@ -277,6 +277,9 @@ function api_save_documentation($docblocks) {
 
   $dids = array();
   $class_dids = array();
+  $function_insert_query = NULL;
+  $functions_to_delete = array();
+
   // Look for @file block first so $docblocks[0] gets filled in before it is processed.
   foreach ($docblocks as $docblock) {
     if (preg_match('/' . API_RE_TAG_START . 'file/', $docblock['content'])) {
@@ -460,12 +463,21 @@ function api_save_documentation($docblocks) {
 
     switch ($docblock['object_type']) {
       case 'function':
-        db_delete('api_function')
-          ->condition('did', $docblock['did'])
-          ->execute();
         _api_add_text_defaults($docblock, 'api_function');
-        drupal_write_record('api_function', $docblock);
-
+        // Combine all the deletes/inserts for {api_function} into one query
+        // each so that they will run faster, since we don't need this table
+        // to be updated during the processing of this file.
+        $functions_to_delete[] = $docblock['did'];
+        if (is_null($function_insert_query)) {
+          $function_insert_query = db_insert('api_function')
+            ->fields(array('did', 'signature', 'parameters', 'return_value'));
+        }
+        $function_insert_query->values(array(
+            'did' => $docblock['did'],
+            'signature' => $docblock['signature'],
+            'parameters' => $docblock['parameters'],
+            'return_value' => $docblock['return_value'],
+          ));
         api_replace_references($docblocks[0]['branch'], $docblock['did'], $docblock['object_name'], $docblock['references']);
         break;
 
@@ -505,6 +517,16 @@ function api_save_documentation($docblocks) {
     }
 
     $dids[] = $docblock['did'];
+  }
+
+  // Run the queued-up queries on the api_function table.
+  if (count($functions_to_delete) > 0) {
+    db_delete('api_function')
+      ->condition('did', $functions_to_delete)
+      ->execute();
+  }
+  if (!is_null($function_insert_query)) {
+    $function_insert_query->execute();
   }
 
   // Clean out all of the doc objects from this file that no longer exist.
@@ -612,9 +634,10 @@ function api_replace_references($branch, $did, $name, $references) {
       unset($list[$shortname]);
     }
     foreach ($list as $call) {
-      api_reference($branch, $type, $call, $did);
+      api_reference($branch, $type, $call, $did, TRUE);
     }
   }
+  api_reference(TRUE);
 }
 
 /**
@@ -1219,34 +1242,63 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
  * using a scratch table.
  *
  * @param $branch
- *   Object representing the branch the reference is in.
+ *   Object representing the branch the reference is in, or TRUE to execute
+ *   all of the saved-up inserts.
  * @param $to_type
  *   Type of object being referenced.
  * @param $to_name
  *   Name of object being referenced.
  * @param $from_did
  *   Documentation ID of the object that references this object.
+ * @param $wait
+ *   TRUE to save the insert until api_reference(TRUE) is called, or FALSE
+ *   (default) to do the query immediately.
  */
-function api_reference($branch, $to_type, $to_name, $from_did) {
+function api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $wait = FALSE) {
   static $is_php_function = array();
+  static $query_stored = NULL;
+
+  // Is it time to do all the saved queries?
+  if ($branch === TRUE) {
+    if (!is_null($query_stored)) {
+      $query_stored->execute();
+      $query_stored = NULL;
+    }
+    return;
+  }
 
   // Don't make references to built-in PHP functions.
   if ($to_type == 'function' && !isset($is_php_function[$to_name])) {
-    $query = db_select('api_php_documentation', 'd')
-      ->fields('d', array('did'));
-    $query->condition('d.object_name', $to_name);
-    $is_php_function[$to_name] = $query->execute()->fetchField();
+    $is_php_function[$to_name] = db_select('api_php_documentation', 'd')
+      ->fields('d', array('did'))
+      ->condition('d.object_name', $to_name)
+      ->execute()
+      ->fetchField();
   }
 
   if ($to_type != 'function' || !$is_php_function[$to_name]) {
-    $id = db_insert('api_reference_storage')
-      ->fields(array(
+    if ($wait) {
+      if (is_null($query_stored)) {
+        $query_stored = db_insert('api_reference_storage')
+          ->fields(array('object_name', 'branch_id', 'object_type', 'from_did'));
+      }
+      $query_stored->values(array(
           'object_name' => $to_name,
           'branch_id' => $branch->branch_id,
           'object_type' => $to_type,
           'from_did' => $from_did,
-        ))
-      ->execute();
+        ));
+    }
+    else {
+      db_insert('api_reference_storage')
+        ->fields(array(
+            'object_name' => $to_name,
+            'branch_id' => $branch->branch_id,
+            'object_type' => $to_type,
+            'from_did' => $from_did,
+          ))
+        ->execute();
+    }
   }
 }
 
