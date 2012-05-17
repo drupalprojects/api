@@ -1345,6 +1345,7 @@ function api_shutdown() {
   // another class/interface's member) for each of the resulting objects, and
   // keep track of which classes were changed along the way.
   $changed_classes = array();
+  $overrides_query = NULL;
   foreach ($result as $object) {
     $changed_classes[$object->class_did] = TRUE;
     $override = array(
@@ -1398,11 +1399,24 @@ function api_shutdown() {
       }
     }
 
-    drupal_write_record('api_overrides', $override);
+    // We are not using the overrides table during this loop, so do all the
+    // inserts together.
+    if (is_null($overrides_query)) {
+      $overrides_query = db_insert('api_overrides')
+        ->fields(array('did', 'overrides_did', 'documented_did'));
+    }
+    $overrides_query->values($override);
+  }
+
+  // Run the saved query to save the overrides.
+  if (!is_null($overrides_query)) {
+    $overrides_query->execute();
   }
 
   // Compute and save member list for each changed class. Members can be on
   // the class itself, or can be inherited from a parent class.
+  $members_query = NULL;
+  $members_delete = array();
   while (list($class_did, ) = each($changed_classes)) {
     // Add current class's child classes to the list, because they need to
     // be recomputed too.
@@ -1461,20 +1475,32 @@ function api_shutdown() {
       }
     }
 
-    // Save the computed members.
-    db_delete('api_members')
-      ->condition('class_did', $class_did)
-      ->execute();
+    // We don't use the {api_members} table in this loop, so store up what
+    // we need to do and do it at the end.
+    $members_delete[] = $class_did;
     foreach ($all_members as $type => $members) {
       array_shift($members);
       foreach ($members as $did) {
-        $api_member = array(
+        if (is_null($members_query)) {
+          $members_query = db_insert('api_members')
+            ->fields(array('class_did', 'did'));
+        }
+        $members_query->values(array(
           'class_did' => $class_did,
           'did' => $did,
-        );
-        drupal_write_record('api_members', $api_member);
+          ));
       }
     }
+  }
+
+  // Run the saved queries for {api_members} table.
+  if (count($members_delete)) {
+    db_delete('api_members')
+      ->condition('class_did', $members_delete)
+      ->execute();
+  }
+  if (!is_null($members_query)) {
+    $members_query->execute();
   }
 
   // Figure out the member-self references in reference storage. Basically,
@@ -1482,25 +1508,18 @@ function api_shutdown() {
   // of $this->bar(), which could be ChildClass::bar() or
   // SomeParentClass::bar(). The {api_methods} table keeps track of this.
 
-  $select = db_select('api_reference_storage', 'r');
-  $d = $select->innerJoin('api_documentation', 'd', 'r.from_did = %alias.did');
-
-  $select2 = db_select('api_members', 'm');
-  $memberd = $select2->innerJoin('api_documentation', 'memberd', 'm.did = %alias.did');
-  $m_name = $select2->addField($memberd, 'member_name', 'm_name');
-  $m_cdid = $select2->addField('m', 'class_did', 'm_cdid');
-  $m_objtype = $select2->addField($memberd, 'object_type', 'm_objtype');
-  $m_objname = $select2->addField($memberd, 'object_name', 'm_objname');
-  $mm = $select->innerJoin($select2, 'mm', "%alias.$m_name = r.object_name AND %alias.$m_cdid = $d.class_did");
-
-  $select->addField($mm, $m_objname, 'object_name');
+  $select = db_select('api_reference_storage', 'r')
+    ->condition('r.object_type', 'member-self');
+  $d = $select->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+  $m = $select->innerJoin('api_members', 'm', 'd.class_did = m.class_did');
+  $dm = $select->innerJoin('api_documentation', 'dm', 'm.did = dm.did AND dm.member_name = r.object_name');
+  $select->condition('dm.object_type', 'function');
+  $select->addField($dm, 'object_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
   $select->addField('r', 'from_did', 'from_did');
   // Note: SelectQuery adds expressions to the query at the end of the field
   // list.
   $select->addExpression("'computed-member'", 'object_type');
-  $select->condition('r.object_type', 'member-self')
-    ->condition($mm . '.' . $m_objtype, 'function');
 
   db_insert('api_reference_storage')
     ->fields(array('object_name', 'branch_id', 'from_did', 'object_type'))
@@ -1514,10 +1533,13 @@ function api_shutdown() {
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'member-parent');
   $calling_d = $select->innerJoin('api_documentation', 'cd', 'r.from_did = cd.did');
-  $parent_class_r = $select->innerJoin('api_reference_storage', 'pr', "pr.from_did = cd.class_did AND pr.branch_id = cd.branch_id AND pr.object_type = 'class'" );
-  $parent_class_d = $select->innerJoin('api_documentation', 'pd', 'pd.object_name = pr.object_name AND pd.branch_id = pr.branch_id AND pd.object_type = pr.object_type');
+  $parent_class_r = $select->innerJoin('api_reference_storage', 'pr', 'pr.from_did = cd.class_did AND pr.branch_id = cd.branch_id');
+  $select->condition('pr.object_type', 'class');
+  $parent_class_d = $select->innerJoin('api_documentation', 'pd', 'pd.object_name = pr.object_name AND pd.branch_id = pr.branch_id');
+  $select->condition('pd.object_type', 'class');
   $parent_m = $select->innerJoin('api_members', 'pm', 'pm.class_did = pd.did');
-  $member_d = $select->innerJoin('api_documentation', 'md', "md.did = pm.did AND md.member_name = r.object_name AND md.object_type = 'function'");
+  $member_d = $select->innerJoin('api_documentation', 'md', 'md.did = pm.did AND md.member_name = r.object_name');
+  $select->condition('md.object_type', 'function');
 
   $select->addField($member_d, 'object_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
