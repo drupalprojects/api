@@ -975,7 +975,7 @@ function api_cron_queue_info() {
   return array(
     'api_parse' => array(
       'worker callback' => 'api_queue_parse_file',
-      'time' => 15,
+      'time' => 60,
     ),
     'api_delete' => array(
       'worker callback' => 'api_queue_file_delete',
