@@ -2679,9 +2679,9 @@ function api_delete_items($dids, $interactive = TRUE) {
     return TRUE;
   }
 
-  // Delete the items from the {api_documentation} table in batches of 100,
-  // because placeholder queries can be a problem. This is fast though, so do
-  // not worry about batching.
+  // Delete the items from api tables in batches of 100, because placeholder
+  // queries can be a problem. This is fast though, so do not worry about
+  // batching.
   $done = 0;
   while ($done < $count) {
     $this_batch = array_slice($dids, $done, 100);
@@ -2693,14 +2693,35 @@ function api_delete_items($dids, $interactive = TRUE) {
         ->condition('class_did', $this_batch)
       )
       ->execute();
+    db_delete('api_file')
+      ->condition('did', $this_batch)
+      ->execute();
+    db_delete('api_function')
+      ->condition('did', $this_batch)
+      ->execute();
+    db_delete('api_members')
+      ->condition(db_or()
+        ->condition('did', $this_batch)
+        ->condition('class_did', $this_batch)
+      )
+      ->execute();
+    db_delete('api_overrides')
+      ->condition(db_or()
+        ->condition('did', $this_batch)
+        ->condition('overrides_did', $this_batch)
+        ->condition('documented_did', $this_batch)
+      )
+      ->execute();
+    db_delete('api_reference_storage')
+      ->condition('from_did', $this_batch)
+      ->execute();
+    db_delete('api_extends')
+      ->condition(db_or()
+        ->condition('did', $this_batch)
+        ->condition('parent_did', $this_batch)
+      )
+      ->execute();
   }
-
-  // Clean up the rest of the API tables. This is also fast.
-  db_query("DELETE FROM {api_file} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_file}.did )");
-  db_query("DELETE FROM {api_function} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_function}.did )");
-  db_query("DELETE FROM {api_members} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_members}.did )");
-  db_query("DELETE FROM {api_overrides} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_overrides}.did )");
-  db_query("DELETE FROM {api_reference_storage} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_reference_storage}.from_did )");
 
   // The slow part is deleting the nodes. If there are more than 100 to delete
   // during this page request, do them using batch/queue jobs.

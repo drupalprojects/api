@@ -1503,6 +1503,28 @@ function api_shutdown() {
     $members_query->execute();
   }
 
+  // Compute the parent classes for each changed class.
+  if (count($changed_classes)) {
+    $todo = array_keys($changed_classes);
+    db_delete('api_extends')
+      ->condition('did', $todo)
+      ->execute();
+
+    $select = db_select('api_reference_storage', 'r')
+      ->condition('r.object_type', 'class')
+      ->condition('r.from_did', $todo);
+    $select->innerJoin('api_documentation', 'd', 'd.branch_id = r.branch_id AND d.object_name = r.object_name');
+    $select->condition('d.object_type', 'class');
+    $select->leftJoin('api_documentation', 'd2', 'd2.branch_id = r.branch_id AND d2.object_name = r.object_name AND d2.did <> d.did');
+    $select->isNull('d2.did');
+    $select->addField('r', 'from_did', 'did');
+    $select->addField('d', 'did', 'parent_did');
+    db_insert('api_extends')
+      ->fields(array('did', 'parent_did'))
+      ->from($select)
+      ->execute();
+  }
+
   // Figure out the member-self references in reference storage. Basically,
   // ChildClass::foo() calls $this->bar(). We need to figure out the full name
   // of $this->bar(), which could be ChildClass::bar() or
@@ -1533,11 +1555,8 @@ function api_shutdown() {
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'member-parent');
   $calling_d = $select->innerJoin('api_documentation', 'cd', 'r.from_did = cd.did');
-  $parent_class_r = $select->innerJoin('api_reference_storage', 'pr', 'pr.from_did = cd.class_did AND pr.branch_id = cd.branch_id');
-  $select->condition('pr.object_type', 'class');
-  $parent_class_d = $select->innerJoin('api_documentation', 'pd', 'pd.object_name = pr.object_name AND pd.branch_id = pr.branch_id');
-  $select->condition('pd.object_type', 'class');
-  $parent_m = $select->innerJoin('api_members', 'pm', 'pm.class_did = pd.did');
+  $parent = $select->innerJoin('api_extends', 'e', 'e.did = cd.class_did');
+  $parent_m = $select->innerJoin('api_members', 'pm', 'pm.class_did = e.parent_did');
   $member_d = $select->innerJoin('api_documentation', 'md', 'md.did = pm.did AND md.member_name = r.object_name');
   $select->condition('md.object_type', 'function');
 
