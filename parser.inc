@@ -543,44 +543,35 @@ function api_save_documentation($docblocks) {
  *   An array containing information about functions found in the branch.
  */
 function api_save_php_documentation($docblocks) {
-  // Make a list of the PHP functions we found last time. We'll remove any that
-  // were not here this time at the end.
-  $old_dids = db_select('api_php_documentation', 'd')
-    ->fields('d', array('did'))
+  // Remove all the old items from this branch. We don't care about preserving
+  // IDs, so there is no reason to use complicated logic and update existing
+  // records.
+  db_delete('api_php_documentation')
     ->condition('branch_id', $docblocks[0]['branch_id'])
-    ->execute()
-    ->fetchCol();
+    ->execute();
 
-  $dids = array();
-
+  $did = api_new_php_doc_id();
+  $count = 0;
   foreach ($docblocks as $docblock) {
-    // See if this docblock already existed, and get its ID.
-    $docblock['did'] = db_select('api_php_documentation', 'd')
-      ->fields('d', array('did'))
-      ->condition('object_name', $docblock['object_name'])
-      ->condition('object_type', $docblock['object_type'])
-      ->condition('branch_id', $docblock['branch_id'])
-      ->execute()
-      ->fetchField();
-    if ($docblock['did'] > 0) {
-      _api_add_text_defaults($docblock, 'api_php_documentation');
-      drupal_write_record('api_php_documentation', $docblock, 'did');
+    if (!$count) {
+      // Build up queries and save the documentation in chunks, for speed.
+      $insertQuery = db_insert('api_php_documentation')
+        ->fields(array('did', 'branch_id', 'object_name', 'member_name', 'object_type', 'documentation'));
     }
-    else {
-      $docblock['did'] = api_new_php_doc_id();
-      _api_add_text_defaults($docblock, 'api_php_documentation');
-      drupal_write_record('api_php_documentation', $docblock);
+    $docblock['did'] = $did;
+    $insertQuery->values($docblock);
+    $did++;
+    $count++;
+    if ($count >= 500) {
+      // Using a larger chunk size could risk running into database placeholder
+      // limits.
+      $insertQuery->execute();
+      $count = 0;
     }
-
-    $dids[] = $docblock['did'];
   }
 
-  // Clean out functions we didn't find this time.
-  $old_dids = array_diff($old_dids, $dids);
-  if (count($old_dids) > 0) {
-    db_delete('api_php_documentation')
-      ->condition('did', $old_dids)
-      ->execute();
+  if ($count > 0) {
+    $insertQuery->execute();
   }
 }
 
@@ -1919,12 +1910,6 @@ function _api_add_text_defaults(&$record, $table) {
         'see' => '',
         'var' => '',
         'throws' => '',
-      );
-      break;
-
-    case 'api_php_documentation':
-      $record += array(
-        'documentation' => '',
       );
       break;
 
