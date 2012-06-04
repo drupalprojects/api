@@ -112,20 +112,17 @@ form.api-search-form input.api-search-keywords {
   float:right;
 }
 
-#api-alternatives,
-#api-alternatives li {
+ol#api-alternatives,
+ol#api-alternatives li {
   margin: 0;
   padding: 0;
 }
-#api-alternatives,
-#api-alternatives ol {
+
+ol#api-alternatives,
+ol#api-alternatives ol {
   list-style: none;
 }
-#api-alternatives strong {
-  float: left;
-  clear: left;
-}
-#api-alternatives ol li {
-  display: inline;
-  padding-left: 1em;
+
+ol#api-alternatives ol {
+  margin-top: 0;
 }
