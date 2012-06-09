@@ -22,14 +22,15 @@ function api_drush_command() {
     'api-reset-queue' => array(
       'description' => 'Reset the API parsing queue',
     ),
-    'api-add-branch' => array(
-      'description' => 'Add a branch to API',
+    'api-ensure-branch' => array(
+      'description' => 'Add or update an API branch and project',
       'arguments' => array(
         'project' => 'Project name',
         'project_title' => 'Project title',
+        'project_type' => 'Project type (core or module)',
         'branch' => 'Branch name',
         'branch_title' => 'Branch title',
-        'directory' => 'Project directory',
+        'directory' => 'File directory',
       ),
     ),
   );
@@ -84,9 +85,13 @@ function drush_api_list_branches() {
 }
 
 /**
- * Adds or updates an API branch.
+ * Adds or updates an API branch, and project if it doesn't already exist.
  */
-function drush_api_add_branch($project, $project_title, $branch_name, $branch_title, $directory) {
+function drush_api_ensure_branch($project, $project_title, $project_type, $branch_name, $branch_title, $directory) {
+
+  // Update the project.
+  api_save_project((object) array('project_name' => $project, 'project_title' => $project_title, 'project_type' => $project_type));
+
   // Try to load the branch if possible.
   $branch = api_get_branch_by_name($project, $branch_name);
   if ($branch) {
@@ -97,7 +102,6 @@ function drush_api_add_branch($project, $project_title, $branch_name, $branch_ti
       $branch->data = array();
     }
     // This is an update.
-    $branch->project_title = $project_title;
     $branch->title = $branch_title;
     $branch->data['directories'] = $directory;
   }
@@ -105,14 +109,12 @@ function drush_api_add_branch($project, $project_title, $branch_name, $branch_ti
     // This is a new branch.
     $branch = new stdClass();
     $branch->branch_id = 0;
-    $branch->type = 'files';
     $branch->project = $project;
-    $branch->project_title = $project_title;
     $branch->branch_name = $branch_name;
     $branch->title = $branch_title;
     $branch->data['directories'] = $directory;
-    $branch->status = TRUE;
   }
+
   api_save_branch($branch);
-  drush_log(dt('Saved branch.'), 'ok');
+  drush_log(dt('Saved branch and project.'), 'ok');
 }

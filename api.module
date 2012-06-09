@@ -5,7 +5,7 @@
  * Generates and displays API documentation pages.
  *
  * This is an implementation of a subset of the Doxygen documentation generator
- * specification, tuned to produce output that best benefits the Drupal code
+ * specification, tuned to produce output that best benefits the Drupal Codex
  * base. It is designed to assume the code it documents follows Drupal coding
  * conventions, and supports documentation blocks in formats described on
  * http://drupal.org/node/1354
@@ -93,8 +93,11 @@ function api_get_branches($_reset = FALSE) {
   static $branches;
 
   if (!isset($branches) || $_reset) {
-    $result = db_select('api_branch', 'b')
-      ->fields('b')
+    $query = db_select('api_branch', 'b')
+      ->fields('b');
+    $query->leftJoin('api_project', 'p', 'b.project = p.project_name');
+    $result = $query
+      ->fields('p', array('project_title', 'project_type'))
       ->orderBy('weight', 'ASC')
       ->execute();
     $branches = array();
@@ -122,7 +125,7 @@ function api_get_branch_by_id($id = NULL) {
   if (!isset($id)) {
     $id = variable_get('api_default_branch', NULL);
   }
-  if (isset($branches[$id])) {
+  if (isset($id) && isset($branches[$id])) {
     return $branches[$id];
   }
 
@@ -144,7 +147,6 @@ function api_get_branch_names($_reset = FALSE) {
   if (!isset($branch_names) || $_reset) {
     $result = db_select('api_branch', 'b')
       ->fields('b', array('branch_name'))
-      ->condition('status', 1)
       ->execute()
       ->fetchCol();
     $branch_names = drupal_map_assoc($result);
@@ -154,41 +156,57 @@ function api_get_branch_names($_reset = FALSE) {
 }
 
 /**
+ * Returns a list of all defined branches.
+ *
+ * @param $_reset
+ *   If set to TRUE, the cached return value is reset.
+ *
+ * @return
+ *   Array of branch objects, in order by branch weight.
+ */
+function api_get_php_branches($_reset = FALSE) {
+  static $branches;
+
+  if (!isset($branches) || $_reset) {
+    $result = db_select('api_php_branch', 'b')
+      ->fields('b')
+      ->orderBy('title')
+      ->execute();
+    $branches = array();
+    foreach ($result as $branch) {
+      drupal_unpack($branch);
+      $branches[$branch->branch_id] = $branch;
+    }
+  }
+
+  return $branches;
+}
+
+/**
  * Implements hook_menu().
  */
 function api_menu() {
   $items = array();
 
-  // Admin
+  // Admin overview.
   $items['admin/config/development/api'] = array(
     'title' => 'API reference',
-    'description' => 'Configure branches for API documentation.',
+    'description' => 'Configure projects and branches for API documentation.',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'api_page_admin_overview',
     'file' => 'api.admin.inc',
   );
-  $items['admin/config/development/api/branches'] = array(
-    'title' => 'Branches',
+
+  $items['admin/config/development/api/overview'] = array(
+    'title' => 'Overview',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 1,
   );
-  $items['admin/config/development/api/branches/list'] = array(
-    'title' => 'List',
-    'access callback' => 'user_access',
-    'access arguments' => array('administer API reference'),
-    'type' => MENU_DEFAULT_LOCAL_TASK,
-  );
-  $items['admin/config/development/api/branches/new'] = array(
-    'title' => 'New branch',
-    'access callback' => 'user_access',
-    'access arguments' => array('administer API reference'),
-    'page callback' => 'api_admin_new_branch_page',
-    'file' => 'api.admin.inc',
-    'type' => MENU_LOCAL_TASK,
-  );
-  $items['admin/config/development/api/branches/reset_queue'] = array(
+
+  $items['admin/config/development/api/reset_queue'] = array(
     'title' => 'Reset parse queue',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
@@ -196,16 +214,84 @@ function api_menu() {
     'page arguments' => array('api_reset_queue_form'),
     'file' => 'api.admin.inc',
     'type' => MENU_LOCAL_TASK,
+    'weight' => 100,
   );
-  $items['admin/config/development/api/branches/new/%'] = array(
+
+  // Projects admin.
+  $items['admin/config/development/api/projects'] = array(
+    'title' => 'Projects',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_project_list_form'),
+    'file' => 'api.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 5,
+  );
+
+  $items['admin/config/development/api/projects/list'] = array(
+    'title' => 'List',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/config/development/api/projects/new'] = array(
+    'title' => 'New project',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_project_edit_form'),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/config/development/api/projects/%'] = array(
+    'title' => 'Edit project',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_project_edit_form', 5),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/development/api/projects/%/delete'] = array(
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_project_delete_form', 5),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  // Branches admin.
+  $items['admin/config/development/api/branches'] = array(
+    'title' => 'Branches',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_branch_list_form'),
+    'file' => 'api.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10,
+  );
+  $items['admin/config/development/api/branches/list'] = array(
+    'title' => 'List',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+
+  $items['admin/config/development/api/branches/new'] = array(
     'title' => 'New branch',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('api_branch_edit_form', 6),
+    'page arguments' => array('api_branch_edit_form'),
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
+
   $items['admin/config/development/api/branches/%'] = array(
     'title' => 'Edit branch',
     'access callback' => 'user_access',
@@ -215,6 +301,7 @@ function api_menu() {
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
+
   $items['admin/config/development/api/reparse/%'] = array(
     'title' => 'Reparse branch',
     'access callback' => 'user_access',
@@ -234,6 +321,47 @@ function api_menu() {
     'type' => MENU_CALLBACK,
   );
 
+  // PHP reference branches admin.
+  $items['admin/config/development/api/php_branches'] = array(
+    'title' => 'PHP reference branches',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'api_php_branch_list',
+    'file' => 'api.admin.inc',
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 15,
+  );
+
+  $items['admin/config/development/api/php_branches/new'] = array(
+    'title' => 'New PHP reference branch',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_php_branch_edit_form'),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/development/api/php_branches/%'] = array(
+    'title' => 'Edit PHP reference branch',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_php_branch_edit_form', 5),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/development/api/php_branches/%/delete'] = array(
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_php_branch_delete_form', 5),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  // Comment admin.
   if (module_exists('comment')) {
     $items['admin/config/development/api/comments'] = array(
       'title' => 'Comment settings',
@@ -242,6 +370,7 @@ function api_menu() {
       'page arguments' => array('api_comments_settings_form'),
       'file' => 'api.admin.inc',
       'type' => MENU_LOCAL_TASK,
+      'weight' => 20,
     );
 
     $items['admin/config/development/api/comments/apply'] = array(
@@ -253,8 +382,7 @@ function api_menu() {
     );
   }
 
-  // The rest of the menu items require there to be at least one non-PHP
-  // branch.
+  // The rest of the menu items require there to be at least one branch.
   $branches = api_get_branches();
   if (!count($branches)) {
     return $items;
@@ -262,7 +390,7 @@ function api_menu() {
 
   $default_branch = api_get_branch_by_id();
   $projects = _api_make_menu_projects();
-  if (!count($projects)) {
+  if (!count($projects) || !isset($default_branch->project)) {
     return $items;
   }
 
@@ -320,17 +448,15 @@ function api_menu() {
   );
 
   foreach ($branches as $branch) {
-    if ($branch->status) {
-      $items['api/search/' . $branch->branch_name . '/%menu_tail'] = array(
-        'title' => $branch->branch_name,
-        'page callback' => 'api_search_listing',
-        'page arguments' => array($branch->branch_name, 3),
-        'load arguments' => array('%map', '%index'),
-        'access arguments' => array('access API reference'),
-        'type' => MENU_LOCAL_TASK,
-        'file' => 'api.pages.inc',
-      );
-    }
+    $items['api/search/' . $branch->branch_name . '/%menu_tail'] = array(
+      'title' => $branch->branch_name,
+      'page callback' => 'api_search_listing',
+      'page arguments' => array($branch->branch_name, 3),
+      'load arguments' => array('%map', '%index'),
+      'access arguments' => array('access API reference'),
+      'type' => MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
   }
 
   // Listings
@@ -486,139 +612,137 @@ function api_menu() {
   );
 
   foreach ($branches as $branch) {
-    if ($branch->status) {
-      $is_default = !is_null($default_branch) && ($branch->branch_name === $projects[$branch->project]['use branch']);
+    $is_default = !is_null($default_branch) && ($branch->branch_name === $projects[$branch->project]['use branch']);
 
-      // Main branch page
-      if ($is_default) {
-        $items['api/' . $branch->project] = array(
-          'title' => 'API reference',
-          'page callback' => 'api_page_branch',
-          'page arguments' => array($branch),
-          'access arguments' => array('access API reference'),
-          'type' => $branch->branch_id === $default_branch->branch_id ? MENU_NORMAL_ITEM : MENU_SUGGESTED_ITEM,
-          'file' => 'api.pages.inc',
-        );
-      }
-      $items['api/' . $branch->project . '/' . $branch->branch_name] = array(
-        'title' => $branch->title,
+    // Main branch page
+    if ($is_default) {
+      $items['api/' . $branch->project] = array(
+        'title' => 'API reference',
         'page callback' => 'api_page_branch',
         'page arguments' => array($branch),
         'access arguments' => array('access API reference'),
-        'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
-        'file' => 'api.pages.inc',
-      );
-
-      // Listings
-      if ($is_default) {
-        $items['api/' . $branch->project . '/functions'] = array(
-          'title' => 'Functions',
-          'page callback' => 'api_page_listing',
-          'access arguments' => array('access API reference'),
-          'page arguments' => array($branch, 'function'),
-          'type' => MENU_SUGGESTED_ITEM,
-          'file' => 'api.pages.inc',
-        );
-      }
-      $items['api/' . $branch->project . '/functions/' . $branch->branch_name] = array(
-        'title' => $branch->title,
-        'page callback' => 'api_page_listing',
-        'page arguments' => array($branch, 'function'),
-        'access arguments' => array('access API reference'),
-        'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
-        'file' => 'api.pages.inc',
-      );
-      if ($is_default) {
-        $items['api/' . $branch->project . '/constants'] = array(
-          'title' => 'Constants',
-          'page callback' => 'api_page_listing',
-          'access arguments' => array('access API reference'),
-          'page arguments' => array($branch, 'constant'),
-          'type' => MENU_SUGGESTED_ITEM,
-          'file' => 'api.pages.inc',
-        );
-      }
-      $items['api/' . $branch->project . '/constants/' . $branch->branch_name] = array(
-        'title' => $branch->title,
-        'page callback' => 'api_page_listing',
-        'page arguments' => array($branch, 'constant'),
-        'access arguments' => array('access API reference'),
-        'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
-        'file' => 'api.pages.inc',
-      );
-      if ($is_default) {
-        $items['api/' . $branch->project . '/globals'] = array(
-          'title' => 'Globals',
-          'page callback' => 'api_page_listing',
-          'access arguments' => array('access API reference'),
-          'page arguments' => array($branch, 'global'),
-          'type' => MENU_SUGGESTED_ITEM,
-          'file' => 'api.pages.inc',
-        );
-      }
-      $items['api/' . $branch->project . '/globals/' . $branch->branch_name] = array(
-        'title' => $branch->title,
-        'page callback' => 'api_page_listing',
-        'page arguments' => array($branch, 'global'),
-        'access arguments' => array('access API reference'),
-        'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
-        'file' => 'api.pages.inc',
-      );
-      if ($is_default) {
-        $items['api/' . $branch->project . '/files'] = array(
-          'title' => 'Files',
-          'page callback' => 'api_page_listing',
-          'access arguments' => array('access API reference'),
-          'page arguments' => array($branch, 'file'),
-          'type' => MENU_SUGGESTED_ITEM,
-          'file' => 'api.pages.inc',
-        );
-      }
-      $items['api/' . $branch->project . '/files/' . $branch->branch_name] = array(
-        'title' => $branch->title,
-        'page callback' => 'api_page_listing',
-        'page arguments' => array($branch, 'file'),
-        'access arguments' => array('access API reference'),
-        'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
-        'file' => 'api.pages.inc',
-      );
-      if ($is_default) {
-        $items['api/' . $branch->project . '/classes'] = array(
-          'title' => 'Classes and interfaces',
-          'page callback' => 'api_page_listing',
-          'access arguments' => array('access API reference'),
-          'page arguments' => array($branch, 'class'),
-          'type' => MENU_SUGGESTED_ITEM,
-          'file' => 'api.pages.inc',
-        );
-      }
-      $items['api/' . $branch->project . '/classes/' . $branch->branch_name] = array(
-        'title' => $branch->title,
-        'page callback' => 'api_page_listing',
-        'page arguments' => array($branch, 'class'),
-        'access arguments' => array('access API reference'),
-        'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
-        'file' => 'api.pages.inc',
-      );
-      if ($is_default) {
-        $items['api/' . $branch->project . '/groups'] = array(
-          'title' => 'Topics',
-          'page callback' => 'api_page_listing',
-          'access arguments' => array('access API reference'),
-          'page arguments' => array($branch, 'group'),
-          'type' => MENU_SUGGESTED_ITEM,
-          'file' => 'api.pages.inc',
-        );
-      }
-      $items['api/' . $branch->project . '/groups/' . $branch->branch_name] = array(
-        'title' => $branch->title,
-        'page callback' => 'api_page_listing',
-        'page arguments' => array($branch, 'group'),
-        'access arguments' => array('access API reference'),
-        'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+        'type' => $branch->branch_id === $default_branch->branch_id ? MENU_NORMAL_ITEM : MENU_SUGGESTED_ITEM,
         'file' => 'api.pages.inc',
       );
     }
+    $items['api/' . $branch->project . '/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_branch',
+      'page arguments' => array($branch),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+
+    // Listings
+    if ($is_default) {
+      $items['api/' . $branch->project . '/functions'] = array(
+        'title' => 'Functions',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'function'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/functions/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'function'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+    if ($is_default) {
+      $items['api/' . $branch->project . '/constants'] = array(
+        'title' => 'Constants',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'constant'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/constants/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'constant'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+    if ($is_default) {
+      $items['api/' . $branch->project . '/globals'] = array(
+        'title' => 'Globals',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'global'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/globals/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'global'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+    if ($is_default) {
+      $items['api/' . $branch->project . '/files'] = array(
+        'title' => 'Files',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'file'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/files/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'file'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+    if ($is_default) {
+      $items['api/' . $branch->project . '/classes'] = array(
+        'title' => 'Classes and interfaces',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'class'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/classes/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'class'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+    if ($is_default) {
+      $items['api/' . $branch->project . '/groups'] = array(
+        'title' => 'Topics',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'group'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/groups/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'group'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
   }
 
   // Redirect 1.0 file links.
@@ -750,9 +874,8 @@ function api_menu() {
 /**
  * Returns a list of projects with their default branches, for use in menus.
  *
- * Basically, we need to define a default branch for each project. If a project
- * has a branch_name matching the global default_branch, use that. Otherwise,
- * use the max, so that if the branch names are 5, 6, 7, etc., we use 7.
+ * Basically, we need to define a default branch for each project: the first
+ * "preferred" branch with the correct core compatibility.
  */
 function _api_make_menu_projects() {
   $branches = api_get_branches();
@@ -760,28 +883,22 @@ function _api_make_menu_projects() {
     return array();
   }
 
-  $default_branch = api_get_branch_by_id();
-  if (is_null($default_branch)) {
-    return array();
-  }
-
+  $compatibility = variable_get('api_default_core_compatibility', '7.x');
   $projects = array();
 
   foreach ($branches as $branch) {
-    if ($branch->status && $branch->type == 'files') {
-      if (!isset($projects[$branch->project])) {
-        $projects[$branch->project] = array(
-          'max branch' => $branch->branch_name,
-          'use branch' => NULL,
-        );
-      }
-      else {
-        $projects[$branch->project]['max branch'] = max($projects[$branch->project]['max branch'], $branch->branch_name);
-      }
+    if (!isset($projects[$branch->project])) {
+      $projects[$branch->project] = array(
+        'max branch' => $branch->branch_name,
+        'use branch' => NULL,
+      );
+    }
+    else {
+      $projects[$branch->project]['max branch'] = max($projects[$branch->project]['max branch'], $branch->branch_name);
+    }
 
-      if ($branch->branch_name === $default_branch->branch_name) {
-        $projects[$branch->project]['use branch'] = $branch->branch_name;
-      }
+    if ($branch->core_compatibility === $compatibility && $branch->preferred) {
+      $projects[$branch->project]['use branch'] = $branch->branch_name;
     }
   }
 
@@ -1135,9 +1252,6 @@ function api_permission() {
  */
 function api_theme() {
   return array(
-    'api_branch_table' => array(
-      'render element' => 'element',
-    ),
     'api_defined' => array(
       'variables' => array(
         'branch' => NULL,
@@ -1587,45 +1701,118 @@ function api_url($object, $file = FALSE) {
  * Saves an API branch.
  *
  * @param $branch
- *   A branch object, with branch_name, title, and directories properties.
+ *   A branch object.
  */
 function api_save_branch($branch) {
   $branch->data = serialize($branch->data);
   if (empty($branch->branch_id)) {
     drupal_write_record('api_branch', $branch);
-    if (is_null(variable_get('api_default_branch', NULL))) {
-      variable_set('api_default_branch', $branch->branch_id);
-    }
   }
   else {
     drupal_write_record('api_branch', $branch, 'branch_id');
-    if ($branch->type == 'files') {
-      // If we've just updated a files branch, we need to reset the parse
-      // queue, because there are possibly some files set up to parse that
-      // should not be parsed (if the directories to be parsed changed).
-      api_reset_parse_queue();
-    }
+    // If we've just updated a files branch, we need to reset the parse
+    // queue, because there are possibly some files set up to parse that
+    // should not be parsed (if the directories to be parsed changed).
+    api_reset_parse_queue();
   }
 
   api_reset_branches();
 }
 
 /**
+ * Saves an API PHP branch.
+ *
+ * @param $branch
+ *   A PHP branch object.
+ */
+function api_save_php_branch($branch) {
+  $branch->data = serialize($branch->data);
+  if (empty($branch->branch_id)) {
+    drupal_write_record('api_php_branch', $branch);
+  }
+  else {
+    drupal_write_record('api_php_branch', $branch, 'branch_id');
+  }
+
+  api_get_php_branches(TRUE);
+}
+
+/**
+ * Saves an API project.
+ *
+ * @param $project
+ *   A project to save.
+ * @param $old_name
+ *   If the project_name (primary key) field is changing, provide the previous
+ *   name.
+ */
+function api_save_project($project, $old_name = '') {
+  if (!strlen($old_name)) {
+    $old_name = $project->project_name;
+  }
+  db_delete('api_project')
+    ->condition('project_name', $old_name)
+    ->execute();
+  drupal_write_record('api_project', $project);
+
+  if ($old_name != $project->project_name) {
+    // Update existing branches to the new name.
+    db_update('api_branch')
+      ->condition('project', $old_name)
+      ->fields(array('project' => $project->project_name))
+      ->execute();
+  }
+
+  // See if our current default project is valid, and reset if not.
+  $default = variable_get('api_default_project', '');
+  if (!api_project_exists($default)) {
+    variable_set('api_default_project', $project->project_name);
+  }
+
+  api_reset_branches();
+}
+
+/**
+ * Checks to see if a project exists.
+ *
+ * @param project_name
+ *   Name to check for.
+ *
+ * @return
+ *   TRUE if the project exists, and FALSE if not.
+ */
+function api_project_exists($project_name) {
+  $result = db_select('api_project', 'p')
+    ->fields('p')
+    ->condition('project_name', $project_name)
+    ->execute()
+    ->fetchObject();
+  return isset($result->project_name) && $result->project_name == $project_name;
+}
+
+/**
  * Fixes up branches, after one is updated, added, or deleted.
  */
 function api_reset_branches() {
-  // Reset the branch lists.
-  api_get_branch_names(TRUE);
+  // Recalculate the default branch.
   $branches = api_get_branches(TRUE);
+  $project = variable_get('api_default_project', '');
+  $version = variable_get('api_default_core_compatibility', '');
+  foreach ($branches as $branch) {
+    if ($branch->project == $project && $branch->preferred && $branch->core_compatibility == $version) {
+      variable_set('api_default_branch', $branch->branch_id);
+      break;
+    }
+  }
+
+  // Reset the branch lists.
+  $branches = api_get_branches(TRUE);
+  api_get_branch_names(TRUE);
 
   // Reweight all branches.
   usort($branches, 'api_branch_sort');
   $weight = 0;
   foreach ($branches as $branch) {
-    // Attempt to set a default branch, if possible.
-    if ($branch->status && $branch->type == 'files' && is_null(variable_get('api_default_branch', NULL))) {
-      variable_set('api_default_branch', $branch->branch_id);
-    }
     $branch->weight = $weight;
     $weight += 1;
     drupal_write_record('api_branch', $branch, 'branch_id');
@@ -1636,24 +1823,32 @@ function api_reset_branches() {
 }
 
 /**
- * Sorts branches by type, version number, and branch name.
+ * Sorts branches by project, version number, and branch name.
  *
  * Callback for usort() within api_save_branch().
  */
 function api_branch_sort($a, $b) {
-  // PHP type branches should come after file type branches.
-  $result = strcmp($a->type, $b->type);
-  if ($result != 0) {
-    return $result;
-  }
-  // Sort by numeric version number next.
-  $result = version_compare($a->branch_name, $b->branch_name);
+  // Sort by project.
+  $result = strcasecmp($a->project, $b->project);
   if ($result != 0) {
     return $result;
   }
 
-  // If they are the same type and version_compare said they were the same,
-  // then just do alphabetical.
+  // Sort by core compatibility.
+  $result = version_compare($a->core_compatibility, $b->core_compatibility);
+  if ($result != 0) {
+    return $result;
+  }
+
+  // Sort by preferred (preferred over not preferred).
+  if ($a->preferred && !$b->preferred) {
+    return -1;
+  }
+  if ($b->preferred && !$a->preferred) {
+    return 1;
+  }
+
+  // If all else fails, just do alphabetical.
   return strcasecmp($a->branch_name, $b->branch_name);
 }
 
@@ -1762,17 +1957,11 @@ function api_autocomplete($branch_name, $page = TRUE) {
  * Implements hook_cron().
  */
 function api_cron() {
-  // Do not do cron unless there is at least one non-PHP branch, or if the
+  // Do not do cron unless there is at least one branch, or if the
   // API admin page has been visited at least once.
-  $doit = variable_get('api_do_cron', 1);
+  $doit = variable_get('api_do_cron', 0);
   if (!$doit) {
-    $branches = api_get_branches();
-    foreach ($branches as $branch) {
-      if ($branch->type != 'php') {
-        $doit = TRUE;
-        break;
-      }
-    }
+    $doit = (count(api_get_branches()) > 0);
   }
 
   if ($doit) {
@@ -2229,7 +2418,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
   if ($use_php) {
     $query = db_select('api_php_documentation', 'd')
       ->fields('d', array('object_name', 'documentation'));
-    $b = $query->innerJoin('api_branch', 'b', "b.branch_id = d.branch_id");
+    $b = $query->innerJoin('api_php_branch', 'b', "b.branch_id = d.branch_id");
     $query
       ->fields($b, array('data'))
       ->condition('d.object_type', 'function')
@@ -2649,6 +2838,78 @@ function api_libraries_loaded($watchdog = TRUE) {
   return $loaded;
 }
 
+/**
+ * Deletes a branch and all of its related documentation records.
+ *
+ * @param $branch_id
+ *   The numeric ID of the branch to delete.
+ * @param $finalize
+ *   TRUE to redo the menus etc., FALSE to postpone (because other deletes
+ *   are coming).
+ */
+function api_delete_branch($branch_id, $finalize = TRUE) {
+  // Find out which documentation IDs need to be deleted.
+  $dids = db_select('api_documentation', 'ad')
+    ->fields('ad', array('did'))
+    ->condition('branch_id', $branch_id)
+    ->execute()
+    ->fetchCol();
+
+  // Fully delete these items, and the branch record.
+  api_delete_items($dids);
+  db_delete('api_branch')
+    ->condition('branch_id', $branch_id)
+    ->execute();
+
+  if ($finalize) {
+    api_reset_branches();
+    api_reset_parse_queue();
+  }
+}
+
+/**
+ * Deletes a PHP reference branch and all of its related documentation records.
+ *
+ * @param $branch_id
+ *   The numeric ID of the branch to delete.
+ */
+function api_delete_php_branch($branch_id) {
+  db_delete('api_php_documentation')
+    ->condition('branch_id', $branch_id)
+    ->execute();
+  db_delete('api_php_branch')
+    ->condition('branch_id', $branch_id)
+    ->execute();
+
+  api_get_php_branches(TRUE);
+}
+
+/**
+ * Deletes a project and all of its branches and documentation records.
+ *
+ * @param $project_name
+ *   The name of the project to delete.
+ */
+function api_delete_project($project_name) {
+  // Delete all of the branches.
+  $branch_ids = db_select('api_branch', 'b')
+    ->condition('project', $project_name)
+    ->fields('b', array('branch_id'))
+    ->execute()
+    ->fetchCol();
+  foreach ($branch_ids as $id) {
+    api_delete_branch($id, FALSE);
+  }
+
+  // Delete the project itself.
+  db_delete('api_project')
+    ->condition('project_name', $project_name)
+    ->execute();
+
+  // Clean up.
+  api_reset_branches();
+  api_reset_parse_queue();
+}
 
 /**
  * Completely deletes an array of documentation items.

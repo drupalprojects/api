@@ -12,6 +12,8 @@ module_load_include('php', 'api', 'tests/api_test_case');
  */
 class ApiQueuesTestCase extends ApiTestCase {
 
+  public $branch_info;
+
   public static function getInfo() {
     return array(
       'name' => 'Parsing queue',
@@ -25,7 +27,7 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->timeLimit *= 2;
 
     $this->baseSetUp();
-    $this->setUpBranchAPICall();
+    $this->branch_info = $this->setUpBranchAPICall();
     $this->removePHPBranch();
     $this->resetBranchesAndCache();
   }
@@ -42,7 +44,14 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue has 11 files in it');
 
     // Update them again and verify there are still 11 items.
+    // Each time we update the queue after this point, wait for a few seconds
+    // to make sure that the branch will think it is time to check for updated
+    // files, and double-check that the log shows the branch was updated.
+    $branch_message = 'Updated ' . $this->branch_info['project'] .
+      ' branch ' . $this->branch_info['branch_name'];
+    sleep(5);
     api_update_all_branches();
+    $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue still has 11 files in it after second update');
 
     // Parse all the files and verify the queue is empty.
@@ -51,7 +60,9 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue has been emptied');
 
     // Update branches again and verify nothing is added to the queue.
+    sleep(5);
     api_update_all_branches();
+    $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after branch update');
 
     // Mark this branch for reparsing, update, and verify the queue is full.
@@ -61,8 +72,10 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->howManyToParse(), 11, '11 files marked for reparsing with branch ID');
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after marking for parsing');
 
+    sleep(5);
     api_update_all_branches();
-    $this->assertEqual($this->countParseQueue(), 11, 'Parse queue is full again (' . $this->countParseQueue() . ') after marking for reparse.');
+    $this->checkAndClearLog(array($branch_message));
+    $this->assertEqual($this->countParseQueue(), 11, 'Parse queue is full again (' . $this->countParseQueue() . ') after updating branches.');
 
     // Parse and verify empty again.
     $count = $this->processApiParseQueue(TRUE);
@@ -74,7 +87,9 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->howManyToParse(), 11, '11 files marked for reparsing with branch name');
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after marking for parsing');
 
+    sleep(5);
     api_update_all_branches();
+    $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue is full again (' . $this->countParseQueue() . ') after marking for reparse.');
 
     // Parse and verify empty again.
@@ -87,7 +102,9 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->howManyToParse(), 1, $this->howManyToParse() . ' file marked for reparsing with file name');
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after marking for parsing');
 
+    sleep(5);
     api_update_all_branches();
+    $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 1, 'Parse queue is full again (' . $this->countParseQueue() . ') after marking for reparse.');
 
     // Parse and verify empty again.

@@ -6,7 +6,7 @@
  */
 
 /**
- * Page callback: Generates the API module main admin page.
+ * Builds the overview page for API module administration.
  *
  * @return
  *   Render array for the page.
@@ -15,8 +15,9 @@ function api_page_admin_overview() {
   // Turn on cron for the API module.
   variable_set('api_do_cron', 1);
 
-  // Display branch overview form.
   $output = array();
+
+  // Display settings form.
   $output['admin_form'] = drupal_get_form('api_page_admin_form');
 
   // Display parsing status.
@@ -45,109 +46,311 @@ function api_page_admin_overview() {
 }
 
 /**
- * Form constructor for the API branches list form.
+ * Form constructor for the API overview form.
  *
- * @see theme_api_branch_table()
  * @see api_page_admin_form_submit()
  * @ingroup forms
  */
 function api_page_admin_form($form, &$form_state) {
-  $branches = api_get_branches();
+  $form['api_default_core_compatibility'] = array(
+    '#type' => 'textfield',
+    '#default_value' => variable_get('api_default_core_compatibility', '7.x'),
+    '#title' => t('Default core compatibility'),
+    '#description' => t('The default branch/version to display if none is given in a URL'),
+  );
 
-  if (count($branches) > 0) {
-    $form['branches'] = array(
-      '#theme' => 'api_branch_table',
-    );
-    foreach ($branches as $branch) {
-      $key = 'branch-' . $branch->branch_id;
-      if ($branch->status) {
-        $form['branches'][$key]['default_branch'] = array(
-          '#type' => 'radio',
-          '#default_value' => variable_get('api_default_branch', NULL),
-          '#return_value' => $branch->branch_id,
-        );
-      }
-      else {
-        $form['branches'][$key]['default_branch'] = array();
-      }
-      $form['branches'][$key]['project'] = array(
-        '#type' => 'markup',
-        '#markup' => $branch->project,
-      );
-      $form['branches'][$key]['title'] = array(
-        '#type' => 'markup',
-        '#markup' => $branch->title,
-      );
-      $form['branches'][$key]['branch_name'] = array(
-        '#type' => 'markup',
-        '#markup' => $branch->branch_name,
-      );
-      $ops = array();
-      $ops[] = l(t('edit'), 'admin/config/development/api/branches/' . $branch->branch_id);
-      if ($branch->type == 'files') {
-        $ops[] = l(t('reparse'), 'admin/config/development/api/reparse/' . $branch->branch_id);
-      }
-      $form['branches'][$key]['operations'] = array(
-        '#type' => 'markup',
-        '#markup' => implode(' ', $ops),
-      );
-    }
+  $form['api_default_project'] = array(
+    '#type' => 'textfield',
+    '#default_value' => variable_get('api_default_project', 'drupal'),
+    '#title' => t('Default project'),
+    '#description' => t('Name of the default project to display if none is given in a URL'),
+  );
+
+  $form = system_settings_form($form);
+  $form['#submit'][] = 'api_reset_branches';
+
+  return $form;
+}
+
+/**
+ * Form constructor for the API branches list form.
+ *
+ * @ingroup forms
+ */
+function api_branch_list_form($form, &$form_state) {
+  variable_set('api_do_cron', 1);
+
+  $form['add_new'] = array(
+    '#type' => 'markup',
+    '#markup' => l(t('Add new branch'), 'admin/config/development/api/branches/new'),
+  );
+
+  // Build a filtered list of files branches.
+  $form['filters'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Filter branches'),
+    '#tree' => TRUE,
+  );
+
+  $projects = db_select('api_project', 'p')
+    ->fields('p', array('project_name'))
+    ->orderBy('project_name')
+    ->execute()
+    ->fetchCol();
+  $safe_projects = array('' => '');
+  foreach ($projects as $project) {
+    $project = check_plain($project);
+    $safe_projects[$project] = $project;
   }
-  else {
-    $form['branches'] = array(
-      '#type' => 'markup',
-      '#markup' => '<p><em>' . t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/development/api/branches/new'))) . '</em></p>',
-    );
-  }
+
+  $form['filters']['project'] = array(
+    '#type' => 'select',
+    '#options' => $safe_projects,
+    '#title' => t('Project'),
+    '#default_value' => !empty($form_state['values']['filters']['project']) ? $form_state['values']['filters']['project'] : '',
+  );
 
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Save changes'),
+    '#value' => t('Apply'),
+  );
+
+  $filters = isset($form_state['values']['filters']) ? $form_state['values']['filters'] : array();
+
+  $branches = api_filter_branches($filters);
+  $rows = array();
+  $header = array(
+    t('Project'),
+    t('Core compatibility'),
+    t('Branch title'),
+    t('Branch identifier'),
+    t('Operations'),
+  );
+
+  foreach ($branches as $branch) {
+    $row = array();
+
+    $row[] = check_plain($branch->project);
+    $row[] = check_plain($branch->core_compatibility);
+    $row[] = check_plain($branch->title);
+    $row[] = check_plain($branch->branch_name);
+    $ops = array();
+    $ops[] = l(t('edit'), 'admin/config/development/api/branches/' . $branch->branch_id);
+    $ops[] = l(t('reparse'), 'admin/config/development/api/reparse/' . $branch->branch_id);
+    $row[] = implode(' ', $ops);
+
+    $rows[] = $row;
+  }
+
+  $form['branches'] = array(
+    '#type' => 'markup',
+    '#markup' => theme('table', array(
+      'header' => $header,
+      'rows' => $rows,
+      'empty' => t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/development/api/branches/new/files'))),
+      )) . theme('pager', array('tags' => NULL)),
   );
 
   return $form;
 }
 
 /**
- * Renders the HTML for the branches section of api_page_admin_form().
- *
- * @param $element
- *   The form element to theme, in this case containing the branches array.
- *
- * @ingroup themeable
+ * Submission handler for api_branch_list_form().
  */
-function theme_api_branch_table($variables) {
-  $element = $variables['element'];
-  $header = array(
-    t('Default'),
-    t('Project identifier'),
-    t('Branch title'),
-    t('Branch identifier'),
-    t('Operations'),
-  );
-  $rows = array();
-  foreach (element_children($element) as $key) {
-    $row = array();
-    foreach (element_children($element[$key]) as $child) {
-      $row[] = drupal_render($element[$key][$child]);
-    }
-    $rows[] = $row;
-  }
-  return theme('table', array('header' => $header, 'rows' => $rows));
+function api_branch_list_form_submit($form, &$form_state) {
+  // Simply rebuild the form so the page has the filter values.
+  $form_state['rebuild'] = TRUE;
 }
 
 /**
- * Form submission handler for api_page_admin_form().
+ * Finds branches matching the filtering options.
+ *
+ * @param $filters
+ *   Associative array of fields/values to filter on.
+ *
+ * @return
+ *   Array of branch objects matching the filters.
  */
-function api_page_admin_form_submit($form, &$form_state) {
-  if (!empty($form_state['values']['default_branch'])) {
-    variable_set('api_default_branch', $form_state['values']['default_branch']);
+function api_filter_branches($filters) {
+  $query = db_select('api_branch', 'b')
+    ->fields('b')
+    ->extend('PagerDefault')
+    ->limit(50)
+    ->orderBy('branch_name');
+
+  foreach ($filters as $field => $value) {
+    if (strlen($field) > 0 && strlen($value) > 0) {
+      $query->condition($field, $value);
+    }
   }
 
-  // We may have menu changes, so clear the menu cache for all users.
-  cache_clear_all('*', 'cache_menu', TRUE);
+  return $query->execute();
+}
 
-  drupal_set_message(t('Changes saved.'));
+/**
+ * Builds a list of PHP branches.
+ *
+ * @return
+ *   Render array for the page.
+ */
+function api_php_branch_list() {
+  variable_set('api_do_cron', 1);
+
+  $output = array();
+
+  $output['add_new'] = array(
+    '#type' => 'markup',
+    '#markup' => '<p>' . l(t('Add new PHP reference branch'), 'admin/config/development/api/php_branches/new') . '</p>',
+  );
+
+  // Build a list of PHP branches.
+  $branches = api_get_php_branches();
+
+  $rows = array();
+  $header = array(
+    t('Name'),
+    t('Type'),
+    t('Operations'),
+  );
+
+  foreach ($branches as $branch) {
+    $row = array();
+
+    $row[] = check_plain($branch->title);
+    $row[] = check_plain($branch->reference_type);
+    $ops = array();
+    $ops[] = l(t('edit'), 'admin/config/development/api/php_branches/' . $branch->branch_id);
+    $row[] = implode(' ', $ops);
+
+    $rows[] = $row;
+  }
+
+  $output['branch_list'] = array(
+    '#type' => 'markup',
+    '#markup' => theme('table', array(
+    'header' => $header,
+    'rows' => $rows,
+    'empty' => t('There are no PHP references set up. You can <a href="@url">add a PHP reference branch</a>.', array('@url' => url('admin/config/development/api/php_branches/new'))),
+  )));
+
+  return $output;
+}
+
+/**
+ * Form constructor for the API projects list form.
+ *
+ * @see api_project_list_form_submit()
+ * @ingroup forms
+ */
+function api_project_list_form($form, &$form_state) {
+  variable_set('api_do_cron', 1);
+
+  $form['add_new'] = array(
+    '#type' => 'markup',
+    '#markup' => l(t('Add new project'), 'admin/config/development/api/projects/new'),
+  );
+
+  // Build a filtered list of projects
+  $form['filters'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Filter projects'),
+    '#tree' => TRUE,
+  );
+
+  $types = db_select('api_project', 'p')
+    ->fields('p', array('project_type'))
+    ->groupBy('project_type')
+    ->orderBy('project_type')
+    ->execute()
+    ->fetchCol();
+  $safe_types = array('' => '');
+  foreach ($types as $type) {
+    $type = check_plain($type);
+    $safe_types[$type] = $type;
+  }
+
+  $form['filters']['project_type'] = array(
+    '#type' => 'select',
+    '#options' => $safe_types,
+    '#title' => t('Type'),
+    '#default_value' => !empty($form_state['values']['filters']['type']) ? $form_state['values']['filters']['type'] : '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Apply'),
+  );
+
+  $filters = isset($form_state['values']['filters']) ? $form_state['values']['filters'] : array();
+
+  $projects = api_filter_projects($filters);
+  $rows = array();
+  $header = array(
+    t('Project identifier'),
+    t('Project title'),
+    t('Type'),
+    t('Operations'),
+  );
+
+  foreach ($projects as $project) {
+    $row = array();
+
+    $row[] = check_plain($project->project_name);
+    $row[] = check_plain($project->project_title);
+    $row[] = check_plain($project->project_type);
+    $ops = array();
+    $ops[] = l(t('edit'), 'admin/config/development/api/projects/' . check_plain($project->project_name));
+    $ops[] = l(t('delete'), 'admin/config/development/api/projects/' . check_plain($project->project_name) . '/delete');
+    $row[] = implode(' ', $ops);
+
+    $rows[] = $row;
+  }
+
+  $empty = (count($filters) > 0) ? t('No projects fit your criteria.') : t('There are no projects yet. You can <a href="@url">add a project</a>.', array('@url' => url('admin/config/development/api/projects/new')));
+
+  $form['projects'] = array(
+    '#type' => 'markup',
+    '#markup' => theme('table', array(
+      'header' => $header,
+      'rows' => $rows,
+      'empty' => $empty,
+      )) . theme('pager', array('tags' => NULL)),
+  );
+
+  return $form;
+}
+
+/**
+ * Submission handler for api_project_list_form().
+ */
+function api_project_list_form_submit($form, &$form_state) {
+  // Simply rebuild the form so the page has the filter values.
+  $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * Finds projects matching the filtering options.
+ *
+ * @param $filters
+ *   Associative array of fields/values to filter on.
+ *
+ * @return
+ *   Array of project objects matching the filters.
+ */
+function api_filter_projects($filters) {
+  $query = db_select('api_project', 'p')
+    ->fields('p')
+    ->extend('PagerDefault')
+    ->limit(50)
+    ->orderBy('project_name');
+
+  foreach ($filters as $field => $value) {
+    if (strlen($field) > 0 && strlen($value) > 0) {
+      $query->condition($field, $value);
+    }
+  }
+
+  return $query->execute();
 }
 
 /**
@@ -172,37 +375,15 @@ function api_reset_queue_form_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     api_reset_parse_queue();
   }
-  $form_state['redirect'] = 'admin/config/development/api';
-}
-
-/**
- * Page callback: Generates the page that selects which type of branch to add.
- *
- * @return
- *   HTML for the page.
- */
-function api_admin_new_branch_page() {
-  return '<h3>' . t('Select branch type') . '</h3>' . theme('links', array('links' => array(
-      'files' => array(
-        'title' => t('Files'),
-        'href' => 'admin/config/development/api/branches/new/files',
-      ),
-      'php' => array(
-        'title' => t('PHP functions'),
-        'href' => 'admin/config/development/api/branches/new/php',
-      ),
-    )));
+  $form_state['redirect'] = 'admin/config/development/api/branches';
 }
 
 /**
  * Form constructor for the edit form for a branch.
  *
  * @param $branch_id
- *   ID of the branch to edit, or the type of branch to add a new branch
- *   ('files' or 'php').
+ *   ID of the branch to edit.
  *
- * @see api_branch_edit_form_files()
- * @see api_branch_edit_form_php()
  * @see api_branch_edit_form_validate()
  * @see api_check_directories()
  * @see api_branch_edit_form_submit()
@@ -215,43 +396,56 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
   else {
     $branch = new stdClass();
     $branch->branch_id = 0;
-    $branch->type = $branch_id;
-    $branch->project = '';
-    $branch->project_title = '';
     $branch->branch_name = '';
     $branch->title = '';
+    $branch->core_compatibility = '';
+    $branch->preferred = 1;
+    $branch->project = '';
     $branch->directories = '';
     $branch->excluded_directories = '';
-    $branch->summary = '';
-    $branch->path = '';
-    $branch->update_time = 1;
-    $branch->status = TRUE;
+    $branch->update_frequency = 1;
   }
+
   $form = array(
     '#branch' => $branch,
   );
 
   $form['project'] = array(
-    '#title' => t('Project identifier'),
+    '#title' => t('Project'),
     '#type' => 'textfield',
     '#default_value' => $branch->project,
-    '#description' => t('Used as both a unique identifier for the project, and as the URL prefix for documentation for this project (path: api/[project]). You can add a branch to an existing project by entering the existing project name here. You can make this branch be part of a new project by entering a new project name here, and then add additional branches if desired.'),
+    '#description' => t('The identifier of the project this branch is part of.'),
     '#required' => TRUE,
   );
-  $form['project_title'] = array(
-    '#title' => t('Project title'),
+
+  $form['core_compatibility'] = array(
+    '#title' => t('Core compatibility'),
     '#type' => 'textfield',
-    '#default_value' => $branch->project_title,
-    '#description' => t('Used as the header for item versions.'),
+    '#default_value' => $branch->core_compatibility,
+    '#description' => t('Which core version this branch is compatible with (for search/link grouping).'),
     '#required' => TRUE,
   );
+
+  $form['preferred'] = array(
+    '#title' => t('Preferred'),
+    '#type' => 'radios',
+    '#options' => array(
+      0 => 'No',
+      1 => 'Yes',
+    ),
+    '#default_value' => $branch->preferred,
+    '#description' => t('Whether this is the preferred branch for this project within this core compatibility'),
+    '#required' => TRUE,
+  );
+
   $form['branch_name'] = array(
     '#title' => t('Branch identifier'),
     '#type' => 'textfield',
     '#default_value' => $branch->branch_name,
-    '#description' => t('Identifier for this branch within this project. Used as the URL suffix for documentation pages for this branch. Also displayed as the version name, in the Versions section at the top of function pages and similar pages (variables, constants, etc.).'),
+    '#description' => t('Unique identifier for this branch within this project. Used as the URL suffix for documentation pages for this branch.'),
     '#required' => TRUE,
   );
+
   $form['title'] = array(
     '#title' => t('Branch title'),
     '#type' => 'textfield',
@@ -259,41 +453,8 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#description' => t('Used as the version identifier for item versions. The title of the first branch within the project is also used as the link text in the Other Projects link sections (these links appear at the bottom of API pages such as the functions list and the home page for each project, if you have more than one project).'),
     '#required' => TRUE,
   );
-  $form['status'] = array(
-    '#title' => t('Show this branch in tabs'),
-    '#type' => 'checkbox',
-    '#default_value' => $branch->status,
-  );
-
   $form['data'] = array('#tree' => TRUE);
-  $function = 'api_branch_edit_form_' . $branch->type;
-  $function($form, $branch);
 
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Save branch'),
-  );
-  if (is_numeric($branch_id)) {
-    $form[] = array(
-      '#type' => 'markup',
-      '#markup' => l(t('Delete'), 'admin/config/development/api/branches/' . $branch->branch_id . '/delete'),
-    );
-  }
-
-  return $form;
-}
-
-/**
- * Generates specific form parts for a files branch for api_branch_edit_form().
- *
- * @param $form
- *   Form array to add to.
- * @param $branch
- *   Object representing the branch to edit.
- *
- * @see api_check_directories()
- */
-function api_branch_edit_form_files(&$form, $branch) {
   $form['data']['directories'] = array(
     '#title' => t('Directories'),
     '#type' => 'textarea',
@@ -311,55 +472,28 @@ function api_branch_edit_form_files(&$form, $branch) {
     '#description' => t('Absolute paths to exclude from the index, one per line.'),
     '#element_validate' => array('api_check_directories'),
   );
-}
 
-/**
- * Generates specific form parts for a PHP branch for api_branch_edit_form().
- *
- * @param $form
- *   Form array to add to.
- * @param $branch
- *   Object representing the branch to edit.
- */
-function api_branch_edit_form_php(&$form, $branch) {
-  $form[] = array(
-    '#weight' => -99,
-    '#value' => '<p>' . t('Links to external documentation, such as the PHP manual.') . '</p>',
-  );
-
-  $form['data']['summary'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Function list'),
-    '#default_value' => $branch->summary,
-    '#required' => TRUE,
-    '#description' => t('The URL of the PHP function summary list.'),
-  );
-  $form['data']['path'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Function URL'),
-    '#default_value' => $branch->path,
-    '#required' => TRUE,
-    '#description' => t('The URL format used to build the link to PHP functions.  Use the variable <em>!function</em> in place of the function name.'),
-  );
-
-  $form['data']['update_time'] = array(
+  $form['update_frequency'] = array(
     '#type' => 'select',
     '#title' => t('Update frequency'),
-    '#description' => t('Updates happen during cron runs. This sets a minimum time to wait before updating.'),
-    '#default_value' => isset($branch->update_time) ? $branch->update_time : 1,
-    '#options' => array(1 => t('Every cron run')) + drupal_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+    '#description' => t('During cron runs, files will be checked for updates. This sets a minimum time to wait before checking.'),
+    '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
+    '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
   );
 
-  // PHP manual reference will never be visible in the UI.
-  $form['branch_name']['#description'] = t('Identifier for this branch, unique across PHP functions branches');
-  $form['project']['#type'] = 'value';
-  $form['project']['#value'] = 'php';
-  $form['project_title']['#type'] = 'value';
-  $form['project_title']['#value'] = 'php';
-  $form['title']['#type'] = 'value';
-  $form['title']['#value'] = 'PHP functions';
-  $form['status']['#type'] = 'value';
-  $form['status']['#value'] = FALSE;
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save branch'),
+  );
+
+  if (is_numeric($branch_id)) {
+    $form[] = array(
+      '#type' => 'markup',
+      '#markup' => l(t('Delete'), 'admin/config/development/api/branches/' . $branch->branch_id . '/delete'),
+    );
+  }
+
+  return $form;
 }
 
 /**
@@ -368,21 +502,29 @@ function api_branch_edit_form_php(&$form, $branch) {
  * @see api_branch_edit_form_submit()
  */
 function api_branch_edit_form_validate($form, &$form_state) {
+  $project = $form_state['values']['project'];
+  $branch_name = $form_state['values']['branch_name'];
+
   // Check for bad characters in branch names.
-  if (preg_match('/[^A-Za-z0-9-_.]/', $form_state['values']['branch_name'])) {
+  if (preg_match('/[^A-Za-z0-9-_.]/', $branch_name)) {
     form_set_error('branch_name', t("Only letters, numbers, '.', '-' and '_' are allowed in the branch name, as it is used as an URL suffix."));
   }
 
   // Check for duplicate branch names.
-  if (db_query("SELECT 1 FROM {api_branch} WHERE branch_id <> :branch_id AND project = :project AND branch_name = :branch_name", array(':branch_id' => $form['#branch']->branch_id, ':project' => $form_state['values']['project'], ':branch_name' => $form_state['values']['branch_name']))->fetchField()) {
-    form_set_error('branch_name', t('%project and %branch_name is already used by another branch.', array('%project' => $form_state['values']['project'], '%branch_name' => $form_state['values']['branch_name'])));
+  if (db_query("SELECT 1 FROM {api_branch} WHERE branch_id <> :branch_id AND project = :project AND branch_name = :branch_name", array(':branch_id' => $form['#branch']->branch_id, ':project' => $project, ':branch_name' => $branch_name))->fetchField()) {
+    form_set_error('branch_name', t('%project and %branch_name is already used by another branch.', array('%project' => $project, '%branch_name' => $branch_name)));
+  }
+
+  // Check that the project exists.
+  if (!api_project_exists($project)) {
+    form_set_error('branch_name', t('%project does not exist.', array('%project' => $project)));
   }
 }
 
 /**
  * Verifies that all directories exist and are actually directories.
  *
- * Element validation callback for the 'data/directories' element of
+ * Element validation callback for the directories elements of
  * api_branch_edit_form_files().
  */
 function api_check_directories($element, &$form_state) {
@@ -399,26 +541,6 @@ function api_check_directories($element, &$form_state) {
     }
   }
   form_set_value($element, api_clean_directory_list($element['#value']), $form_state);
-}
-
-/**
- * Form submission handler for api_branch_edit_form().
- *
- * @see api_branch_edit_form_validate()
- */
-function api_branch_edit_form_submit($form, &$form_state) {
-  $branch = $form['#branch'];
-  $branch->project = $form_state['values']['project'];
-  $branch->project_title = $form_state['values']['project_title'];
-  $branch->branch_name = $form_state['values']['branch_name'];
-  $branch->title = $form_state['values']['title'];
-  $branch->status = $form_state['values']['status'];
-  $branch->data = $form_state['values']['data'];
-
-  api_save_branch($branch);
-
-  drupal_set_message(t('Saved %branch_name.', array('%branch_name' => $branch->branch_name)));
-  $form_state['redirect'] = 'admin/config/development/api';
 }
 
 /**
@@ -442,6 +564,210 @@ function api_clean_directory_list($list) {
 }
 
 /**
+ * Form submission handler for api_branch_edit_form().
+ *
+ * @see api_branch_edit_form_validate()
+ */
+function api_branch_edit_form_submit($form, &$form_state) {
+  $branch = $form['#branch'];
+  $branch->project = $form_state['values']['project'];
+  $branch->branch_name = $form_state['values']['branch_name'];
+  $branch->title = $form_state['values']['title'];
+  $branch->data = $form_state['values']['data'];
+  $branch->core_compatibility = $form_state['values']['core_compatibility'];
+  $branch->preferred = $form_state['values']['preferred'];
+  $branch->update_frequency = $form_state['values']['update_frequency'];
+
+  api_save_branch($branch);
+
+  drupal_set_message(t('Saved %branch_name.', array('%branch_name' => $branch->branch_name)));
+  $form_state['redirect'] = 'admin/config/development/api/branches';
+}
+
+/**
+ * Form constructor for the edit form for a PHP reference branch.
+ *
+ * @param $branch_id
+ *   ID of the branch to edit.
+ *
+ * @see api_php_branch_edit_form_submit()
+ * @ingroup forms
+ */
+function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
+  if (is_numeric($branch_id)) {
+    $branches = api_get_php_branches();
+    $branch = isset($branches[$branch_id]) ? $branches[$branch_id] : NULL;
+  }
+
+  if (!isset($branch)) {
+    $branch = new stdClass();
+    $branch->branch_id = 0;
+    $branch->title = '';
+    $branch->reference_type = 'php';
+    $branch->summary = '';
+    $branch->path = '';
+    $branch->update_frequency = 1;
+  }
+
+  $form = array(
+    '#branch' => $branch,
+  );
+
+  $form['title'] = array(
+    '#title' => t('Title'),
+    '#type' => 'textfield',
+    '#default_value' => $branch->title,
+    '#description' => t('Used in admin screens only.'),
+    '#required' => TRUE,
+  );
+
+  // At the moment, there is only the PHP reference type.
+  $form['reference_type'] = array(
+    '#type' => 'hidden',
+    '#value' => 'php',
+  );
+
+  $form['data'] = array('#tree' => TRUE);
+
+  $form['data']['summary'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Function list'),
+    '#default_value' => $branch->summary,
+    '#required' => TRUE,
+    '#description' => t('The URL of the PHP function summary list.'),
+  );
+  $form['data']['path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Function URL'),
+    '#default_value' => $branch->path,
+    '#required' => TRUE,
+    '#description' => t('The URL format used to build the link to PHP functions.  Use the variable <em>!function</em> in place of the function name.'),
+  );
+
+  $form['update_frequency'] = array(
+    '#type' => 'select',
+    '#title' => t('Update frequency'),
+    '#description' => t('During cron runs, files will be checked for updates. This sets a minimum time to wait before checking.'),
+    '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
+    '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save branch'),
+  );
+
+  if (is_numeric($branch_id)) {
+    $form[] = array(
+      '#type' => 'markup',
+      '#markup' => l(t('Delete'), 'admin/config/development/api/php_branches/' . $branch->branch_id . '/delete'),
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * Form submission handler for api_php_branch_edit_form().
+ */
+function api_php_branch_edit_form_submit($form, &$form_state) {
+  $branch = $form['#branch'];
+  $branch->title = $form_state['values']['title'];
+  $branch->data = $form_state['values']['data'];
+  $branch->reference_type = $form_state['values']['reference_type'];
+  $branch->update_frequency = $form_state['values']['update_frequency'];
+
+  api_save_php_branch($branch);
+
+  drupal_set_message(t('Saved %branch_name.', array('%branch_name' => $branch->title)));
+  $form_state['redirect'] = 'admin/config/development/api/php_branches';
+}
+
+/**
+ * Form constructor for the edit form for a project.
+ *
+ * @param $project_name
+ *   Name of the project to edit.
+ *
+ * @see api_project_edit_form_submit()
+ * @ingroup forms
+ */
+function api_project_edit_form($form, $form_state, $project_name = NULL) {
+  if (is_string($project_name)) {
+    $project = db_select('api_project', 'p')
+      ->fields('p')
+      ->condition('project_name', $project_name)
+      ->execute()
+      ->fetchObject();
+  }
+  else {
+    $project = new stdClass();
+    $project->project_name = '';
+    $project->project_title = '';
+    $project->project_type = '';
+  }
+
+  $form = array(
+    '#project' => $project,
+  );
+
+  $form['project_name'] = array(
+    '#title' => t('Identifier'),
+    '#type' => 'textfield',
+    '#default_value' => $project->project_name,
+    '#description' => t('Used in URLs to identify the project, must be unique.'),
+    '#required' => TRUE,
+  );
+
+  $form['project_title'] = array(
+    '#title' => t('Title'),
+    '#type' => 'textfield',
+    '#default_value' => $project->project_title,
+    '#description' => t('Used to identify the project in lists.'),
+    '#required' => TRUE,
+  );
+
+  $form['project_type'] = array(
+    '#title' => t('Type'),
+    '#type' => 'textfield',
+    '#default_value' => $project->project_type,
+    '#description' => t('Type of project (core, module, theme, etc.).'),
+    '#required' => TRUE,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save project'),
+  );
+
+  if (strlen($project_name) > 0) {
+    $form[] = array(
+      '#type' => 'markup',
+      '#markup' => l(t('Delete'), 'admin/config/development/api/projects/' . $project->project_name . '/delete'),
+    );
+  }
+
+  return $form;
+}
+
+/**
+ * Form submission handler for api_project_edit_form().
+ */
+function api_project_edit_form_submit($form, &$form_state) {
+  $project = $form['#project'];
+  $old_name = $project->project_name;
+
+  $project->project_name = $form_state['values']['project_name'];
+  $project->project_title = $form_state['values']['project_title'];
+  $project->project_type = $form_state['values']['project_type'];
+
+  api_save_project($project, $old_name);
+
+  drupal_set_message(t('Saved %project_name.', array('%project_name' => $project->project_name)));
+  $form_state['redirect'] = 'admin/config/development/api/projects';
+}
+
+/**
  * Form constructor for the confirmation form for deleting a branch.
  *
  * @param $branch_id
@@ -451,34 +777,68 @@ function api_clean_directory_list($list) {
  */
 function api_branch_delete_form($form, $form_state, $branch_id) {
   $branch = api_get_branch_by_id($branch_id);
-  return confirm_form(array('#branch' => $branch), t('Are you sure you want to delete %branch_name?', array('%branch_name' => $branch->branch_name)), 'admin/config/development/api', NULL, t('Delete'));
+  if (!isset($branch->branch_name)) {
+    drupal_set_message(t('Invalid branch supplied'));
+    drupal_goto('admin/config/development/api/branches');
+  }
+
+  return confirm_form(array('#branch' => $branch), t('Are you sure you want to delete branch %branch_name and all its documentation? This operation cannot be undone.', array('%branch_name' => $branch->branch_name)), 'admin/config/development/api/branches', NULL, t('Delete'));
 }
 
 /**
  * Form submission handler for api_branch_delete_form().
  */
 function api_branch_delete_form_submit($form, &$form_state) {
-  $dids = db_select('api_documentation', 'ad')
-    ->fields('ad', array('did'))
-    ->condition('branch_id', $form['#branch']->branch_id)
-    ->execute()
-    ->fetchCol();
-  api_delete_items($dids);
-  db_delete('api_php_documentation')
-    ->condition('branch_id', $form['#branch']->branch_id)
-    ->execute();
-  db_delete('api_branch')
-    ->condition('branch_id', $form['#branch']->branch_id)
-    ->execute();
+  api_delete_branch($form['#branch']->branch_id);
+  $form_state['redirect'] = 'admin/config/development/api/branches';
+}
 
-  if (variable_get('api_default_branch', NULL) == $form['#branch']->branch_id) {
-    variable_set('api_default_branch', NULL);
+/**
+ * Form constructor for the confirmation form for deleting a PHP branch.
+ *
+ * @param $branch_id
+ *   ID of the branch to delete.
+ *
+ * @see api_php_branch_delete_form_submit()
+ */
+function api_php_branch_delete_form($form, $form_state, $branch_id) {
+  $branches = api_get_php_branches();
+  $branch = isset($branches[$branch_id]) ? $branches[$branch_id] : NULL;
+
+  if (!isset($branch->title)) {
+    drupal_set_message(t('Invalid branch supplied'));
+    drupal_goto('admin/config/development/api/php_branches');
   }
 
-  api_reset_parse_queue();
-  api_reset_branches();
+  return confirm_form(array('#branch' => $branch), t('Are you sure you want to delete branch %branch_name? This operation cannot be undone.', array('%branch_name' => $branch->title)), 'admin/config/development/api/php_branches', NULL, t('Delete'));
+}
 
-  $form_state['redirect'] = 'admin/config/development/api';
+/**
+ * Form submission handler for api_php_branch_delete_form().
+ */
+function api_php_branch_delete_form_submit($form, &$form_state) {
+  api_delete_php_branch($form['#branch']->branch_id);
+  $form_state['redirect'] = 'admin/config/development/api/php_branches';
+}
+
+/**
+ * Form constructor for the confirmation form for deleting a project.
+ *
+ * @param $project_name
+ *   Name of the project to delete.
+ *
+ * @see api_project_delete_form_submit()
+ */
+function api_project_delete_form($form, $form_state, $project_name) {
+  return confirm_form(array('#project' => $project_name), t('Are you sure you want to delete project %project and all its branches and documentation? This operation cannot be undone.', array('%project' => $project_name)), 'admin/config/development/api/projects', NULL, t('Delete'));
+}
+
+/**
+ * Form submission handler for api_project_delete_form().
+ */
+function api_project_delete_form_submit($form, &$form_state) {
+  api_delete_project($form['#project']);
+  $form_state['redirect'] = 'admin/config/development/api/projects';
 }
 
 /**
@@ -561,7 +921,7 @@ function api_apply_comment_settings() {
 }
 
 /**
- * Page callback: Marks a branch for reparsing and redirects to API admin page.
+ * Page callback: Marks a branch for reparsing and redirects to branches page.
  *
  * @param $branch_id
  *   ID of the branch to mark for reparsing.

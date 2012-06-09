@@ -9,60 +9,104 @@
  * Implements hook_schema().
  */
 function api_schema() {
-  $schema['api_branch'] = array(
+  $schema['api_project'] = array(
+    'description' => 'Name and type of each project',
     'fields' => array(
-      'branch_id' => array(
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'branch_name' => array(
+      'project_name' => array(
+        'description' => 'Short name of the project',
         'type' => 'varchar',
-        'length' => '31',
+        'length' => '50',
         'not null' => TRUE,
         'default' => '',
       ),
-      'project' => array(
-        'type' => 'varchar',
-        'length' => '31',
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'type' => array(
-        'description' => 'Controls how this branch will be fetched and parsed.',
-        'type' => 'varchar',
-        'length' => '31',
-        'not null' => TRUE,
-        'default' => '',
-      ),
-      'data' => array(
-        'description' => 'Serialized type-specific data',
-        'type' => 'text',
-        'not null' => TRUE,
-      ),
-      'status' => array(
-        'description' => 'Should this branch be shown in the UI',
-        'type' => 'int',
-        'size' => 'tiny',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
-      'title' => array(
+      'project_title' => array(
+        'description' => 'Long name of the project',
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
         'default' => '',
       ),
-      'project_title' => array(
+      'project_type' => array(
+        'description' => 'module, theme, core, etc.',
+        'type' => 'varchar',
+        'length' => '30',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('project_name'),
+    'indexes' => array(
+      'project_type' => array('project_type'),
+    ),
+  );
+
+  $schema['api_branch'] = array(
+    'description' => 'Information about each branch within an {api_project}',
+    'fields' => array(
+      'branch_id' => array(
+        'description' => 'Primary key, numeric ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'branch_name' => array(
+        'descripton' => 'Short name for branch, unique within project only',
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'core_compatibility' => array(
+        'description' => '6.x, 7.x, etc.',
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'preferred' => array(
+        'description' => 'Whether this is the preferred branch within this core compatibility for this project',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'project' => array(
+        'description' => '{api_project}.{project_name}',
+        'type' => 'varchar',
+        'length' => '50',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'data' => array(
+        'description' => 'Serialized data on directories etc.',
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'title' => array(
+        'description' => 'Displayed name of branch including project',
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
         'default' => '',
       ),
       'weight' => array(
+        'description' => 'Ordering weight',
         'type' => 'int',
         'unsigned' => TRUE,
         'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'last_updated' => array(
+        'description' => 'When this branch was last checked for updated files',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'update_frequency' => array(
+        'description' => 'Number of seconds to wait before updating again',
+        'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
       ),
@@ -74,8 +118,55 @@ function api_schema() {
     'indexes' => array(
       'weight' => array('weight'),
       'branch_name' => array('branch_name'),
-      'project_title' => array('project_title'),
-      'status' => array('status'),
+      'last_updated' => array('last_updated'),
+      'core_preferred' => array('core_compatibility', 'preferred'),
+    ),
+  );
+
+  $schema['api_php_branch'] = array(
+    'description' => 'Information about php branches (e.g., php.net functions)',
+    'fields' => array(
+      'branch_id' => array(
+        'description' => 'Primary key, numeric ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'title' => array(
+        'description' => 'Administratively-displayed name',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'data' => array(
+        'description' => 'Serialized data on URLs etc.',
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'reference_type' => array(
+        'description' => 'Type of references: php, etc.',
+        'type' => 'varchar',
+        'length' => '30',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'last_updated' => array(
+        'description' => 'When this branch was last updated',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'update_frequency' => array(
+        'description' => 'Number of seconds to wait before updating again',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('branch_id'),
+    'indexes' => array(
+      'last_updated' => array('last_updated'),
     ),
   );
 
@@ -392,11 +483,16 @@ function api_schema() {
  * Implements hook_enable().
  */
 function api_enable() {
+  // Make sure a few things are reset. This is only necessary for running tests.
+  api_get_branches(TRUE);
+  api_get_branch_names(TRUE);
+  api_get_php_branches(TRUE);
+
   // Create the PHP branch if it doesn't already exist.
   $exists = FALSE;
-  $result = db_select('api_branch', 'b')
-    ->fields('b', array('branch_name'))
-    ->condition('branch_name', 'php')
+  $result = db_select('api_php_branch', 'b')
+    ->fields('b', array('title'))
+    ->condition('reference_type', 'php')
     ->range(0, 1)
     ->execute()
     ->fetchCol();
@@ -404,17 +500,14 @@ function api_enable() {
   if (count($result) < 1) {
     // Create new PHP branch.
     $branch = new stdClass();
-    $branch->type = 'php';
-    $branch->project = 'php';
-    $branch->project_title = 'php';
-    $branch->branch_name = 'php';
+    $branch->reference_type = 'php';
     $branch->title = 'PHP functions';
-    $branch->status = 0;
+    $branch->update_time = 604800;
     $branch->data = array(
       'summary' => 'http://svn.php.net/repository/phpdoc/doc-base/trunk/funcsummary.txt',
       'path' => 'http://php.net/!function',
     );
-    api_save_branch($branch);
+    api_save_php_branch($branch);
 
     // Turn off cron runs until the API administration page has been visited,
     // because it can take a long time to parse the PHP branch.
@@ -436,11 +529,10 @@ function api_disable() {
   // uninstalling the module.
   $file_branches = db_select('api_branch', 'b')
     ->fields('b', array('branch_id'))
-    ->condition('type', 'files')
     ->execute()
     ->fetchCol();
   if (count($file_branches) > 0) {
-    drupal_set_message(t('If you plan to uninstall the API module (removing all its data), you need to first re-enable the API module and delete all the branches from the administration screen. The data deletion will otherwise run out of time if you attempt to do it all during the uninstall process.'));
+    drupal_set_message(t('If you plan to uninstall the API module (removing all its data), you need to first re-enable the API module and delete all the branches from the administration screen. The data deletion might otherwise run out of time if you attempt to do it all during the uninstall process.'));
   }
 }
 
@@ -531,8 +623,6 @@ function api_update_7101() {
   db_delete('api_documentation')
     ->condition('branch_id', $branches)
     ->execute();
-
-  return 'Created and populated api_php_documentation table.';
 }
 
 /**
@@ -560,7 +650,7 @@ function api_update_7103() {
   // in a bad state.
   $count = api_mark_for_reparse();
 
-  return 'object_name field updated in {api_reference_storage}, and everything marked for reparse.';
+  return 'Due to database change, everything was marked for reparse.';
 }
 
 /**
@@ -572,8 +662,6 @@ function api_update_7104() {
 
   db_drop_index('api_overrides', 'root_did');
   db_drop_field('api_overrides', 'root_did');
-
-  return 'Fields {api_reference_storage}.to_did and {api_overrides}.root_did removed';
 }
 
 /**
@@ -596,8 +684,6 @@ function api_update_7106() {
       'default' => '',
     ),
     array('indexes' => array('object_name' => array('object_name', 'branch_id', 'object_type'))));
-
-  return 'Two fields in {api_documentation} have been updated.';
 }
 
 /**
@@ -715,7 +801,6 @@ function api_update_7108() {
   ));
 
   // Only save class parents to the table if they are unique names.
-  // @todo Use namespaces here to distinguish between classes of the same name.
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'class');
   $select->innerJoin('api_documentation', 'd', 'd.branch_id = r.branch_id AND d.object_name = r.object_name');
@@ -731,6 +816,265 @@ function api_update_7108() {
 }
 
 /**
+ * Update table structure of branches and projects.
+ */
+function api_update_7109() {
+  // Create the PHP branch table.
+  db_create_table('api_php_branch', array(
+    'description' => 'Information about php branches (e.g., php.net functions)',
+    'fields' => array(
+      'branch_id' => array(
+        'description' => 'Primary key, numeric ID',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'title' => array(
+        'description' => 'Administratively-displayed name',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'data' => array(
+        'description' => 'Serialized data on URLs etc.',
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'reference_type' => array(
+        'description' => 'Type of references: php, etc.',
+        'type' => 'varchar',
+        'length' => '30',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'last_updated' => array(
+        'description' => 'When this branch was last updated',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'update_frequency' => array(
+        'description' => 'Number of seconds to wait before updating again',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('branch_id'),
+    'indexes' => array(
+      'last_updated' => array('last_updated'),
+    ),
+  ));
+
+  // Populate the PHP branch table.
+  $results = db_select('api_branch', 'b')
+    ->fields('b', array('branch_id', 'branch_name', 'data'))
+    ->condition('b.type', 'php')
+    ->execute();
+  foreach ($results as $record) {
+    $fields = array();
+    $fields['branch_id'] = $record->branch_id;
+    $fields['title'] = $record->branch_name;
+    $fields['last_updated'] = variable_get('api_last_updated_' . $record->branch_id, 0);
+    variable_del('api_last_updated_' . $record->branch_id);
+    $fields['reference_type'] = 'php';
+    $data = unserialize($record->data);
+    $fields['update_frequency'] = (isset($data['update_time']) ? $data['update_time'] : 0);
+    unset($data['update_time']);
+    $fields['data'] = serialize($data);
+    db_insert('api_php_branch')
+      ->fields($fields)
+      ->execute();
+  }
+
+  // Delete PHP branches from the branch table.
+  db_delete('api_branch')
+    ->condition('type', 'php')
+    ->execute();
+
+  // Figure out what the current default branch is.
+  $id = variable_get('api_default_branch', -1);
+  $default_branch = NULL;
+  if ($id > 0) {
+    $default_branch = db_select('api_branch', 'b')
+      ->fields('b')
+      ->condition('branch_id', $id)
+      ->execute()
+      ->fetchObject();
+  }
+  if (!isset($default_branch) || !isset($default_branch->branch_id) || $default_branch->branch_id != $id) {
+    // Just use the first branch by weight.
+    $default_branch = db_select('api_branch', 'b')
+      ->fields('b')
+      ->orderBy('weight')
+      ->execute()
+      ->fetchObject();
+  }
+  $default_project = (isset($default_branch->project) ? $default_branch->project : NULL);
+
+  // Create the project table.
+  db_create_table('api_project', array(
+    'description' => 'Name and type of each project',
+    'fields' => array(
+      'project_name' => array(
+        'description' => 'Short name of the project',
+        'type' => 'varchar',
+        'length' => '50',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'project_title' => array(
+        'description' => 'Long name of the project',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'project_type' => array(
+        'description' => 'module, theme, core, etc.',
+        'type' => 'varchar',
+        'length' => '30',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('project_name'),
+    'indexes' => array(
+      'project_type' => array('project_type'),
+    ),
+  ));
+
+  // Populate the project table.
+  $query = db_select('api_branch', 'b');
+  $query->addField('b', 'project', 'project_name');
+  $query->groupBy('project_name');
+  $query->addExpression('MIN(project_title)', 'project_title');
+  $results = $query
+    ->condition('b.type', 'files')
+    ->execute();
+  foreach ($results as $record) {
+    $fields = array();
+    // Try to guess the project type.
+    $fields['project_type'] = (strtolower($record->project_name) == 'drupal') ? 'core' : 'module';
+    if (!isset($default_project)) {
+      $default_project = $record->project_name;
+    }
+
+    // Set the other two fields from the information in the branch table.
+    $fields['project_title'] = $record->project_title;
+    $fields['project_name'] = $record->project_name;
+
+    db_insert('api_project')
+      ->fields($fields)
+      ->execute();
+  }
+
+  if (isset($default_project)) {
+    variable_set('api_default_project', $default_project);
+  }
+
+  // Modify the branch table -- add and remove fields.
+  db_add_field('api_branch', 'core_compatibility', array(
+    'description' => '6.x, 7.x, etc.',
+    'type' => 'varchar',
+    'length' => '31',
+    'not null' => TRUE,
+    'default' => '',
+  ));
+
+  db_add_field('api_branch', 'preferred', array(
+    'description' => 'Whether this is the preferred branch within this core compatibility for this project',
+    'type' => 'int',
+    'size' => 'tiny',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 1,
+    ), array('indexes' => array('core_preferred' => array('core_compatibility', 'preferred'))));
+
+  db_add_field('api_branch', 'last_updated', array(
+    'description' => 'When this branch was last checked for updated files',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+    ), array('indexes' => array('last_updated' => array('last_updated'))));
+  db_add_field('api_branch', 'update_frequency', array(
+    'description' => 'Number of seconds to wait before updating again',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  ));
+
+  db_drop_field('api_branch', 'type');
+  db_drop_index('api_branch', 'status');
+  db_drop_field('api_branch', 'status');
+  db_drop_index('api_branch', 'project_title');
+  db_drop_field('api_branch', 'project_title');
+
+  db_drop_unique_key('api_branch', 'project_name');
+  db_change_field('api_branch', 'project', 'project', array(
+    'description' => '{api_project}.{project_name}',
+    'type' => 'varchar',
+    'length' => '50',
+    'not null' => TRUE,
+    'default' => '',
+    ), array('unique_keys' => array('project_name' => array('project', 'branch_name'))));
+
+  // Attempt to set the core compatibility field values and variable.
+  variable_set('api_default_core_compatibility', $default_compat = _api_extract_compatibility(isset($default_branch->branch_name) ? $default_branch->branch_name : ''));
+
+  $branches = db_select('api_branch', 'b')
+    ->fields('b')
+    ->execute();
+  foreach ($branches as $branch) {
+    $branch->core_compatibility = _api_extract_compatibility($branch->branch_name);
+    db_update('api_branch')
+      ->condition('branch_id', $branch->branch_id)
+      ->fields((array) $branch)
+      ->execute();
+  }
+
+  return 'The structure of API branches and projects has changed, and they have new fields whose values were guessed. Check the API module administration pages to make sure all of your branches and projects are correct.';
+}
+
+/**
+ * Attempts to assign a core compatibility, given a branch name.
+ *
+ * This is only used in the api_update_7109() function, where it is trying
+ * to assign values to the new core compatibility field/variables by guessing.
+ */
+function _api_extract_compatibility($str) {
+  // Special case for 4.7.
+  if (strpos($str, '4.7') !== FALSE) {
+    return '4.7';
+  }
+
+  // For the other major versions, first try to find NUM.x, then NUM., then
+  // just NUM in the string, to avoid false matches.
+  $nums = array('5', '6', '7', '8', '9');
+  foreach ($nums as $num) {
+    if (strpos($str, $num . '.x') !== FALSE) {
+      return $num . '.x';
+    }
+  }
+
+  foreach ($nums as $num) {
+    if (strpos($str, $num . '.') !== FALSE) {
+      return $num . '.x';
+    }
+  }
+
+  foreach ($nums as $num) {
+    if (strpos($str, $num) !== FALSE) {
+      return $num . '.x';
+    }
+  }
+
+  // Just return a default value.
+  return '7.x';
+}
+
+/**
  * Remove variables and other data on uninstall.
  */
 function api_uninstall() {
@@ -738,7 +1082,6 @@ function api_uninstall() {
   file_unmanaged_delete_recursive('public://api');
 
   // Delete variables: some wildcards and some exact variable names.
-  $names = array('api_default_branch', 'api_do_cron', 'comment_api');
   $names = db_select('variable', 'v')
     ->condition(db_or()
       ->condition('name', 'api\_autocomplete\_path\_%', 'LIKE')
@@ -751,6 +1094,8 @@ function api_uninstall() {
   $names[] = 'api_default_branch';
   $names[] = 'api_do_cron';
   $names[] = 'comment_api';
+  $names[] = 'api_default_core_compatibility';
+  $names[] = 'api_default_project';
   foreach ($names as $name) {
     variable_del($name);
   }

@@ -92,7 +92,7 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('reply', 0, 'Reply link appears');
 
     // Reparse the branch, and verify the comment is still there.
-    $this->drupalGet('admin/config/development/api');
+    $this->drupalGet('admin/config/development/api/branches');
     $this->clickLink('reparse');
     $this->assertText('reparse, starting at next cron run', 'Confirm message appears');
     api_update_all_branches();

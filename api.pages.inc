@@ -174,7 +174,7 @@ function api_search_listing($branch_name) {
 
   $query = db_select('api_branch', 'b');
   $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
-  $query->fields('b', array('branch_name', 'project', 'project_title'))
+  $query->fields('b', array('branch_name', 'project'))
     ->fields($ad)
     ->condition('b.branch_name', $branch_name)
     ->condition($ad . '.title', $search_text);
@@ -189,7 +189,7 @@ function api_search_listing($branch_name) {
     // Wildcard search.
     $query = db_select('api_branch', 'b');
     $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
-    $query->fields('b', array('branch_name', 'project', 'project_title'))
+    $query->fields('b', array('branch_name', 'project'))
       ->fields($ad)
       ->condition('b.branch_name', $branch_name)
       ->condition($ad . '.title', '%' . str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
@@ -211,22 +211,18 @@ function api_search_listing($branch_name) {
 function api_page_projects() {
   $num_per_page = 50;
 
-  $query = db_select('api_branch', 'b')
-    ->fields('b', array('project'));
-  $query->addExpression('MIN(project_title)', 'project_title');
-  $query
-    ->condition('status', 1)
-    ->groupBy('project')
+  $result = db_select('api_project', 'p')
+    ->fields('p', array('project_name', 'project_title'))
     ->orderBy('project_title')
     ->extend('PagerDefault')
-    ->limit(50);
-  $result = $query->execute();
+    ->limit(50)
+    ->execute();
 
   $links = array();
   foreach ($result as $project) {
-    $links[$project->project] = array(
+    $links[$project->project_name] = array(
       'title' => $project->project_title,
-      'href' => 'api/' . $project->project,
+      'href' => 'api/' . $project->project_name,
     );
   }
 
@@ -415,9 +411,7 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
  */
 function api_other_projects_link() {
   // Figure out how many different projects there are.
-  $count = db_select('api_branch', 'b')
-    ->condition('status', 1)
-    ->groupBy('project')
+  $count = db_select('api_project', 'p')
     ->countQuery()
     ->execute()
     ->fetchField();
@@ -457,7 +451,6 @@ function api_page_function($function) {
   $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
   $query->condition('d.object_type', 'function')
     ->condition('d.title', $function->title)
-    ->condition($b . '.status', 1)
     ->orderBy($b . '.weight');
   $result = $query->execute();
   foreach ($result as $signature) {

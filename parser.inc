@@ -1621,10 +1621,17 @@ function api_has_documentation($object) {
  * @see api_update_branch_files()
  */
 function api_update_all_branches() {
-  foreach (api_get_branches() as $branch) {
-    $function = 'api_update_branch_' . $branch->type;
-    if ($function($branch)) {
+  // First do the files branches.
+  foreach (api_get_branches(TRUE) as $branch) {
+    if (api_update_branch_files($branch)) {
       watchdog('api', 'Updated %project branch %branch_name.', array('%branch_name' => $branch->branch_name, '%project' => $branch->project));
+    }
+  }
+
+  // Second do the PHP branches.
+  foreach (api_get_php_branches(TRUE) as $branch) {
+    if (api_update_branch_php($branch)) {
+      watchdog('api', 'Updated PHP branch %branch_name.', array('%branch_name' => $branch->title));
     }
   }
 }
@@ -1649,17 +1656,8 @@ function api_update_all_branches() {
  */
 function api_update_branch_php($branch, $force = FALSE) {
   // See if we should really update this branch at all.
-  if (!$force) {
-    $last_run = variable_get('api_last_updated_' . $branch->branch_id, 0);
-    $now = time();
-    $add = 0;
-    if (isset($branch->update_time)) {
-      $add = $branch->update_time;
-    }
-    if ($last_run + $add > $now) {
-      // We shouldn't run this time.
-      return FALSE;
-    }
+  if (!api_should_update($branch, $force)) {
+    return FALSE;
   }
 
   $response = drupal_http_request($branch->summary);
@@ -1680,7 +1678,41 @@ function api_update_branch_php($branch, $force = FALSE) {
       api_save_php_documentation($docblocks);
     }
 
-    variable_set('api_last_updated_' . $branch->branch_id, time());
+    // Mark the branch as having been updated.
+    $branch->last_updated = time();
+    drupal_write_record('api_php_branch', $branch, array('branch_id'));
+    return TRUE;
+  }
+
+  // We didn't get a good response.
+  return FALSE;
+}
+
+/**
+ * Checks to see if we need to update a branch or not.
+ *
+ * @param $branch
+ *   Object representing the branch.
+ * @param $force
+ *   TRUE to foce update no matter what.
+ *
+ * @return
+ *   TRUE if we should update this branch, and FALSE if not.
+ */
+function api_should_update($branch, $force = FALSE) {
+  if ($force) {
+    return TRUE;
+  }
+
+  $last_run = isset($branch->last_updated) ? $branch->last_updated : 0;
+  $now = time();
+  $add = 0;
+  if (isset($branch->update_frequency)) {
+    $add = $branch->update_frequency;
+  }
+  if ($last_run + $add > $now) {
+    // It hasn't been long enough yet.
+    return FALSE;
   }
 
   return TRUE;
@@ -1730,6 +1762,17 @@ function api_parse_functions() {
  * @see api_update_all_branches()
  */
 function api_update_branch_files($branch) {
+  // See if we should really update this branch at all.
+  if (!api_should_update($branch)) {
+    return FALSE;
+  }
+
+  $files_to_scan = api_scan_directories($branch->directories, $branch->excluded_directories);
+  if (!count($files_to_scan)) {
+    watchdog('api', 'No files were found in %branch', array('%branch' => $branch->branch_name), WATCHDOG_ERROR);
+    return FALSE;
+  }
+
   $parse_functions = api_parse_functions();
 
   // List all documented files for the branch.
@@ -1745,7 +1788,7 @@ function api_update_branch_files($branch) {
     $files[$file->object_name] = $file;
   }
 
-  foreach (api_scan_directories($branch->directories, $branch->excluded_directories) as $path => $file_name) {
+  foreach ($files_to_scan as $path => $file_name) {
     preg_match('!\.([a-z]*)$!', $file_name, $matches);
     if (isset($matches[1]) && isset($parse_functions[$matches[1]])) {
       $new = FALSE;
@@ -1804,6 +1847,10 @@ function api_update_branch_files($branch) {
     api_schedule_shutdown();
   }
 
+  // Mark the branch as having been updated.
+  $branch->last_updated = time();
+  drupal_write_record('api_branch', $branch, array('branch_id'));
+
   return TRUE;
 }
 
@@ -1824,8 +1871,8 @@ function api_update_branch_files($branch) {
  *   in $directories are excluded, as well as directories called CVS.
  */
 function api_scan_directories($directories, $excluded_directories) {
-  $directory_array = explode("\n", $directories);
-  $excluded_array = explode("\n", $excluded_directories);
+  $directory_array = array_filter(explode("\n", $directories));
+  $excluded_array = array_filter(explode("\n", $excluded_directories));
   $extensions = array_keys(api_parse_functions());
 
   // Figure out the shared part of the file name that is in all the directories.

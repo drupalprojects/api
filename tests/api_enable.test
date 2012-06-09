@@ -11,6 +11,10 @@ module_load_include('php', 'api', 'tests/api_test_case');
  * Tests module enable and cron functionality.
  */
 class ApiEnableTestCase extends ApiWebPagesBaseTest {
+  // Log messages to look for.
+  public $php_message = 'Updated PHP branch PHP functions';
+  public $cron_message = 'Cron run completed';
+
   public static function getInfo() {
     return array(
       'name' => 'Module enable and cron',
@@ -31,7 +35,7 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     $this->drupalLogin($this->super_user);
 
     $this->cronRun();
-    $this->checkAndClearLog(array('Cron run completed'));
+    $this->checkAndClearLog(array($this->cron_message));
   }
 
   /**
@@ -54,7 +58,7 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     $this->resetAll();
     $this->assertTrue(module_exists('api'), 'API module is enabled');
     $this->cronRun();
-    $this->checkAndClearLog(array('Cron run completed'), array('Updated php branch php'));
+    $this->checkAndClearLog(array($this->cron_message), array($this->php_message));
 
     // Update user for API module functionality.
     $this->super_user = $this->drupalCreateUser(array(
@@ -70,25 +74,25 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     // verify that it does the API cron function this time.
     $this->drupalGet('admin/config/development/api');
     $this->cronRun();
-    $this->checkAndClearLog(array('Cron run completed', 'Updated php branch php'));
+    $this->checkAndClearLog(array($this->cron_message, $this->php_message));
 
     // Set the cron time for the PHP branch to weekly, so it doesn't get parsed
     // again. Set up a new branch. Run cron and verify that the PHP branch is
     // not parsed again, but the new branch is parsed (at least partially).
-    $this->drupalGet('admin/config/development/api');
+    $this->drupalGet('admin/config/development/api/php_branches');
     $this->clickLink('edit');
     $this->drupalPost(NULL, array(
-        'data[update_time]' => 604800,
+        'update_frequency' => 604800,
       ),
       t('Save branch'));
     $this->branch_info = $this->setUpBranchUI();
     $this->resetBranchesAndCache();
     $this->cronRun();
     $this->checkAndClearLog(array(
-        'Cron run completed',
+        $this->cron_message,
         'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
         'API parse ' . $this->branch_info['branch_name'],
-      ), array('Updated php branch php'));
+      ), array($this->php_message));
 
     // Run cron a few times more, which should be enough to parse the rest of
     // the sample branch. If the next test is failing, try adding more cron
@@ -146,37 +150,18 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
 
     // Set the PHP branch to update every cron run, and verify it gets updated
     // at next cron run.
-    $this->drupalGet('admin/config/development/api/branches');
-    $this->clickLink('edit', 1);
+    $this->drupalGet('admin/config/development/api/php_branches');
+    $this->clickLink('edit', 0);
     $this->drupalPost(NULL, array(
-        'data[update_time]' => 1,
+        'update_frequency' => 1,
       ),
       t('Save branch'));
     $this->resetBranchesAndCache();
     $this->cronRun();
     $this->checkAndClearLog(array(
-        'Cron run completed',
+        $this->cron_message,
         'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
-        'Updated php branch php',
+        $this->php_message,
       ));
-  }
-
-  /**
-   * Checks the log for messages, and then clears the log.
-   *
-   * @param $messages
-   *   Array of messages to assert are in the log.
-   * @param $notmessages
-   *   Array of messages to assert are not in the log.
-   */
-  function checkAndClearLog($messages = array(), $notmessages = array()) {
-    $this->drupalGet('admin/reports/dblog');
-    foreach($messages as $message) {
-      $this->assertRaw($message, "Message $message appears in the log");
-    }
-    foreach($notmessages as $message) {
-      $this->assertNoRaw($message, "Message $message does not appear in the log");
-    }
-    $this->drupalPost(NULL, array(), t('Clear log messages'));
   }
 }

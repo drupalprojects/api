@@ -39,6 +39,25 @@ class ApiTestCase extends DrupalWebTestCase {
   function baseSetUp() {
     DrupalWebTestCase::setUp('api', 'ctools', 'gplib', 'node', 'comment', 'dblog');
 
+    // For debug purposes, visit the Recent Log Messages report page.
+    $this->drupalGet('admin/reports/dblog');
+
+    $this->verifyCounts(array(
+        'api_project' => 0,
+        'api_branch' => 0,
+        'api_documentation' => 0,
+        'node' => 0,
+        'comment' => 0,
+        'api_file' => 0,
+        'api_function' => 0,
+        'api_reference_storage' => 0,
+        'api_overrides' => 0,
+        'api_members' => 0,
+        'api_extends' => 0,
+        'api_php_branch' => 1,
+        'api_php_documentation' => 0,
+      ), 0, 'Immediately after install');
+
     module_load_include('inc', 'api', 'api.admin');
     module_load_include('inc', 'api', 'parser');
 
@@ -56,52 +75,66 @@ class ApiTestCase extends DrupalWebTestCase {
   }
 
   /**
-   * Sets up a files branch using API function calls.
+   * Sets up a project and a files branch using API function calls.
    *
    * @param $prefix
    *   Directory prefix to prepend on the data directories.
    * @param $default
    *   TRUE to set this as the default branch; FALSE to not set it as default.
    * @param $info
-   *   Array of branch information to override the defaults (see function
-   *   code to see what they are). Note that $prefix is applied after this
-   *   information is read, and that only one directory and one excluded are
-   *   supported in this function.
+   *   Array of information to override the defaults (see function code to see
+   *   what they are). Note that $prefix is applied after this information is
+   *   read, and that only one directory and one excluded are supported in this
+   *   function.
    *
    * @return
    *   Array of information (defaults with overrides) used to create the
-   *   branch.
+   *   branch and project.
    */
   function setUpBranchAPICall($prefix = '', $default = TRUE, $info = array()) {
     // Set up defaults.
     $info += array(
       'project' => 'test',
       'project_title' => 'Project 6',
+      'project_type' => 'module',
       'branch_name' => '6',
       'title' => 'Testing 6',
+      'core_compatibility' => '7.x',
+      'update_frequency' => 1,
       'directory' => drupal_get_path('module', 'api') . '/tests/sample',
       'excluded' => drupal_get_path('module', 'api') . '/tests/sample/to_exclude',
     );
+    $info['preferred'] = $default ? 1 : 0;
 
-    // Save this information as a branch.
+    // Create the project.
+    $project = new stdClass();
+    $project->project_type = $info['project_type'];
+    $project->project_name = $info['project'];
+    $project->project_title = $info['project_title'];
+    api_save_project($project);
+    if ($default) {
+      // Make this the default project/compatibility.
+      variable_set('api_default_project', $info['project']);
+      variable_set('api_default_core_compatibility', $info['core_compatibility']);
+    }
+
+    // Create the branch.
     $branch = new stdClass();
-    $branch->type = 'files';
-    $branch->status = 1;
     $branch->project = $info['project'];
-    $branch->project_title = $info['project_title'];
     $branch->branch_name = $info['branch_name'];
     $branch->title = $info['title'];
+    $branch->preferred = $info['preferred'];
+    $branch->core_compatibility = $info['core_compatibility'];
+    $branch->update_frequency = $info['update_frequency'];
     $branch->data = array(
       'directories' => $prefix . $info['directory'],
       'excluded_directories' => $prefix . $info['excluded'],
     );
-
     api_save_branch($branch);
-    if ($default) {
-      variable_set('api_default_branch', $branch->branch_id);
-    }
 
-    $this->assertEqual(variable_get('api_default_branch', 99), $branch->branch_id, 'Variable for default branch is set correctly');
+    if ($default) {
+      $this->assertEqual(variable_get('api_default_branch', 99), $branch->branch_id, 'Variable for default branch is set correctly');
+    }
 
     return $info;
   }
@@ -110,9 +143,9 @@ class ApiTestCase extends DrupalWebTestCase {
    * Removes the PHP branch, which most tests do not need.
    */
   function removePHPBranch() {
-    db_delete('api_branch')
-      ->condition('type', 'php')
+    db_delete('api_php_branch')
       ->execute();
+    api_get_php_branches(TRUE);
   }
 
   /**
@@ -148,8 +181,7 @@ class ApiTestCase extends DrupalWebTestCase {
   function resetBranchesAndCache() {
     cache_clear_all('variables', 'cache_bootstrap', 'cache');
     variable_initialize();
-    api_get_branches(TRUE);
-    menu_rebuild();
+    api_reset_branches();
   }
 
   /**
@@ -200,6 +232,61 @@ class ApiTestCase extends DrupalWebTestCase {
   function howManyToParse() {
     return db_query('SELECT COUNT(*) from {api_file} WHERE modified < :modified', array(':modified' => 100))->fetchField();
   }
+
+  /**
+   * Verifies the count of items in database tables and parse queue.
+   *
+   * @param array $counts
+   *   Associative array whose keys are names of database tables, and whose
+   *   values are the number of records expected to be in those database
+   *   tables.
+   * @param int $queue
+   *   Number of items expected to be in the parse queue.
+   * @param string $message
+   *   String to append to assertion messages.
+   */
+  function verifyCounts($counts, $queue, $message) {
+    // Add some generic tables to test along with main tables.
+    if (isset($counts['node'])) {
+      $counts['node_revision'] = $counts['node'];
+      $counts['node_comment_statistics'] = $counts['node'];
+    }
+    if (isset($counts['comment'])) {
+      $counts['field_data_comment_body'] = $counts['comment'];
+      $counts['field_revision_comment_body'] = $counts['comment'];
+    }
+
+    foreach ($counts as $table => $expected) {
+      $query = db_select($table, 'x');
+      $query->addExpression('COUNT(*)');
+      $actual = $query
+        ->execute()
+        ->fetchField();
+      $this->assertEqual($actual, $expected, "Table $table has $expected records ($actual) - $message");
+    }
+
+    $actual = $this->countParseQueue();
+    $this->assertEqual($actual, $queue, "Parse queue has $queue records ($actual) - $message");
+  }
+
+  /**
+   * Checks the log for messages, and then clears the log.
+   *
+   * @param $messages
+   *   Array of messages to assert are in the log.
+   * @param $notmessages
+   *   Array of messages to assert are not in the log.
+   */
+  function checkAndClearLog($messages = array(), $notmessages = array()) {
+    $this->drupalGet('admin/reports/dblog');
+    foreach($messages as $message) {
+      $this->assertRaw($message, "Message $message appears in the log");
+    }
+    foreach($notmessages as $message) {
+      $this->assertNoRaw($message, "Message $message does not appear in the log");
+    }
+    $this->drupalPost(NULL, array(), t('Clear log messages'));
+  }
 }
 
 /**
@@ -243,22 +330,21 @@ class ApiWebPagesBaseTest extends ApiTestCase {
   }
 
   /**
-   * Sets up a files branch using the user interface.
+   * Sets up a project and branch using the user interface.
    *
    * @param $prefix
    *   Directory prefix to prepend on the data directories.
    * @param $default
    *   TRUE to set this as the default branch; FALSE to not set it as default.
    * @param $info
-   *   Array of branch information to override the defaults (see function
-   *   code to see what they are). Note that $prefix is applied after this
-   *   information is read, and that only one directory and one excluded are
-   *   supported in this function. You can set $info['excluded'] to 'none' to
-   *   completely omit the excluded directories setting.
+   *   Array of information to override the defaults (see function code to see
+   *   what they are). Note that $prefix is applied after this information is
+   *   read, and that only one directory and one excluded are supported in this
+   *   function.
    *
    * @return
    *   Array of information (defaults with overrides) used to create the
-   *   branch.
+   *   branch and project.
    */
   function setUpBranchUI($prefix = '', $default = TRUE, $info = array()) {
     // Set up defaults.
@@ -266,60 +352,81 @@ class ApiWebPagesBaseTest extends ApiTestCase {
     $info += array(
       'project' => 'test',
       'project_title' => 'Project 6',
+      'project_type' => 'module',
       'branch_name' => '6',
       'title' => 'Testing 6',
+      'core_compatibility' => '7.x',
+      'update_frequency' => 1,
       'directory' => drupal_get_path('module', 'api') . '/tests/sample',
       'excluded' => drupal_get_path('module', 'api') . '/tests/sample/to_exclude',
     );
+    $info['preferred'] = $default ? 1 : 0;
 
-    $info['data[directories]'] = $prefix . $info['directory'];
-    if ($info['excluded'] != 'none') {
-      $info['data[excluded_directories]'] = $prefix . $info['excluded'];
+    // Create the project.
+    $project_info = array(
+      'project_name' => $info['project'],
+      'project_type' => $info['project_type'],
+      'project_title' => $info['project_title'],
+    );
+    $this->drupalPost('admin/config/development/api/projects/new',
+      $project_info,
+      t('Save project')
+    );
+    if ($default) {
+      // Make this the default project/core compat.
+      $this->drupalPost('admin/config/development/api', array(
+          'api_default_core_compatibility' => $info['core_compatibility'],
+          'api_default_project' => $info['project'],
+        ), t('Save configuration'));
     }
-    unset($info['directory']);
-    unset($info['excluded']);
 
-    $this->drupalPost('admin/config/development/api/branches/new/files',
-      $info,
+    // Create the branch.
+    $branch_info = array(
+      'project' => $info['project'],
+      'branch_name' => $info['branch_name'],
+      'title' => $info['title'],
+      'preferred' => $info['preferred'],
+      'core_compatibility' => $info['core_compatibility'],
+      'update_frequency' => $info['update_frequency'],
+      'data[directories]' => $prefix . $info['directory'],
+    );
+    if ($info['excluded'] != 'none') {
+      $branch_info['data[excluded_directories]'] = $prefix . $info['excluded'];
+    }
+    $this->drupalPost('admin/config/development/api/branches/new',
+      $branch_info,
       t('Save branch')
     );
 
     if ($default) {
-      // Make this the default branch.
       $branches = api_get_branches(TRUE);
       $this_id = 0;
       foreach ($branches as $branch) {
         if ($branch->title == $info['title']) {
-          $this_id = $branch->branch_id;
+          $this->assertEqual(variable_get('api_default_branch', 99), $branch->branch_id, 'Variable for default branch is set correctly');
           break;
         }
       }
-
-      $this->drupalPost('admin/config/development/api/branches/list',
-        array(
-          'default_branch' => $this_id,
-        ),
-        t('Save changes')
-      );
     }
 
     return $info;
   }
 
   /**
-   * Sets up a PHP functions branch using the sample code, in the admin UI.
+   * Sets up a PHP reference branch using the sample code, in the admin UI.
    *
    * @return
    *   Information array used to create the branch.
    */
   function createPHPBranchUI() {
     $info = array(
-      'branch_name' => 'php2',
+      'title' => 'php2',
       'data[summary]' => url('<front>', array('absolute' => TRUE )) . '/' . drupal_get_path('module', 'api') . '/tests/php_sample/funcsummary.txt',
       'data[path]' => 'http://example.com/function/!function',
+      'update_frequency' => 1,
     );
 
-    $this->drupalPost('admin/config/development/api/branches/new/php',
+    $this->drupalPost('admin/config/development/api/php_branches/new',
       $info,
       t('Save branch')
     );

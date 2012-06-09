@@ -55,12 +55,14 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
    */
   function testCruftRemoval() {
     $counts = array(
+      'api_project' => 0,
+      'api_branch' => 0,
+      'api_php_branch' => 0,
       'api_documentation' => 0,
       'api_php_documentation' => 0,
       'api_function' => 0,
       'api_members' => 0,
       'api_overrides' => 0,
-      'api_reference_storage' => 0,
       'api_extends' => 0,
       'api_file' => 0,
       'node' => 1,
@@ -70,7 +72,10 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
 
     // Add a branch without the usual exclude directory excluded.
     $this->setUpBranchUI('', TRUE, array('excluded' => ''));
+    $counts['api_project'] = 1;
+    $counts['api_branch'] = 1;
     $this->resetBranchesAndCache();
+    $this->verifyCounts($counts, 0, 'Branch added');
 
     // Run the branch update function and verify counts. There should be
     // records for each file.
@@ -100,8 +105,6 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_members'] = 30;
     $counts['api_overrides'] = 22;
     $counts['api_extends'] = 2;
-    // Don't monitor the exact counts in reference storage.
-    unset($counts['api_reference_storage']);
     $this->verifyCounts($counts, 0, 'Parse the branch');
 
     // Add one comment in the main directory and one in the subdirectory, and
@@ -154,6 +157,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // Delete the branch, and verify counts.
     $this->drupalPost('admin/config/development/api/branches/' . $default_branch->branch_id . '/delete', array(), t('Delete'));
     $this->resetBranchesAndCache();
+    $counts['api_branch'] = 0;
     $counts['comment'] = 0;
     $counts['api_file'] = 0;
     $counts['api_documentation'] = 0;
@@ -161,7 +165,6 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['node'] = 1;
     $counts['api_members'] = 0;
     $counts['api_overrides'] = 0;
-    $counts['api_reference_storage'] = 0;
     $counts['api_extends'] = 0;
     $this->verifyCounts($counts, 0, 'Branch deleted');
 
@@ -175,21 +178,54 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // Add the fake PHP branch.
     $this->createPHPBranchUI();
     $this->resetBranchesAndCache();
+    $counts['api_php_branch'] = 1;
+    $this->verifyCounts($counts, 0, 'Create PHP branch');
 
     // Parse and verify counts.
     api_update_all_branches();
     $counts['api_php_documentation'] = 2;
-    $this->verifyCounts($counts, 0, 'Create PHP branch');
+    $this->verifyCounts($counts, 0, 'Parse PHP branch');
 
     // Delete the branch and vefify counts.
-    $branches = api_get_branches();
+    $branches = api_get_php_branches();
     foreach ($branches as $branch) {
-      $this->drupalPost('admin/config/development/api/branches/' . $branch->branch_id . '/delete', array(), t('Delete'));
+      $this->drupalPost('admin/config/development/api/php_branches/' . $branch->branch_id . '/delete', array(), t('Delete'));
       break;
     }
     $this->resetBranchesAndCache();
+    $counts['api_php_branch'] = 0;
     $counts['api_php_documentation'] = 0;
     $this->verifyCounts($counts, 0, 'Delete PHP branch');
+
+    // Add and parse the sample branch again, then delete the project, and
+    // verify counts.
+    $this->setUpBranchUI();
+    $this->resetBranchesAndCache();
+    api_update_all_branches();
+    $this->processApiParseQueue();
+    $counts['api_project'] = 1;
+    $counts['api_branch'] = 1;
+    $counts['api_documentation'] = 67;
+    $counts['api_file'] = 11;
+    $counts['api_function'] = 30;
+    $counts['api_members'] = 30;
+    $counts['api_overrides'] = 22;
+    $counts['api_extends'] = 2;
+    $counts['node'] = 68;
+    $this->verifyCounts($counts, 0, 'Branch added again');
+
+    $default_branch = api_get_branch_by_id();
+    $this->drupalPost('admin/config/development/api/projects/' . $default_branch->project . '/delete', array(), t('Delete'));
+    $counts['api_branch'] = 0;
+    $counts['api_project'] = 0;
+    $counts['api_file'] = 0;
+    $counts['api_documentation'] = 0;
+    $counts['api_function'] = 0;
+    $counts['node'] = 1;
+    $counts['api_members'] = 0;
+    $counts['api_overrides'] = 0;
+    $counts['api_extends'] = 0;
+    $this->verifyCounts($counts, 0, 'Project deleted');
 
     // Add both sample and fake PHP branches again.
     // Update the branches, but don't parse.
@@ -223,41 +259,5 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
 
     // Verify that there are no auto-complete files left over.
     $this->assertFalse(is_dir('public://api'), 'API files directory is empty');
-  }
-
-  /**
-   * Verifies the count of items in database tables and parse queue.
-   *
-   * @param array $counts
-   *   Associative array whose keys are names of database tables, and whose
-   *   values are the number of records expected to be in those database
-   *   tables.
-   * @param int $queue
-   *   Number of items expected to be in the parse queue.
-   * @param string $message
-   *   String to append to assertion messages.
-   */
-  function verifyCounts($counts, $queue, $message) {
-    // Add some generic tables to test along with main tables.
-    if (isset($counts['node'])) {
-      $counts['node_revision'] = $counts['node'];
-      $counts['node_comment_statistics'] = $counts['node'];
-    }
-    if (isset($counts['comment'])) {
-      $counts['field_data_comment_body'] = $counts['comment'];
-      $counts['field_revision_comment_body'] = $counts['comment'];
-    }
-
-    foreach ($counts as $table => $expected) {
-      $query = db_select($table, 'x');
-      $query->addExpression('COUNT(*)');
-      $actual = $query
-        ->execute()
-        ->fetchField();
-      $this->assertEqual($actual, $expected, "Table $table has $expected records ($actual) - $message");
-    }
-
-    $actual = $this->countParseQueue();
-    $this->assertEqual($actual, $queue, "Parse queue has $queue records ($actual) - $message");
   }
 }
