@@ -116,6 +116,12 @@ function api_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'queued' => array(
+        'description' => 'Time when this branch was queued for update checking',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
     ),
     'primary key' => array('branch_id'),
     'unique keys' => array(
@@ -169,6 +175,12 @@ function api_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'queued' => array(
+        'description' => 'Time when this branch was queued for update checking',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      )
     ),
     'primary key' => array('branch_id'),
     'indexes' => array(
@@ -1096,6 +1108,25 @@ function api_update_7110() {
 }
 
 /**
+ * Add fields to branch database tables for updates queue.
+ */
+function api_update_7111() {
+  db_add_field('api_branch', 'queued', array(
+    'description' => 'Time when this branch was queued for update checking',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  ));
+
+  db_add_field('api_php_branch', 'queued', array(
+    'description' => 'Time when this branch was queued for update checking',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  ));
+}
+
+/**
  * Remove variables and other data on uninstall.
  */
 function api_uninstall() {
@@ -1121,11 +1152,11 @@ function api_uninstall() {
     variable_del($name);
   }
 
-  // Remove all tasks from the parse and delete queues.
-  $queue = DrupalQueue::get('api_parse');
-  $queue->deleteQueue();
-  $queue = DrupalQueue::get('api_delete');
-  $queue->deleteQueue();
+  // Remove all tasks from the queues.
+  foreach (array('api_parse', 'api_branch_update', 'api_delete', 'api_node_delete') as $name) {
+    $queue = DrupalQueue::get($name);
+    $queue->deleteQueue();
+  }
 
   // Delete all API nodes, in batches of 100.
   // This might run out of time, but we warned about it in hook_disable(),

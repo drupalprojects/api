@@ -35,7 +35,7 @@ class ApiMultiDirectoryTestCase extends ApiTestCase {
     $this->removePHPBranch();
 
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
 
     $count = $this->processApiParseQueue();
     $this->assertEqual($count, 12, "12 files were parsed ($count)");

@@ -32,7 +32,7 @@ class ApiDotDotTestCase extends ApiTestCase {
     $this->removePHPBranch();
 
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
 
     $count = $this->processApiParseQueue();
     $this->assertEqual($count, 11, "11 files were parsed ($count)");

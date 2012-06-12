@@ -20,18 +20,9 @@ function api_page_admin_overview() {
   // Display settings form.
   $output['admin_form'] = drupal_get_form('api_page_admin_form');
 
-  // Display parsing status.
-  $queue = DrupalQueue::get('api_parse');
-  $num = $queue->numberOfItems();
-  $output['parse_status'] = array(
+  $output['status'] = array(
     '#type' => 'markup',
-    '#markup' => '<p>' . format_plural($num, 'There is approximately @count parsing job waiting in the queue.', 'There are approximately @count parsing jobs waiting in the queue.') . '</p>',
-  );
-
-  // Display link to reset the parse queue.
-  $output['reparse_link'] = array(
-    '#type' => 'markup',
-    '#markup' => '<p>' . l(t('Reset parse queue'), 'admin/config/development/api/reset_queue') . '</p>',
+    '#markup' => '<h3>' . t('Status') . '</h3>',
   );
 
   // Display library status.
@@ -47,6 +38,35 @@ function api_page_admin_overview() {
       '#markup' => '<p>' . t('The Grammar Parser library is not present. You will not be able to parse API files until you install it. See README.txt for a link to installation instructions for this version of the API module.') . '</p>',
     );
   }
+
+  // Display parsing status.
+  $header = array(
+    t('Queue'),
+    t('Number of jobs'),
+    t('Operations'),
+  );
+  $rows = array();
+
+  $queue = DrupalQueue::get('api_parse');
+  $num = $queue->numberOfItems();
+  $rows[] = array(
+    t('File parse'),
+    $num,
+    l(t('reset'), 'admin/config/development/qpi/reset_queue', array('attributes' => array('title' => t('Reset file parse queue')))),
+  );
+
+  $queue = DrupalQueue::get('api_branch_update');
+  $num = $queue->numberOfItems();
+  $rows[] = array(
+    t('Branch update'),
+    $num,
+    ''
+  );
+
+  $output['queue_status'] = array(
+    '#type' => 'markup',
+    '#markup' => theme('table', array('rows' => $rows, 'header' => $header)),
+  );
 
   return $output;
 }
@@ -935,9 +955,18 @@ function api_apply_comment_settings() {
  * @see api_menu()
  */
 function api_admin_reparse($branch_id) {
+  $branch = api_get_branch_by_id($branch_id);
+  if (is_null($branch)) {
+    drupal_set_message(t('Unknown branch requested for reparse'), array(), 'error');
+    return;
+  }
+
+  // Mark the files for reparsing.
   $num = api_mark_for_reparse($branch_id);
   $type = ($num > 0) ? 'status' : 'error';
-  $branch = api_get_branch_by_id($branch_id);
+  // Mark branch for update.
+  $branch->last_updated = 0;
+  drupal_write_record('api_branch', $branch, array('branch_id'));
 
   drupal_set_message(t('@num files in branch @branch set to reparse, starting at next cron run', array('@num' => $num, '@branch' => $branch->branch_name)), $type);
   drupal_goto('admin/config/development/api/branches');

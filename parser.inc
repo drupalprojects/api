@@ -1608,23 +1608,31 @@ function api_has_documentation($object) {
 }
 
 /**
- * Updates all branches, by calling their update functions.
+ * Checks all branches to see if it's time to update, and queues if so.
  *
  * @see api_update_branch_php()
  * @see api_update_branch_files()
  */
 function api_update_all_branches() {
-  // First do the files branches.
+  $queue = DrupalQueue::get('api_branch_update');
+
+  // Check the files branches to see what needs updates.
   foreach (api_get_branches(TRUE) as $branch) {
-    if (api_update_branch_files($branch)) {
-      watchdog('api', 'Updated %project branch %branch_name.', array('%branch_name' => $branch->branch_name, '%project' => $branch->project));
+    if (api_should_queue($branch)) {
+      // Add to queue and mark as queued.
+      $queue->createItem(array('type' => 'files', 'branch_id' => $branch->branch_id));
+      $branch->queued = time();
+      drupal_write_record('api_branch', $branch, 'branch_id');
     }
   }
 
-  // Second do the PHP branches.
+  // Check the PHP branches to see what needs updates.
   foreach (api_get_php_branches(TRUE) as $branch) {
-    if (api_update_branch_php($branch)) {
-      watchdog('api', 'Updated PHP branch %branch_name.', array('%branch_name' => $branch->title));
+    if (api_should_queue($branch)) {
+      // Add to queue and mark as queued.
+      $queue->createItem(array('type' => 'php', 'branch_id' => $branch->branch_id));
+      $branch->queued = time();
+      drupal_write_record('api_php_branch', $branch, 'branch_id');
     }
   }
 }
@@ -1648,11 +1656,6 @@ function api_update_all_branches() {
  * @see api_update_all_branches()
  */
 function api_update_branch_php($branch, $force = FALSE) {
-  // See if we should really update this branch at all.
-  if (!api_should_update($branch, $force)) {
-    return FALSE;
-  }
-
   $response = drupal_http_request($branch->summary);
   if ($response->code === '200') {
     $docblocks = array();
@@ -1673,16 +1676,20 @@ function api_update_branch_php($branch, $force = FALSE) {
 
     // Mark the branch as having been updated.
     $branch->last_updated = time();
+    $branch->queued = 0;
     drupal_write_record('api_php_branch', $branch, array('branch_id'));
+    watchdog('api', 'Updated PHP branch %branch_name.', array('%branch_name' => $branch->title));
     return TRUE;
   }
 
   // We didn't get a good response.
+  $branch->queued = 0;
+  drupal_write_record('api_php_branch', $branch, array('branch_id'));
   return FALSE;
 }
 
 /**
- * Checks to see if we need to update a branch or not.
+ * Checks to see if we need to queue a branch for updates or not.
  *
  * @param $branch
  *   Object representing the branch.
@@ -1690,11 +1697,16 @@ function api_update_branch_php($branch, $force = FALSE) {
  *   TRUE to foce update no matter what.
  *
  * @return
- *   TRUE if we should update this branch, and FALSE if not.
+ *   TRUE if we should queue this branch, and FALSE if not.
  */
-function api_should_update($branch, $force = FALSE) {
+function api_should_queue($branch, $force = FALSE) {
   if ($force) {
     return TRUE;
+  }
+
+  if (isset($branch->queued) && $branch->queued) {
+    // It is already queued up.
+    return FALSE;
   }
 
   $last_run = isset($branch->last_updated) ? $branch->last_updated : 0;
@@ -1755,14 +1767,11 @@ function api_parse_functions() {
  * @see api_update_all_branches()
  */
 function api_update_branch_files($branch) {
-  // See if we should really update this branch at all.
-  if (!api_should_update($branch)) {
-    return FALSE;
-  }
-
   $files_to_scan = api_scan_directories($branch->directories, $branch->excluded_directories);
   if (!count($files_to_scan)) {
     watchdog('api', 'No files were found in %branch', array('%branch' => $branch->branch_name), WATCHDOG_ERROR);
+    $branch->queued = 0;
+    drupal_write_record('api_branch', $branch, array('branch_id'));
     return FALSE;
   }
 
@@ -1842,7 +1851,9 @@ function api_update_branch_files($branch) {
 
   // Mark the branch as having been updated.
   $branch->last_updated = time();
+  $branch->queued = 0;
   drupal_write_record('api_branch', $branch, array('branch_id'));
+  watchdog('api', 'Updated %project branch %branch_name.', array('%branch_name' => $branch->branch_name, '%project' => $branch->project));
 
   return TRUE;
 }

@@ -30,7 +30,7 @@ class ApiDuplicatesTestCase extends ApiWebPagesBaseTest {
 
     // Parse the code.
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
   }
 

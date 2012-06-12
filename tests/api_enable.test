@@ -100,8 +100,8 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     $this->cronRun();
     $this->cronRun();
     $this->cronRun();
-    $this->drupalGet('admin/config/development/api');
-    $this->assertText('0 parsing jobs', 'Parsing is complete');
+    $count = $this->countParseQueue();
+    $this->assertEqual(0, $count, "Parse queue is empty ($count)");
 
     // Spot check to verify that the shutdown function has run and all files are
     // parsed: check a class page and see if methods are there, and check a

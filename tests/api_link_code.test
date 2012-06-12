@@ -26,7 +26,7 @@ class ApiLinkCodeTest extends ApiTestCase {
     $this->setUpBranchAPICall();
 
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $count = $this->processApiParseQueue();
     $this->assertEqual($count, 11, "11 files were parsed ($count)");
   }

@@ -1088,7 +1088,12 @@ function api_item_load($object_name, $project, $branch_name, $file_name, $type) 
  * Implements hook_cron_queue_info().
  */
 function api_cron_queue_info() {
+  // Note that the order here is the order the queues will be invoked.
   return array(
+    'api_branch_update' => array(
+      'worker callback' => 'api_queue_update_branch',
+      'time' => 30,
+    ),
     'api_parse' => array(
       'worker callback' => 'api_queue_parse_file',
       'time' => 60,
@@ -2812,6 +2817,36 @@ function api_queue_parse_file($data) {
     api_parse_file($data['parser'], $data['path'], $branch, $data['file']);
   }
 }
+
+/**
+ * Checks a queued branch for updates.
+ *
+ * @data
+ *   Array of information about the branch to be checked for updates.
+ */
+function api_queue_update_branch($data) {
+  $type = $data['type'];
+  $id = $data['branch_id'];
+  if ($type == 'files') {
+    $branch = api_get_branch_by_id($id);
+    if (!is_null($branch)) {
+      module_load_include('inc', 'api', 'parser');
+      api_update_branch_files($branch);
+      return;
+    }
+  }
+
+  if ($type == 'php') {
+    $branches = api_get_php_branches();
+    if (isset($branches[$id])) {
+      api_update_branch_php($branches[$id]);
+      return;
+    }
+  }
+
+  watchdog('api', 'Invalid or deleted branch requested in API update %type branch %branch', array('%type' => $type, '%branch' => $id));
+}
+
 
 /**
  * Deletes an obsolete JavaScript autocomplete index file.

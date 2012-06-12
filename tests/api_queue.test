@@ -40,7 +40,7 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is empty');
 
     // Update the branches and verify the queue has 10 items (one per file).
-    api_update_all_branches();
+    $this->updateBranches();
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue has 11 files in it');
 
     // Update them again and verify there are still 11 items.
@@ -50,7 +50,7 @@ class ApiQueuesTestCase extends ApiTestCase {
     $branch_message = 'Updated ' . $this->branch_info['project'] .
       ' branch ' . $this->branch_info['branch_name'];
     sleep(5);
-    api_update_all_branches();
+    $this->updateBranches();
     $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue still has 11 files in it after second update');
 
@@ -61,7 +61,7 @@ class ApiQueuesTestCase extends ApiTestCase {
 
     // Update branches again and verify nothing is added to the queue.
     sleep(5);
-    api_update_all_branches();
+    $this->updateBranches();
     $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after branch update');
 
@@ -73,7 +73,7 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after marking for parsing');
 
     sleep(5);
-    api_update_all_branches();
+    $this->updateBranches();
     $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue is full again (' . $this->countParseQueue() . ') after updating branches.');
 
@@ -88,7 +88,7 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after marking for parsing');
 
     sleep(5);
-    api_update_all_branches();
+    $this->updateBranches();
     $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue is full again (' . $this->countParseQueue() . ') after marking for reparse.');
 
@@ -103,7 +103,7 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is still empty after marking for parsing');
 
     sleep(5);
-    api_update_all_branches();
+    $this->updateBranches();
     $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 1, 'Parse queue is full again (' . $this->countParseQueue() . ') after marking for reparse.');
 

@@ -28,7 +28,7 @@ class ApiTestCase extends DrupalWebTestCase {
     $this->removePHPBranch();
 
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $count = $this->processApiParseQueue();
     $this->assertEqual($count, 11, "11 files were parsed ($count)");
   }
@@ -185,6 +185,29 @@ class ApiTestCase extends DrupalWebTestCase {
   }
 
   /**
+   * Updates branches and runs all update branch jobs.
+   */
+  function updateBranches() {
+    api_update_all_branches();
+
+    $queues = api_cron_queue_info();
+    drupal_alter('cron_queue_info', $queues);
+
+    $queue_name = 'api_branch_update';
+    $info = $queues[$queue_name];
+    $function = $info['worker callback'];
+    $queue = DrupalQueue::get($queue_name);
+
+    $count = 0;
+    while ($item = $queue->claimItem()) {
+      $function($item->data);
+      $queue->deleteItem($item);
+    }
+
+    $this->resetBranchesAndCache();
+  }
+
+  /**
    * Processes the API parse queue.
    *
    * @param $verbose
@@ -325,7 +348,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
 
     // Parse the code.
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
   }
 

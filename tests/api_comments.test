@@ -51,7 +51,7 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
 
     // Parse the code.
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
   }
 
@@ -95,7 +95,7 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('admin/config/development/api/branches');
     $this->clickLink('reparse');
     $this->assertText('reparse, starting at next cron run', 'Confirm message appears');
-    api_update_all_branches();
+    $this->updateBranches();
     $count = $this->processApiParseQueue();
     $this->assertTrue($count > 5, 'Files were reparsed');
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');

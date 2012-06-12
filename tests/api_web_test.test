@@ -169,7 +169,7 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
 
     // Parse the code.
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
   }
 
@@ -821,7 +821,7 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
 
     // Parse the code.
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
   }
 
@@ -945,7 +945,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
 
     // Parse the code.
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
   }
 

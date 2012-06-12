@@ -79,7 +79,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
 
     // Run the branch update function and verify counts. There should be
     // records for each file.
-    api_update_all_branches();
+    $this->updateBranches();
     $counts['node'] = 13;
     $counts['api_documentation'] = 12;
     $counts['api_file'] = 12;
@@ -96,7 +96,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // messages in the log, because the save branch action above should have
     // invalidated several items in the queue.
     $this->checkAndClearLog();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
     $counts['node'] = 68;
     $counts['api_documentation'] = 67;
@@ -139,7 +139,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
 
     // Run the branch update and verify counts, and that the one comment is
     // still visible.
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
     $counts['comment'] = 1;
     $counts['api_file'] = 7;
@@ -193,7 +193,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $this->verifyCounts($counts, 0, 'Create PHP branch');
 
     // Parse and verify counts.
-    api_update_all_branches();
+    $this->updateBranches();
     $counts['api_php_documentation'] = 2;
     $this->verifyCounts($counts, 0, 'Parse PHP branch');
 
@@ -212,7 +212,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // verify counts.
     $this->setUpBranchUI();
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
     $this->processApiParseQueue();
     $counts['api_project'] = 1;
     $counts['api_branch'] = 1;
@@ -243,7 +243,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $this->createPHPBranchUI();
     $this->setUpBranchUI();
     $this->resetBranchesAndCache();
-    api_update_all_branches();
+    $this->updateBranches();
 
     // Disable and uninstall the API module. Verify counts.
     module_disable(array('api'), FALSE);
