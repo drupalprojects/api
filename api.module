@@ -213,8 +213,7 @@ function api_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('api_reset_queue_form'),
     'file' => 'api.admin.inc',
-    'type' => MENU_LOCAL_TASK,
-    'weight' => 100,
+    'type' => MENU_CALLBACK,
   );
 
   // Projects admin.
@@ -1705,15 +1704,35 @@ function api_url($object, $file = FALSE) {
  */
 function api_save_branch($branch) {
   $branch->data = serialize($branch->data);
+  // Update the queue valid timestamp for this branch so that old queue jobs
+  // are invalid.
+  $branch->queue_valid = time();
+  // Update the last updated timestamp for this branch so that it will be
+  // updated as soon as possible.
+  $branch->last_updated = 0;
+
   if (empty($branch->branch_id)) {
     drupal_write_record('api_branch', $branch);
   }
   else {
     drupal_write_record('api_branch', $branch, 'branch_id');
-    // If we've just updated a files branch, we need to reset the parse
-    // queue, because there are possibly some files set up to parse that
-    // should not be parsed (if the directories to be parsed changed).
-    api_reset_parse_queue();
+
+    // We've just updated a files branch, so we need to mark all of the files
+    // that were in the parse queue so that they are re-queued next time
+    // we scan this branch for files.
+    $query = db_select('api_file', 'f')
+      ->fields('f', array('did'))
+      ->condition('queued', 0, '<>');
+    $query->leftJoin('api_documentation', 'd', 'f.did = d.did');
+    $dids = $query->condition('d.branch_id', $branch->branch_id)
+      ->execute()
+      ->fetchCol();
+    if (count($dids)) {
+      db_update('api_file')
+        ->condition('did', $dids)
+        ->fields(array('queued' => 0))
+        ->execute();
+    }
   }
 
   api_reset_branches();
@@ -2768,11 +2787,30 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
  *   Array of information about the file to be parsed.
  */
 function api_queue_parse_file($data) {
-  module_load_include('inc', 'api', 'parser');
+  // Verify that the branch this job was saved with still exists.
+  $branch = $data['branch'];
+  $new_branch = api_get_branch_by_id($branch->branch_id);
+  if (is_null($new_branch)) {
+    watchdog('api', 'Invalid or deleted branch requested in API parse %branch %file', array('%branch' => $branch->branch_name, '%file' => $data['file']));
+    return;
+  }
+  $branch = $new_branch;
 
-  watchdog('api', 'API parse %branch %file', array('%branch' => $data['branch_name'], '%file' => $data['file']));
+  // Verify that it's still a valid parse job (if the branch has been updated,
+  // the parse job is not valid any more).
+  $when_queued = (isset($data['timestamp']) ? $data['timestamp'] : 0);
+  $valid_time = (isset($branch->queue_valid) ? $branch->queue_valid : 0);
+  if ($when_queued < $valid_time) {
+    watchdog('api', 'Skipped API parse %branch %file', array('%branch' => $data['branch_name'], '%file' => $data['file']));
+    return;
+  }
 
-  api_parse_file($data['parser'], $data['path'], $data['branch'], $data['file']);
+  if ($when_queued >= $valid_time) {
+    watchdog('api', 'API parse %branch %file', array('%branch' => $data['branch_name'], '%file' => $data['file']));
+
+    module_load_include('inc', 'api', 'parser');
+    api_parse_file($data['parser'], $data['path'], $branch, $data['file']);
+  }
 }
 
 /**
@@ -2863,7 +2901,6 @@ function api_delete_branch($branch_id, $finalize = TRUE) {
 
   if ($finalize) {
     api_reset_branches();
-    api_reset_parse_queue();
   }
 }
 
@@ -2908,7 +2945,6 @@ function api_delete_project($project_name) {
 
   // Clean up.
   api_reset_branches();
-  api_reset_parse_queue();
 }
 
 /**

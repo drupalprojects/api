@@ -110,6 +110,12 @@ function api_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'queue_valid' => array(
+        'description' => 'File parse jobs before this time are invalid',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
     ),
     'primary key' => array('branch_id'),
     'unique keys' => array(
@@ -1072,6 +1078,21 @@ function _api_extract_compatibility($str) {
 
   // Just return a default value.
   return '7.x';
+}
+
+/**
+ * Add field to branch database table to validate queue entries.
+ */
+function api_update_7110() {
+  // Add the queue valid timestamp field to the branch table. Note that for
+  // existing branches, having a value of zero is good, since that means
+  // that existing queue entries without the timestamp are still valid.
+  db_add_field('api_branch', 'queue_valid', array(
+    'description' => 'File parse jobs before this time are invalid',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  ));
 }
 
 /**

@@ -15,20 +15,13 @@
  * @param $file_path
  *   Full path to the file to read in.
  * @param $branch
- *   Object representing the branch to assign the file contents to.
+ *   Object representing the branch to assign the file contents to. It is
+ *   assumed to be a fresh load of this branch from the branch database table,
+ *   and a valid branch.
  * @param $file_name
  *   File name to store in the database for this file.
  */
 function api_parse_file($callback, $file_path, $branch, $file_name) {
-  // This usually happens from a queue call. Reload the branch and verify that
-  // it still exists.
-  $new_branch = api_get_branch_by_id($branch->branch_id);
-  if (is_null($new_branch)) {
-    watchdog('api', 'Invalid branch requested in API parse %branch %file', array('%branch' => $branch->branch_name, '%file' => $file_name), WATCHDOG_ERROR);
-    return;
-  }
-  $branch = $new_branch;
-
   $basename = drupal_basename($file_name);
   $docblock = array(
     'object_name' => $file_name,
@@ -1803,7 +1796,7 @@ function api_update_branch_files($branch) {
       }
       if ($parse) {
         $queue = DrupalQueue::get('api_parse');
-        $queue->createItem(array('parser' => $parse_functions[$matches[1]], 'path' => $path, 'branch' => $branch, 'file' => $file_name, 'branch_name' => $branch->branch_name));
+        $queue->createItem(array('parser' => $parse_functions[$matches[1]], 'path' => $path, 'branch' => $branch, 'file' => $file_name, 'branch_name' => $branch->branch_name, 'timestamp' => time()));
 
         // Make sure this doesn't get added to the parse queue again.
 

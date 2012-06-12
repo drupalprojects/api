@@ -92,10 +92,10 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
       ), t('Save branch'));
     $this->resetBranchesAndCache();
 
-    // Verify that there's nothing in the queue.
-    $this->verifyCounts($counts, 0, 'Add directory exclusion');
-
-    // Parse everything and verify counts.
+    // Parse everything and verify counts. Also verify that there are 'skip'
+    // messages in the log, because the save branch action above should have
+    // invalidated several items in the queue.
+    $this->checkAndClearLog();
     api_update_all_branches();
     $this->processApiParseQueue();
     $counts['node'] = 68;
@@ -106,6 +106,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_overrides'] = 22;
     $counts['api_extends'] = 2;
     $this->verifyCounts($counts, 0, 'Parse the branch');
+    $this->checkAndClearLog(array('Skipped API parse'));
 
     // Add one comment in the main directory and one in the subdirectory, and
     // verify counts.
@@ -168,12 +169,22 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_extends'] = 0;
     $this->verifyCounts($counts, 0, 'Branch deleted');
 
-    // Attempt to call api_parse_file on a file in the deleted branch. Verify
-    // that the log message is generated, and verify counts.
-    api_parse_file('api_parse_php_file', drupal_get_path('module', 'api') . '/tests/sample/sample.php', $default_branch, 'sample.php');
-    $this->drupalGet('admin/reports/dblog');
-    $this->assertText('Invalid branch requested in API parse');
-    $this->verifyCounts($counts, 0, 'Invalid parse attempt');
+    // Add a job using the deleted branch to the queue, and attempt to parse it.
+    // Verify that the log message is generated.
+    $queue = DrupalQueue::get('api_parse');
+    $queue->createItem(array(
+      'parser' => 'api_parse_php_file',
+      'path' => drupal_get_path('module', 'api') . '/tests/sample/sample.php',
+      'branch' => $default_branch,
+      'file' => 'sample.php',
+      'branch_name' => $default_branch->branch_name,
+      'timestamp' => time(),
+      ));
+    $this->verifyCounts($counts, 1, 'Bad parse queue job added');
+    $this->checkAndClearLog();
+    $this->processApiParseQueue();
+    $this->verifyCounts($counts, 0, 'Bad parse queue job processed');
+    $this->checkAndClearLog(array('Invalid or deleted branch requested in API parse'));
 
     // Add the fake PHP branch.
     $this->createPHPBranchUI();

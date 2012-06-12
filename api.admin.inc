@@ -28,6 +28,12 @@ function api_page_admin_overview() {
     '#markup' => '<p>' . format_plural($num, 'There is approximately @count parsing job waiting in the queue.', 'There are approximately @count parsing jobs waiting in the queue.') . '</p>',
   );
 
+  // Display link to reset the parse queue.
+  $output['reparse_link'] = array(
+    '#type' => 'markup',
+    '#markup' => '<p>' . l(t('Reset parse queue'), 'admin/config/development/api/reset_queue') . '</p>',
+  );
+
   // Display library status.
   if (api_libraries_loaded(FALSE)) {
     $output['library_status'] = array(
@@ -375,7 +381,7 @@ function api_reset_queue_form_submit($form, &$form_state) {
   if ($form_state['values']['confirm']) {
     api_reset_parse_queue();
   }
-  $form_state['redirect'] = 'admin/config/development/api/branches';
+  $form_state['redirect'] = 'admin/config/development/api';
 }
 
 /**
