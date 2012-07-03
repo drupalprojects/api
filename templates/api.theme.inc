@@ -139,6 +139,9 @@ function theme_api_function_reference_link($variables) {
   elseif ($function->object_type == 'class') {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/class/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
   }
+  elseif ($function->object_type == 'interface') {
+    $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/interface/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
+  }
   else {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/function/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
   }

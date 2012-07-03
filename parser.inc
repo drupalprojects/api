@@ -1346,38 +1346,45 @@ function api_shutdown() {
         break;
       }
 
-      // Find members of the same name/type as $object on $class_did's
-      // parent classes or interfaces.
+      // Add parents of this class to the class parent stack.
       $query = db_select('api_reference_storage', 'ars');
-      $parent_d = $query->innerJoin('api_documentation', 'pd', 'ars.object_name = pd.object_name AND ars.branch_id = pd.branch_id AND ars.object_type = pd.object_type');
+      $query->innerJoin('api_documentation', 'pd', 'ars.object_name = pd.object_name AND ars.branch_id = pd.branch_id');
       $query
         ->condition('ars.object_type', array('class', 'interface'))
         ->condition('pd.object_type', array('class', 'interface'))
-        ->condition('ars.from_did', $class_did);
-      $member_d = $query->leftJoin('api_documentation', 'md', 'md.class_did = pd.did');
-      $query
-        ->fields($member_d, array('did', 'summary', 'documentation', 'see', 'throws', 'var', 'class_did'))
-        ->condition('md.object_type', $object->object_type)
-        ->condition('md.member_name', $object->member_name);
-      $func = $query->leftJoin('api_function', 'af', 'af.did = md.did');
-      $query->fields($func, array('parameters', 'return_value'));
+        ->condition('ars.from_did', $class_did)
+        ->fields('pd', array('did'));
+      $parents = $query->execute()->fetchCol();
+      foreach ($parents as $did) {
+        $classes_to_check[] = $did;
+      }
 
-      $result_parents = $query->execute();
-      foreach ($result_parents as $parent_member) {
-        $classes_to_check[] = $parent_member->class_did;
-        if (!is_null($parent_member->did)) {
-          // This parent class/interface has a matching member name.
-          if ($override['overrides_did'] === 0) {
-            // This is the first matching member name we've encountered, so
-            // this is the member that $object is overriding.
-            $override['overrides_did'] = $parent_member->did;
-          }
-          if ($override['documented_did'] === 0 && api_has_documentation($parent_member)) {
-            // $object didn't have documentation, but $parent_member does, so
-            // inherit it.
-            $override['documented_did'] = $parent_member->did;
-            $object->summary = $parent_member->summary;
-            drupal_write_record('api_documentation', $object, 'did');
+      // Skipping the object's own class, see if this class has any members
+      // with the same name/type.
+      if ($class_did != $object->class_did) {
+        $query = db_select('api_documentation', 'd')
+          ->condition('class_did', $class_did)
+          ->fields('d', array('did', 'summary', 'documentation', 'see', 'throws', 'var', 'class_did'))
+          ->condition('d.object_type', $object->object_type)
+          ->condition('d.member_name', $object->member_name);
+        $query->leftJoin('api_function', 'af', 'af.did = d.did');
+        $query->fields('af', array('parameters', 'return_value'));
+        $result_members = $query->execute();
+        foreach ($result_members as $parent_member) {
+          if (!is_null($parent_member->did)) {
+            // This parent class/interface has a matching member name.
+            if ($override['overrides_did'] === 0) {
+              // This is the first matching member name we've encountered, so
+              // this is the member that $object is overriding.
+              $override['overrides_did'] = $parent_member->did;
+            }
+            if ($override['documented_did'] === 0 && api_has_documentation($parent_member)) {
+              // $object didn't have documentation, but $parent_member does, so
+              // inherit it.
+              $override['documented_did'] = $parent_member->did;
+              $object->summary = $parent_member->summary;
+              drupal_write_record('api_documentation', $object, 'did');
+            }
           }
         }
       }
@@ -1397,13 +1404,14 @@ function api_shutdown() {
     $overrides_query->execute();
   }
 
-  // Compute and save member list for each changed class. Members can be on
-  // the class itself, or can be inherited from a parent class.
+  // Compute and save member list for each changed class/interface. Members can
+  // be on the class/interface itself, or can be inherited from a parent
+  // class/interface.
   $members_query = NULL;
   $members_delete = array();
   while (list($class_did, ) = each($changed_classes)) {
-    // Add current class's child classes to the list, because they need to
-    // be recomputed too.
+    // Add current class's implementing/extending classes to the list, because
+    // they need to be recomputed too.
     $query = db_select('api_reference_storage', 'ars')
       ->fields('ars', array('from_did'));
     // @todo Use namespaces here rather than just blindly matching on the
@@ -1432,9 +1440,10 @@ function api_shutdown() {
       // @todo Use namespaces here. Right now we're just matching on the class
       // name.
       $query = db_select('api_reference_storage', 'ars');
-      $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.object_name AND ars.object_type = ad.object_type AND ars.branch_id = ad.branch_id');
+      $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.object_name AND ars.branch_id = ad.branch_id');
       $result_parents = $query
         ->condition('ars.object_type', array('class', 'interface'))
+        ->condition('ad.object_type', array('class', 'interface'))
         ->fields($doc, array('did'))
         ->condition('from_did', $parent)
         ->execute()
@@ -1487,7 +1496,8 @@ function api_shutdown() {
     $members_query->execute();
   }
 
-  // Compute the parent classes for each changed class.
+  // Compute the parent classes for each changed class. Exclude interfaces,
+  // since they can have multiple inheritance.
   if (count($changed_classes)) {
     $todo = array_keys($changed_classes);
     db_delete('api_extends')

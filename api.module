@@ -600,6 +600,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%/interface/hierarchy/%api_item'] = array(
+    'title' => 'Class hierarchy',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_class_hierarchy',
+    'page arguments' => array(5),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%/group/%api_item'] = array(
     'title' => 'Group',
     'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type

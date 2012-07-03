@@ -853,8 +853,8 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
     // Verify that the correct listing page links are there.
     $this->assertLink(t('Files'), 0, 'Files link is present');
     $this->assertLink(t('Functions'), 0, 'Functions link is present');
+    $this->assertLink(t('Classes and Interfaces'), 0, 'Classes link is present');
     // Verify that the listing pages that would be empty are not present.
-    $this->assertNoLink(t('Classes and Interfaces'), 'Classes link is not present');
     $this->assertNoLink(t('Constants'), 'Constants link is not present');
     $this->assertNoLink(t('Globals'), 'Globals link is not present');
     $this->assertNoLink(t('Topics'), 'Topics link is not present');
@@ -895,7 +895,7 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
     $this->assertLink($this->branch_info_2['title'], 0, 'Branch link is present');
     $this->assertLink(t('Files'), 0, 'Files link is present');
     $this->assertLink(t('Functions'), 0, 'Functions link is present');
-    $this->assertNoLink(t('Classes'), 'Classes link is not present');
+    $this->assertLink(t('Classes'), 0, 'Classes link is present');
     $this->assertNoLink(t('Constants'), 'Constants link is not present');
     $this->assertNoLink(t('Globals'), 'Globals link is not present');
     $this->assertNoLink(t('Topics'), 'Topics link is not present');

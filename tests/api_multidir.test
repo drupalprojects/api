@@ -38,7 +38,7 @@ class ApiMultiDirectoryTestCase extends ApiTestCase {
     $this->updateBranches();
 
     $count = $this->processApiParseQueue();
-    $this->assertEqual($count, 12, "12 files were parsed ($count)");
+    $this->assertEqual($count, 13, "13 files were parsed ($count)");
   }
 
   /**
@@ -47,7 +47,7 @@ class ApiMultiDirectoryTestCase extends ApiTestCase {
   function testParsing() {
     // Make sure we have the right number of doc objects.
     $branch = $this->getBranch();
-    $this->assertObjectCount($branch, 70);
+    $this->assertObjectCount($branch, 88);
 
     // Verify that the top-level directory was parsed.
     $object = api_filename_load('sample/sample.php', $branch->project, $branch->branch_name);

@@ -880,10 +880,30 @@ function api_page_class($class) {
   $hierarchy = api_class_hierarchy($class);
   $implements = array();
   if ($class->object_type === 'interface') {
+    // Make a list of all interfaces that extend this one.
+    $to_check = array($class->object_name);
+    $extend_list = array($class->object_name);
+    while (count($to_check) > 0) {
+      $this_name = array_shift($to_check);
+      $query = db_select('api_reference_storage', 'ars')
+        ->condition('ars.object_type', 'class')
+        ->condition('ars.object_name', $this_name)
+        ->condition('ars.branch_id', $branch->branch_id);
+      $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
+      $result = $query
+        ->fields('ad', array('object_name'))
+        ->execute()
+        ->fetchCol();
+      foreach ($result as $new_name) {
+        $to_check[] = $new_name;
+        $extend_list[] = $new_name;
+      }
+    }
+
     $query = db_select('api_reference_storage', 'ars');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
     $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
-      ->condition('ars.object_name', $class->object_name)
+      ->condition('ars.object_name', $extend_list)
       ->condition('ars.branch_id', $branch->branch_id)
       ->condition('ars.object_type', 'interface')
       ->orderBy($ad . '.object_name');
@@ -891,7 +911,9 @@ function api_page_class($class) {
     foreach ($result as $object) {
       $implements[] = l($object->object_name, api_url($object));
     }
-    $implements = theme('item_list', array('items' => $implements));
+    if (count($implements) > 0) {
+      $implements = theme('item_list', array('items' => $implements));
+    }
   }
 
   $query = db_select('api_members', 'am');
@@ -1121,7 +1143,7 @@ function api_class_hierarchy($class, $type = 'ancestors') {
       ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
       ->condition('ars.from_did', $parent->did)
       ->condition('ars.object_type', 'class')
-      ->condition('ad.object_type', 'class');
+      ->condition('ad.object_type', array('class', 'interface'));
     $results = $query->execute()->fetchAll();
     $count = count($results);
     if ($count < 1) {
@@ -1129,20 +1151,43 @@ function api_class_hierarchy($class, $type = 'ancestors') {
       break;
     }
     $parent = array_pop($results);
-    if ($count == 1) {
-      if ($type == 'full') {
-        $siblings = api_class_children($parent, $class->did);
-      }
-      else {
-        $siblings = array($current->did => api_class_hierarchy_line($current, $class->did));
-      }
-      $siblings[$current->did] .= $child_output;
-      $child_output = theme('item_list', array('items' => $siblings));
-      $current = $parent;
+    if ($count == 1 && $type == 'full') {
+      $siblings = api_class_children($parent, $class->did);
     }
     else {
-      // Multiple results. Add a line indicating a search.
-      $parent = l(t('Multiple classes named @classname', array('@classname' => $parent->object_name)), 'api/search/' . $branch->branch_name . '/' . check_plain($parent->object_name));
+      $siblings = array($current->did => api_class_hierarchy_line($current, $class->did));
+    }
+
+    $siblings[$current->did] .= $child_output;
+    $child_output = theme('item_list', array('items' => $siblings));
+    $current = $parent;
+
+    if ($count > 1) {
+      // If we found more than one result, that means that either there were
+      // multiple results with the same class name, or this was an interface
+      // with multiple inheritance (hopefully not both!). So, if the results
+      // have the same name, add a line indicating a search. If they have
+      // different names, list them all. In either case, don't attempt any more
+      // lines of hierarchy.
+      $same = TRUE;
+      foreach ($results as $item) {
+        if ($item->object_name != $parent->object_name) {
+          $same = FALSE;
+          break;
+        }
+      }
+
+      if ($same) {
+        $parent = l(t('Multiple classes named @classname', array('@classname' => $parent->object_name)), 'api/search/' . $branch->branch_name . '/' . check_plain($parent->object_name));
+      }
+      else {
+        $this_line = array();
+        array_push($results, $parent);
+        foreach ($results as $item) {
+          $this_line[] = api_class_hierarchy_line($item, $class->did);
+        }
+        $parent = implode('; ', $this_line);
+      }
       break;
     }
   }
@@ -1179,7 +1224,7 @@ function api_class_children($class, $current_did = 0) {
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
     ->condition('ars.object_name', $class->object_name)
     ->condition('ars.branch_id', $class->branch_id)
-    ->condition('ad.object_type', 'class')
+    ->condition('ad.object_type', array('class', 'interface'))
     ->condition('ars.object_type', 'class')
     ->orderBy('ad.object_name');
   $result = $query->execute();
@@ -1255,7 +1300,7 @@ function api_class_hierarchy_line($class, $current_did = 0) {
     $extends = ' extends ' . $parent->object_name;
   }
 
-  $output = l($class->object_name, api_url($class), array('attributes' => array('class' => $classes))) . $extends;
+  $output = $class->object_type . ' ' . l($class->object_name, api_url($class), array('attributes' => array('class' => $classes))) . $extends;
   if (count($interfaces) > 0) {
     $output .= ' implements ' . implode(', ', $interfaces);
   }
