@@ -301,12 +301,22 @@ function api_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  $items['admin/config/development/api/reparse/%'] = array(
+  $items['admin/config/development/api/branches/%/reparse'] = array(
     'title' => 'Reparse branch',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
     'page callback' => 'api_admin_reparse',
     'page arguments' => array(5),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/development/api/branches/%/update'] = array(
+    'title' => 'Update branch',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'api_admin_update',
+    'page arguments' => array('branch', 5),
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
@@ -356,6 +366,16 @@ function api_menu() {
     'access arguments' => array('administer API reference'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('api_php_branch_delete_form', 5),
+    'file' => 'api.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/development/api/php_branches/%/update'] = array(
+    'title' => 'Update branch',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'api_admin_update',
+    'page arguments' => array('php_branch', 5),
     'file' => 'api.admin.inc',
     'type' => MENU_CALLBACK,
   );
@@ -428,7 +448,15 @@ function api_menu() {
     'file' => 'api.pages.inc',
   );
 
-  // Autocomplete callback.
+  // Autocomplete callbacks.
+
+  // Projects callback.
+  $items['api/project/autocomplete'] = array(
+    'page callback' => 'api_project_autocomplete',
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+  );
+
   // This returns ALL possibilities for a search term.
   $items['api/autocomplete/%'] = array(
     'page callback' => 'api_autocomplete',
@@ -3112,4 +3140,25 @@ function _api_delete_nodes_batch($nids, &$context) {
     // Just make sure we don't run an endless loop here.
     $context['finished'] = 1;
   }
+}
+
+/**
+ * Performs AJAX autocomplete for projects.
+ */
+function api_project_autocomplete($string = '') {
+  $matches = array();
+  if ($string) {
+    $result = db_select('api_project', 'p')
+      ->fields('p', array('project_name'))
+      ->condition('project_name', db_like($string) . '%', 'LIKE')
+      ->orderBy('project_name')
+      ->range(0, 10)
+      ->execute()
+      ->fetchCol();
+    foreach ($result as $name) {
+      $matches[$name] = check_plain($name);
+    }
+  }
+
+  drupal_json_output($matches);
 }

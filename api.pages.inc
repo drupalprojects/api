@@ -226,7 +226,36 @@ function api_page_projects() {
     );
   }
 
-  return theme('links', array('links' => $links, 'attributes' => array('class' => array('api-project-links')))) . theme('pager');
+  $form = drupal_get_form('api_project_form');
+  return drupal_render($form) .
+    theme('links', array('links' => $links, 'attributes' => array('class' => array('api-project-links')))) .
+    theme('pager');
+}
+
+/**
+ * Form constructor for the project select autocomplete form.
+ */
+function api_project_form($form, $form_state) {
+  $form['project'] = array(
+    '#type' => 'textfield',
+    '#autocomplete_path' => 'api/project/autocomplete',
+    '#title' => t('Project short name'),
+    '#default_value' => !empty($form_state['values']['project']) ? $form_state['values']['project'] : '',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Go'),
+  );
+
+  return $form;
+}
+
+/**
+ * Form submission handler for api_project_form().
+ */
+function api_project_form_submit($form, &$form_state) {
+  $form_state['redirect'] = 'api/' . $form_state['values']['project'];
 }
 
 /**

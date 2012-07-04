@@ -118,20 +118,9 @@ function api_branch_list_form($form, &$form_state) {
     '#tree' => TRUE,
   );
 
-  $projects = db_select('api_project', 'p')
-    ->fields('p', array('project_name'))
-    ->orderBy('project_name')
-    ->execute()
-    ->fetchCol();
-  $safe_projects = array('' => '');
-  foreach ($projects as $project) {
-    $project = check_plain($project);
-    $safe_projects[$project] = $project;
-  }
-
   $form['filters']['project'] = array(
-    '#type' => 'select',
-    '#options' => $safe_projects,
+    '#type' => 'textfield',
+    '#autocomplete_path' => 'api/project/autocomplete',
     '#title' => t('Project'),
     '#default_value' => !empty($form_state['values']['filters']['project']) ? $form_state['values']['filters']['project'] : '',
   );
@@ -162,7 +151,10 @@ function api_branch_list_form($form, &$form_state) {
     $row[] = check_plain($branch->branch_name);
     $ops = array();
     $ops[] = l(t('edit'), 'admin/config/development/api/branches/' . $branch->branch_id);
-    $ops[] = l(t('reparse'), 'admin/config/development/api/reparse/' . $branch->branch_id);
+    $ops[] = l(t('reparse'), 'admin/config/development/api/branches/' . $branch->branch_id . '/reparse');
+    $ops[] = l(t('update'), 'admin/config/development/api/branches/' . $branch->branch_id . '/update');
+    $ops[] = l(t('delete'), 'admin/config/development/api/branches/' . $branch->branch_id . '/delete');
+
     $row[] = implode(' ', $ops);
 
     $rows[] = $row;
@@ -246,6 +238,8 @@ function api_php_branch_list() {
     $row[] = check_plain($branch->reference_type);
     $ops = array();
     $ops[] = l(t('edit'), 'admin/config/development/api/php_branches/' . $branch->branch_id);
+    $ops[] = l(t('delete'), 'admin/config/development/api/php_branches/' . $branch->branch_id . '/delete');
+    $ops[] = l(t('update'), 'admin/config/development/api/php_branches/' . $branch->branch_id . '/update');
     $row[] = implode(' ', $ops);
 
     $rows[] = $row;
@@ -501,8 +495,8 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
 
   $form['update_frequency'] = array(
     '#type' => 'select',
-    '#title' => t('Update frequency'),
-    '#description' => t('During cron runs, files will be checked for updates. This sets a minimum time to wait before checking.'),
+    '#title' => t('Branch update frequency'),
+    '#description' => t('During cron runs, this branch will be checked for updated files. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
     '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
   );
@@ -672,8 +666,8 @@ function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
 
   $form['update_frequency'] = array(
     '#type' => 'select',
-    '#title' => t('Update frequency'),
-    '#description' => t('During cron runs, files will be checked for updates. This sets a minimum time to wait before checking.'),
+    '#title' => t('Branch update frequency'),
+    '#description' => t('During cron runs, this branch will be checked for updates in the function list. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
     '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
   );
@@ -958,6 +952,7 @@ function api_admin_reparse($branch_id) {
   $branch = api_get_branch_by_id($branch_id);
   if (is_null($branch)) {
     drupal_set_message(t('Unknown branch requested for reparse'), array(), 'error');
+    drupal_goto('admin/config/development/api/branches');
     return;
   }
 
@@ -970,4 +965,47 @@ function api_admin_reparse($branch_id) {
 
   drupal_set_message(t('@num files in branch @branch set to reparse, starting at next cron run', array('@num' => $num, '@branch' => $branch->branch_name)), $type);
   drupal_goto('admin/config/development/api/branches');
+}
+
+/**
+ * Page callback: Marks a branch for update and redirects to branches page.
+ *
+ * @param $type
+ *   'branch' for a regular branch, and 'php_branch' for a PHP reference
+ *   branch.
+ * @param $branch_id
+ *   ID of the branch to mark for update.
+ *
+ * @see api_menu()
+ */
+function api_admin_update($type, $branch_id) {
+  if ($type == 'branch') {
+    $branch = api_get_branch_by_id($branch_id);
+  }
+  else {
+    $branches = api_get_php_branches();
+    $branch = isset($branches[$branch_id]) ? $branches[$branch_id] : NULL;
+  }
+
+  if (is_null($branch)) {
+    drupal_set_message(t('Unknown branch requested for update'), array(), 'error');
+  }
+  else {
+    $branch->last_updated = 0;
+    if ($type == 'branch') {
+      drupal_write_record('api_branch', $branch, 'branch_id');
+    }
+    else {
+      drupal_write_record('api_php_branch', $branch, 'branch_id');
+    }
+
+    drupal_set_message(t('Branch @branch set to update at next cron run', array('@branch' => $branch->title)));
+  }
+
+  if ($type == 'branch') {
+    drupal_goto('admin/config/development/api/branches');
+  }
+  else {
+    drupal_goto('admin/config/development/api/php_branches');
+  }
 }
