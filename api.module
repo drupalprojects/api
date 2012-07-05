@@ -2876,12 +2876,13 @@ function api_queue_update_branch($data) {
   if ($type == 'php') {
     $branches = api_get_php_branches();
     if (isset($branches[$id])) {
+      module_load_include('inc', 'api', 'parser');
       api_update_branch_php($branches[$id]);
       return;
     }
   }
 
-  watchdog('api', 'Invalid or deleted branch requested in API update %type branch %branch', array('%type' => $type, '%branch' => $id));
+  watchdog('api', 'Invalid or deleted branch requested in API update %type branch %branch', array('%type' => $type, '%branch' => $id), WATCHDOG_ERROR);
 }
 
 

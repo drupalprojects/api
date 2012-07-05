@@ -1634,6 +1634,9 @@ function api_update_all_branches() {
       $branch->queued = time();
       drupal_write_record('api_branch', $branch, 'branch_id');
     }
+    else {
+      watchdog('api', 'Skipped update of branch %branch', array('%branch' => $branch->branch_name));
+    }
   }
 
   // Check the PHP branches to see what needs updates.
@@ -1643,6 +1646,9 @@ function api_update_all_branches() {
       $queue->createItem(array('type' => 'php', 'branch_id' => $branch->branch_id));
       $branch->queued = time();
       drupal_write_record('api_php_branch', $branch, 'branch_id');
+    }
+    else {
+      watchdog('api', 'Skipped update of PHP branch %branch', array('%branch' => $branch->title));
     }
   }
 }
