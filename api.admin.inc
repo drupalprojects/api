@@ -52,7 +52,7 @@ function api_page_admin_overview() {
   $rows[] = array(
     t('File parse'),
     $num,
-    l(t('reset'), 'admin/config/development/qpi/reset_queue', array('attributes' => array('title' => t('Reset file parse queue')))),
+    l(t('reset'), 'admin/config/development/api/reset_queue', array('attributes' => array('title' => t('Reset file parse queue')))),
   );
 
   $queue = DrupalQueue::get('api_branch_update');

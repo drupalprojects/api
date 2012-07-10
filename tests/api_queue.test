@@ -77,6 +77,18 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->checkAndClearLog(array($branch_message));
     $this->assertEqual($this->countParseQueue(), 11, 'Parse queue is full again (' . $this->countParseQueue() . ') after updating branches.');
 
+    // Reset and verify that it is empty.
+    $this->drupalGet('admin/config/development/api');
+    $this->clickLink(t('reset'));
+    $this->drupalPost(NULL, array(), t('Confirm'));
+    $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is empty (' . $this->countParseQueue() . ') after reset.');
+
+    // Update again and verify it gets full again.
+    sleep(5);
+    $this->updateBranches();
+    $this->checkAndClearLog(array($branch_message));
+    $this->assertEqual($this->countParseQueue(), 11, 'Parse queue is full again (' . $this->countParseQueue() . ') after reset and then updating branches.');
+
     // Parse and verify empty again.
     $count = $this->processApiParseQueue(TRUE);
     $this->assertEqual($count, 11, '11 items were processed in the queue');
