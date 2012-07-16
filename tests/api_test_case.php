@@ -70,6 +70,7 @@ class ApiTestCase extends DrupalWebTestCase {
       'administer blocks',
       'administer nodes',
       'access site reports',
+      'administer site configuration',
     ));
     $this->drupalLogin($this->super_user);
   }

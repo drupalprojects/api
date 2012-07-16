@@ -26,6 +26,7 @@ class ApiWebLinksTestCase extends ApiWebPagesBaseTest {
     $this->_testInCodeLinks();
     $this->_testDocumentationLinks();
     $this->_testClassLinks();
+    $this->_test404();
   }
 
   /**
@@ -165,5 +166,28 @@ class ApiWebLinksTestCase extends ApiWebPagesBaseTest {
       $this->assertText($item['text'], $item['text'] . ' is present');
       $this->assertNoLink($item['text'], $item['text'] . ' is not a link');
     }
+  }
+
+  /**
+   * Tests that the 'apis' path can be set to be the 404 handler.
+   */
+  function _test404() {
+    // Set the 404 handler to be the 'apis' path.
+    $this->drupalPost('admin/config/system/site-information', array(
+        'site_404' => 'apis',
+      ), t('Save configuration'));
+
+    // Try to go to path 'sample_function' and verify it redirects to the
+    // function page.
+    $this->drupalGet('sample_function');
+    $this->assertURLContains('sample.php/function/sample_function', 'sample_function 404 went to right page');
+    $this->assertText('This is a sample list', 'Text of page is correct');
+
+    // Try to go to the path 'foobarbaz' and verify it redirets to a search
+    // page.
+    $this->drupalGet('foobarbaz');
+    $this->assertURLContains('search/' . $this->branch_info['branch_name'] . '/foobarbaz', 'foobarbaz 404 went to right page');
+    $this->assertText('Search for foobarbaz', 'Text of page is correct');
+    $this->assertText(t('No search results found'), 'Text of page is correct');
   }
 }

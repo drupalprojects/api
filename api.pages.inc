@@ -14,14 +14,18 @@
  * @see api_menu()
  */
 function api_search_redirect() {
+  // See what we should search for.
   $args = func_get_args();
-  if (count($args) === 0 && strpos($_GET['q'], 'apis/') !== 0) {
-    // Handling 404.
-    $tail = $_REQUEST['q'];
+  if (count($args) === 0 && isset($_GET['destination']) && strpos($_GET['destination'], 'apis/') !== 0) {
+    // Handling 404: search for the unknown page path.
+    $tail = $_GET['destination'];
   }
   else {
+    // Called directly: search for whatever was after apis/ in the path.
     $tail = implode('/', $args);
   }
+
+  // Figure out what branch to search in.
   $branch = api_get_branch_by_id();
   if (!isset($branch)) {
     $branch = api_get_active_branch();
@@ -30,6 +34,9 @@ function api_search_redirect() {
     $_GET['destination'] = 'api/search/' . $branch->branch_name . '/' . $tail;
     drupal_goto();
   }
+
+  // This is just a stopgap if there is no branch.
+  return t('Sorry, @term cannot be found', array('@term' => $tail));
 }
 
 /**
