@@ -1710,7 +1710,8 @@ function api_forms() {
  * file path with API_FILEPATH_SEPARATOR_REPLACEMENT.
  *
  * @param $object
- *   An API object with object_type, object_name, and file_name properties.
+ *   An API object with object_type, object_name, branch_id, and file_name
+ *   properties.
  * @param $file
  *   TRUE links to the object’s containing file, FALSE links to the object
  *   itself.
@@ -3162,4 +3163,15 @@ function api_project_autocomplete($string = '') {
   }
 
   drupal_json_output($matches);
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function api_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'api') . '/views',
+    'template path' => drupal_get_path('module', 'api') . '/views/templates',
+  );
 }
