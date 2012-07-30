@@ -361,6 +361,12 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('SubSample', $this->branch_info['project'] . '/classes.php/class/SubSample', 'SubSample link exists', 'SubSample link went to the right place');
     $this->assertLinkURLSubstring('SampleInterface', $this->branch_info['project'] . '/classes.php/interface/SampleInterface', 'SampleInterface link exists', 'SampleInterface link went to the right place');
 
+    // Verify the "functions that call this" page exists and references the
+    // classes.php file, which calls this function from the global scope.
+    $this->clickLink('1 call to sample_class_function()');
+    $this->assertLink('classes.php', 0, 'Link to classes.php is there');
+    $this->assertText('Object-oriented tests.', 'classes.php file description is there');
+
     // Visit a function in a subdirectory and verify.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!sample-subdir.php/function/sample_insubdir_function');
     $this->assertText('Another sample function; in a sub-directory.', 'Function description appears on subdirectory function page');

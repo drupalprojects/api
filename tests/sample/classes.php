@@ -112,3 +112,7 @@ abstract class Sample2 implements SampleInterface {
 /**
  * @} end class_samples
  */
+
+// This function call in the global space is for testing whether references
+// can be detected here.
+$xyz = sample_class_function();

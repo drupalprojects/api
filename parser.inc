@@ -125,7 +125,7 @@ function api_parse_php_file($docblock) {
   }
 
   // Reserve the first array slot for the file documentation block. Note that
-  // we might or might not keep the references we parsed out.
+  // we will only keep some of the references we parsed out.
   $references = array();
   $docblock['code'] = api_format_php($docblock['source'], $references, TRUE);
   $docblocks = array($docblock);
@@ -141,19 +141,21 @@ function api_parse_php_file($docblock) {
     'see' => '',
   );
 
-  api_documentation_loop($statements, $default_block, $docblocks);
+  $found_references = api_documentation_loop($statements, $default_block, $docblocks);
 
   // Free up memory.
   $reader->reset();
 
-  // If this file only contains a docblock for itself, plus maybe one @file
-  // block, then any references we found above should be saved for the file.
-  // This is usually the case for theme templates.
-  if (count($references) > 0 &&
-    (count($docblocks) == 1 ||
-      (count($docblocks) == 2 && $docblocks[1]['object_type'] == '' && strpos($docblocks[1]['content'], '@file') !== FALSE))) {
-    $docblocks[0]['references'] = $references;
+  // For the file, save only the references not found in parsing the
+  // statements within the file. This will only save references to function
+  // calls in the global area of the file, excluding those found in
+  // functions declared in the file.
+  foreach ($found_references as $type => $list) {
+    foreach ($list as $name => $info) {
+      unset($references[$type][$name]);
+    }
   }
+  $docblocks[0]['references'] = $references;
 
   api_save_documentation($docblocks);
 }
@@ -168,11 +170,17 @@ function api_parse_php_file($docblock) {
  * @param array $docblocks
  *   The array of documentation block items. Documentation items
  *   are added to the end of this array.
+ *
+ * @return
+ *   An array of all the references found while parsing the statements.
  */
 function api_documentation_loop($statements, $default_block, &$docblocks) {
   if (!api_libraries_loaded()) {
-    return;
+    return array();
   }
+
+  // Keep track of all references found.
+  $all_references = array();
 
   static $object_types = array(
     T_ASSIGNMENT => 'property',
@@ -218,6 +226,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         if ($statement->type == T_FUNCTION) {
           $docblock['signature'] = $editor->functionGetSignature($statement);
           $docblock['references'] = $references;
+          $all_references = array_merge_recursive($all_references, $references);
         }
         elseif ($statement->type == T_CLASS || $statement->type == T_INTERFACE) {
           $docblock['extends'] = $statement->extends;
@@ -239,12 +248,14 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
       case T_INTERFACE:
       case T_CLASS:
         if (!empty($statement->body)) {
-          api_documentation_loop($statement->body, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
+          $all_references = array_merge_recursive($all_references, api_documentation_loop($statement->body, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks));
         }
         break;
     }
     $current = $current->next;
   }
+
+  return $all_references;
 }
 
 /**
