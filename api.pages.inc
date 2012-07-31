@@ -717,10 +717,15 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   elseif ($type == 'invokes') {
     // Use reference storage to find functions that invoke this hook.
     // The reference storage holds the string that was actually found inside
-    // the invoking function. So $name could be "hook_$string",
-    // "hook_field_$string", "field_default_$string", "hook_user_$string", or
-    // "hook_$string_alter". In all cases but the last, {reference_storage} has
-    // object_type 'potential hook'; in the last case it is 'potential alter'.
+    // the invoking function. So $name could be one of:
+    // - "hook_$string",
+    // - "hook_field_$string"
+    // - "field_default_$string"
+    // - "hook_user_$string"
+    // - "hook_entity_$string"
+    // - "hook_$string_alter"
+    // In all cases but the last, {reference_storage} has object_type
+    // 'potential hook'; in the last case it is 'potential alter'.
     // So, we need to build a query that will find these matches between
     // $string (field object_name) and $name (passed into this function).
     $or_clauses = db_or();
@@ -732,6 +737,10 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       $found = TRUE;
       if (strpos($hook_name, 'user_') === 0) {
         $sub_hook_name = substr($hook_name, 5);
+        $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
+      }
+      elseif (strpos($hook_name, 'entity_') === 0) {
+        $sub_hook_name = substr($hook_name, 7);
         $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
       }
       elseif (strpos($hook_name, 'field_') === 0) {

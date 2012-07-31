@@ -2379,14 +2379,19 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
 
   // Figure out what potential names we should match on.
   $potential_names = array($name);
+  $prefer_shorter = FALSE;
+  $search_term = NULL;
+
   if ($type == 'hook') {
     $potential_names = array(
       'hook_' . $name,
       'hook_field_' . $name,
       'field_default_' . $name,
       'hook_user_' . $name,
+      'hook_entity_' . $name,
     );
     $query->condition('ad.object_type', 'function');
+    $search_term = '_' . $name;
   }
   elseif ($type == 'alter hook') {
     $potential_names = array('hook_' . $name . '_alter');
@@ -2397,6 +2402,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
     // Potential matches are the whole theme call, or with stripped off pieces
     // separated by __. And we look for template files preferably over
     // functions.
+    $prefer_shorter = TRUE;
     $hook_elements = explode('__', $name);
     while (count($hook_elements) > 0) {
       $hook = implode('__', $hook_elements);
@@ -2446,12 +2452,15 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
       continue;
     }
 
-    // See if this matched name takes precidence over the previous one.
-    $priority = _api_match_priority($matched, $url_name_matched);
+    // See if this matched name takes precedence over the previous one.
+    $priority = _api_match_priority($matched, $url_name_matched, $prefer_shorter);
 
     if (isset($url) && $priority == 0) {
       // This is the second match at same priority, so make this a search.
-      $url = 'api/search/' . $branch->branch_name . '/' . $matched;
+      if (!isset($search_term)) {
+        $search_term = $matched;
+      }
+      $url = 'api/search/' . $branch->branch_name . '/' . $search_term;
       $options = array(
         'attributes' => array(
           'title' => t('Multiple implementations exist.'),
@@ -2519,12 +2528,14 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
  *   Current matched string.
  * @param $previous
  *   Previous matched string.
+ * @param $prefer_shorter
+ *   TRUE to prefer shorter names.
  *
  * @return
  *   1 if previous is empty or current has higher priority. 0 if they have
  *   the same priority. -1 if current has lower priority.
  */
-function _api_match_priority($current, $previous) {
+function _api_match_priority($current, $previous, $prefer_shorter = TRUE) {
   if (strlen($previous) == 0) {
     return 1;
   }
@@ -2545,10 +2556,10 @@ function _api_match_priority($current, $previous) {
   }
 
   // Prefer the shorter item.
-  if (strlen($current) < strlen($previous)) {
+  if ($prefer_shorter && (strlen($current) < strlen($previous))) {
     return 1;
   }
-  if (strlen($previous) < strlen($current)) {
+  if ($prefer_shorter && (strlen($previous) < strlen($current))) {
     return -1;
   }
   // All things being equal...
