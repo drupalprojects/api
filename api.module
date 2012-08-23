@@ -3107,8 +3107,10 @@ function api_delete_items($dids, $interactive = TRUE) {
 
   // The slow part is deleting the nodes. If there are more than 100 to delete
   // during this page request, do them using batch/queue jobs.
+  // Also, if this particular call has only a few nodes, go ahead and delete,
+  // to avoid having a ton of small jobs in the queue from a branch update.
   $total_count += $count;
-  if ($total_count < 100) {
+  if ($total_count < 100 || $count < 5) {
     node_delete_multiple($dids);
     return TRUE;
   }
