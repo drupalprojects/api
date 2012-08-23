@@ -373,10 +373,9 @@ function api_schema() {
         'default' => 0,
       ),
       'signature' => array(
-        'type' => 'varchar',
-        'length' => '255',
+        'type' => 'text',
+        'size' => 'medium',
         'not null' => TRUE,
-        'default' => '',
       ),
       'parameters' => array(
         'type' => 'text',
@@ -1140,6 +1139,17 @@ function api_update_7112() {
 function api_update_7113() {
   $count = api_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
+
+/**
+ * Make function signature field be text instead of varchar.
+ */
+function api_update_7114() {
+  db_change_field('api_function', 'signature', 'signature', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => TRUE,
+  ));
 }
 
 /**
