@@ -107,8 +107,8 @@ function api_parse_php_file($docblock) {
   // Build grammar statements.
   $editor = PGPEditor::getInstance();
   $reader = $editor->getReader();
+  $reader->setPreserveWhitespace(FALSE);
   $reader->setSnippet($docblock['source']);
-  $reader->addTokenNames();
   $reader->buildGrammar();
 
   // Retrieve items of interest.
@@ -229,8 +229,8 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
           $all_references = array_merge_recursive($all_references, $references);
         }
         elseif ($statement->type == T_CLASS || $statement->type == T_INTERFACE) {
-          $docblock['extends'] = $statement->extends;
-          $docblock['implements'] = $statement->implements;
+          $docblock['extends'] = is_object($statement->extends) ? explode(', ', $statement->extends->toString()) : array();
+          $docblock['implements'] = is_object($statement->implements) ? explode(', ', $statement->implements->toString()) : array();
         }
         $docblocks[] = $docblock;
         break;
