@@ -646,7 +646,7 @@ function api_update_7101() {
  * Mark all files for reparse, due to some updates to the parsing code.
  */
 function api_update_7102() {
-  $count = api_mark_for_reparse();
+  $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
 
@@ -665,7 +665,7 @@ function api_update_7103() {
 
   // Also reparse everything, because the old field definition left things
   // in a bad state.
-  $count = api_mark_for_reparse();
+  $count = api_update_mark_for_reparse();
 
   return 'Due to database change, everything was marked for reparse.';
 }
@@ -1129,7 +1129,7 @@ function api_update_7111() {
  * Mark all files for reparse, due to some updates to the parsing code.
  */
 function api_update_7112() {
-  $count = api_mark_for_reparse();
+  $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
 
@@ -1137,7 +1137,7 @@ function api_update_7112() {
  * Mark all files for reparse, due to some updates to the parsing code.
  */
 function api_update_7113() {
-  $count = api_mark_for_reparse();
+  $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
 
@@ -1199,4 +1199,12 @@ function api_uninstall() {
     $done += 100;
     node_delete_multiple($this_batch);
   }
+}
+
+/**
+ * Wraps api_mark_for_reparse() so it can be called from update functions.
+ */
+function api_update_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
+  module_load_include('module', 'api');
+  return api_mark_for_reparse($branch_or_file, $is_branch_name);
 }
