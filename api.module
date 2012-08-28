@@ -1546,7 +1546,9 @@ function api_block_info() {
   return array(
     'api-search' => array(
       'info' => t('API search'),
-      'cache' => DRUPAL_CACHE_PER_PAGE,
+      // This needs to be non-cached as it's a form with a form
+      // token in it, and they can't be stale.
+      'cache' => DRUPAL_NO_CACHE,
     ),
     'navigation' => array(
       'info' => t('API navigation'),
