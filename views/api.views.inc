@@ -339,7 +339,7 @@ function api_views_data() {
 /**
  * Implements hook_views_data_alter().
  *
- * Adds a relationship to the Comment table.
+ * Adds a relationship to the Comment table and the comment statistics.
  */
 function api_views_data_alter(&$data) {
   $data['comment']['did'] = array(
@@ -354,5 +354,11 @@ function api_views_data_alter(&$data) {
       'title' => t('API documentation object'),
       'help' => t('The ID of the documentation object the comment is a reply to.'),
     ),
+  );
+
+  $data['node_comment_statistics']['table']['join']['api_documentation'] = array(
+    'type' => 'INNER',
+    'left_field' => 'did',
+    'field' => 'nid',
   );
 }
