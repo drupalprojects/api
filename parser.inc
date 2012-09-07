@@ -1577,30 +1577,6 @@ function api_shutdown() {
     ->from($select)
     ->execute();
 
-  // Save JSON autocomplete cache.
-  $date = gmdate('U');
-  foreach (api_get_branch_names() as $branch_name) {
-    $new_json = api_autocomplete($branch_name, FALSE);
-
-    $old_file_path = variable_get('api_autocomplete_path_' . $branch_name, FALSE);
-    if ($old_file_path !== FALSE) {
-      if (md5($new_json) === md5(file_get_contents($old_file_path))) {
-        continue; // No changes, no file write.
-      }
-      // Delete in the future, help avoid race conditions.
-      $queue = DrupalQueue::get('api_delete');
-      $queue->createItem(array('path' => $old_file_path));
-    }
-
-    $file_name = 'api-' . $branch_name . '-' . $date . '.json';
-    $directory = 'public://api';
-    file_prepare_directory($directory, FILE_CREATE_DIRECTORY);
-    $saved = file_unmanaged_save_data($new_json, $directory . '/' . $file_name, FILE_EXISTS_REPLACE);
-    if ($saved) {
-      variable_set('api_autocomplete_path_' . $branch_name, $saved);
-    }
-  }
-
   cache_clear_all();
 }
 

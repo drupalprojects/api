@@ -1153,16 +1153,34 @@ function api_update_7114() {
 }
 
 /**
+ * Remove obsolete autocomplete files and variables.
+ */
+function api_update_7115() {
+  // Remove autocomplete variables.
+  $names = db_select('variable', 'v')
+    ->condition('name', 'api\_autocomplete\_path\_%', 'LIKE')
+    ->fields('v', array('name'))
+    ->execute()
+    ->fetchCol();
+  foreach ($names as $name) {
+    variable_del($name);
+  }
+
+  // Remove auto-complete files.
+  file_unmanaged_delete_recursive('public://api');
+
+  // Remove any items in the delete files queue.
+  $queue = DrupalQueue::get('api_delete');
+  $queue->deleteQueue();
+}
+
+/**
  * Remove variables and other data on uninstall.
  */
 function api_uninstall() {
-  // Delete stored auto-complete files.
-  file_unmanaged_delete_recursive('public://api');
-
   // Delete variables: some wildcards and some exact variable names.
   $names = db_select('variable', 'v')
     ->condition(db_or()
-      ->condition('name', 'api\_autocomplete\_path\_%', 'LIKE')
       ->condition('name', 'comment\_%\_api', 'LIKE')
       ->condition('name', 'api\_last\_updated\_%', 'LIKE')
     )
@@ -1179,7 +1197,7 @@ function api_uninstall() {
   }
 
   // Remove all tasks from the queues.
-  foreach (array('api_parse', 'api_branch_update', 'api_delete', 'api_node_delete') as $name) {
+  foreach (array('api_parse', 'api_branch_update', 'api_node_delete') as $name) {
     $queue = DrupalQueue::get($name);
     $queue->deleteQueue();
   }

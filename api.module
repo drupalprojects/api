@@ -457,10 +457,9 @@ function api_menu() {
     'type' => MENU_CALLBACK,
   );
 
-  // This returns ALL possibilities for a search term.
-  $items['api/autocomplete/%'] = array(
-    'page callback' => 'api_autocomplete',
-    'page arguments' => array(2, TRUE),
+  // Search callback
+  $items['api/search/autocomplete'] = array(
+    'page callback' => 'api_search_autocomplete',
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
@@ -1135,10 +1134,6 @@ function api_cron_queue_info() {
       'worker callback' => 'api_queue_parse_file',
       'time' => 60,
     ),
-    'api_delete' => array(
-      'worker callback' => 'api_queue_file_delete',
-      'time' => 15,
-    ),
     'api_node_delete' => array(
       'worker callback' => 'api_queue_node_delete',
       'time' => 15,
@@ -1497,9 +1492,6 @@ function api_preprocess_html(&$variables) {
  */
 function api_init() {
   $branch = api_get_active_branch();
-  if (isset($branch)) {
-    drupal_add_js(array('apiAutoCompletePath' => file_create_url(variable_get('api_autocomplete_path_' . $branch->branch_name, 'api/autocomplete/' . $branch->branch_name))), array('type' => 'setting', 'scope' => JS_DEFAULT));
-  }
 
   // Add OpenSearch autodiscovery links.
   foreach (api_get_branch_names() as $branch_name) {
@@ -1927,6 +1919,7 @@ function api_get_active_branch() {
     $branches = api_get_branches();
     $branch_names = api_get_branch_names();
     $default_branch = variable_get('api_default_branch', NULL);
+
     if (isset($item['page_arguments'][0]->branch_id)) {
       $branch = $branches[$item['page_arguments'][0]->branch_id];
     }
@@ -1934,13 +1927,22 @@ function api_get_active_branch() {
       $branch = $item['page_arguments'][0];
     }
     elseif (strpos($item['path'], 'api/search') === 0 && isset($branch_names[$item['page_arguments'][0]])) {
-      // Search page, use the default project if possible
+      // This is a search page for a particular branch. Figure out what project
+      // it corresponds to, using the default project if possible
       foreach ($branches as $possible_branch) {
         if ($possible_branch->project === $branches[$default_branch]->project && $possible_branch->branch_name === $item['page_arguments'][0]) {
+          // Best case, this is a branch on the default project.
+          $branch = $possible_branch;
+          break;
+        }
+        elseif ($possible_branch->branch_name === $item['page_arguments'][0]) {
+          // Second-best case, this at least matches. Keep looking.
           $branch = $possible_branch;
         }
       }
     }
+
+    // If all else fails, use the default branch.
     if (!isset($branch)) {
       if (!is_null($default_branch) && isset($branches[$default_branch])) {
         $branch = $branches[$default_branch];
@@ -1972,6 +1974,7 @@ function api_search_form($form, $form_state, $branch) {
     '#default_value' => '',
     '#required' => TRUE,
     '#attributes' => array('class' => array('api-search-keywords')),
+    '#autocomplete_path' => 'api/search/autocomplete/' . $branch->branch_id,
   );
   $form['submit'] = array(
     '#type' => 'submit',
@@ -1986,35 +1989,6 @@ function api_search_form($form, $form_state, $branch) {
  */
 function api_search_form_submit($form, &$form_state) {
   $form_state['redirect'] = 'api/search/' . $form['#branch']->branch_name . '/' . $form_state['values']['search'];
-}
-
-/**
- * Prepares a listing of documentation objects for a branch.
- *
- * @param $branch_name
- *   Name of the branch to list.
- * @param $page
- *   TRUE if this will be embedded in a page, and FALSE if it is an AHAH
- *   callback.
- *
- * @return
- *   JavaScript listing of all the objects in the branch.
- */
-function api_autocomplete($branch_name, $page = TRUE) {
-  $query = db_select('api_documentation', 'ad')
-    ->fields('ad', array('title'));
-  $b = $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
-  $query->condition('b.branch_name', $branch_name)
-    ->condition('ad.object_type', 'mainpage', '<>')
-    ->orderBy('ad.title');
-  $objects = $query->execute()->fetchCol();
-  $objects = array_values(array_unique($objects));
-  if ($page) {
-    drupal_json_output($objects);
-  }
-  else {
-    return drupal_json_encode($objects);
-  }
 }
 
 /**
@@ -2901,17 +2875,6 @@ function api_queue_update_branch($data) {
 
 
 /**
- * Deletes an obsolete JavaScript autocomplete index file.
- *
- * @param $data
- *   Array of infomration about the file to be deleted.
- */
-function api_queue_file_delete($data) {
-  watchdog('api', 'Removing expired API JSON, %path.', array('%path' => $data['path']));
-  file_unmanaged_delete($data['path']);
-}
-
-/**
  * Deletes obsolete nodes.
  *
  * @param $data
@@ -3170,6 +3133,29 @@ function api_project_autocomplete($string = '') {
       ->condition('project_name', db_like($string) . '%', 'LIKE')
       ->orderBy('project_name')
       ->range(0, 10)
+      ->execute()
+      ->fetchCol();
+    foreach ($result as $name) {
+      $matches[$name] = check_plain($name);
+    }
+  }
+
+  drupal_json_output($matches);
+}
+
+/**
+ * Performs AJAX autocomplete for search.
+ */
+function api_search_autocomplete($branch_id, $string = '') {
+  $matches = array();
+
+  if ($string) {
+    $result = db_select('api_documentation', 'ad')
+      ->fields('ad', array('title'))
+      ->condition('branch_id', $branch_id)
+      ->condition('title', '%' . db_like($string) . '%', 'LIKE')
+      ->orderBy('LENGTH(title)')
+      ->range(0, 20)
       ->execute()
       ->fetchCol();
     foreach ($result as $name) {
