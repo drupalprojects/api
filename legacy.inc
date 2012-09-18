@@ -44,3 +44,10 @@ function api_file_redirect() {
 
   drupal_goto(api_url($file) . $suffix);
 }
+
+/**
+ * Redirects old search URL.
+ */
+function api_legacy_search_redirect($branch, $search_term) {
+  drupal_goto('api/' . $branch->project . '/' . $branch->branch_name . '/search/' . $search_term);
+}

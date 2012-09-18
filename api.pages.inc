@@ -31,7 +31,7 @@ function api_search_redirect() {
     $branch = api_get_active_branch();
   }
   if (isset($branch)) {
-    $_GET['destination'] = 'api/search/' . $branch->branch_name . '/' . $tail;
+    $_GET['destination'] = 'api/' . $branch->project . '/' . $branch->branch_name . '/search/' . $tail;
     drupal_goto();
   }
 
@@ -49,19 +49,17 @@ function api_search_redirect() {
  * @see api_menu()
  */
 function api_opensearch($branch_name) {
-  $branch_id = db_select('api_branch', 'b')
-    ->fields('b', array('branch_id'))
-    ->condition('branch_name', $branch_name)
-    ->execute()
-    ->fetchField();
-  if (!$branch_id) {
+  $branches = api_get_branches_by_name($branch_name);
+  if (!isset($branches) || is_null($branches) || !count($branches)) {
     return drupal_not_found();
   }
+  $branch = $branches[0];
+  $branch_id = $branch->branch_id;
 
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
 
-  $short_name = t('Drupal API @branch', array('@branch' => $branch_name));
-  $description = t('Drupal @branch API documentation', array('@branch' => $branch_name));
+  $short_name = t('Drupal API - @branch', array('@branch' => $branch->title));
+  $description = t('Drupal API documentation for @branch', array('@branch' => $branch->title));
   // We need to use a theme function, so initialize the theme system.
   drupal_theme_initialize();
   if ($image = theme_get_setting('favicon')) {
@@ -73,7 +71,7 @@ function api_opensearch($branch_name) {
     $image = 'misc/favicon.ico';
   }
   $image = url($image, array('absolute' => TRUE));
-  $search_url = url('api/search/' . $branch_name, array('absolute' => TRUE)) . '/{searchTerms}';
+  $search_url = url('api/' . $branch->project . '/' . $branch->branch_name . '/search/', array('absolute' => TRUE)) . '/{searchTerms}';
   $suggest_url = url('api/suggest/' . $branch_name, array('absolute' => TRUE)) . '/{searchTerms}';
   $search_form_url = url('api', array('absolute' => TRUE));
   $self_url = url($_GET['q'], array('absolute' => TRUE));
@@ -144,8 +142,8 @@ function api_page_function_dump($branch_name) {
 /**
  * Page callback: Performs a search.
  *
- * @param $branch_name
- *   Name of the branch to search.
+ * @param $branch
+ *   Object representing the branch to search.
  * @param ...
  *   The string to search for.
  *
@@ -155,36 +153,31 @@ function api_page_function_dump($branch_name) {
  *
  * @see api_menu()
  */
-function api_search_listing($branch_name) {
+function api_search_listing($branch) {
   $search_text = func_get_args();
   array_shift($search_text);
   $search_text = implode('/', $search_text);
   $title = t('Search for !search', array('!search' => $search_text));
   drupal_set_title($title);
-  $branches = api_get_branches_by_name($branch_name);
-  if (isset($branches[0])) {
-    $branch = $branches[0];
-    $breadcrumb = array(
-      l(t('Home'), '<front>'),
-      l(t('API reference'), 'api/' . $branch->project),
-      l($branch->title, 'api/' . $branch->project . '/' . $branch->branch_name),
-    );
-    drupal_set_breadcrumb($breadcrumb);
-    $plain_title = t('Search for @search', array('@search' => $search_text));
-    $page_title = array(
-      check_plain($plain_title),
-      check_plain($branch->title),
-      check_plain(variable_get('site_name', 'Drupal')),
-    );
-    api_set_html_page_title(implode(' | ', $page_title));
-  }
+  $breadcrumb = array(
+    l(t('Home'), '<front>'),
+    l(t('API reference'), 'api/' . $branch->project),
+    l($branch->title, 'api/' . $branch->project . '/' . $branch->branch_name),
+  );
+  drupal_set_breadcrumb($breadcrumb);
+  $plain_title = t('Search for @search', array('@search' => $search_text));
+  $page_title = array(
+    check_plain($plain_title),
+    check_plain($branch->title),
+    check_plain(variable_get('site_name', 'Drupal')),
+  );
+  api_set_html_page_title(implode(' | ', $page_title));
 
-  $query = db_select('api_branch', 'b');
-  $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
-  $query->fields('b', array('branch_name', 'project'))
-    ->fields($ad)
-    ->condition('b.branch_name', $branch_name)
-    ->condition($ad . '.title', $search_text);
+  $query = db_select('api_documentation', 'ad');
+  $query
+    ->fields('ad')
+    ->condition('branch_id', $branch->branch_id)
+    ->condition('title', $search_text);
 
   $count = $query->countQuery()->execute()->fetchField();
   if ($count == 1) {
@@ -194,13 +187,12 @@ function api_search_listing($branch_name) {
   }
   else {
     // Wildcard search.
-    $query = db_select('api_branch', 'b');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'b.branch_id = ad.branch_id');
-    $query->fields('b', array('branch_name', 'project'))
-      ->fields($ad)
-      ->condition('b.branch_name', $branch_name)
-      ->condition($ad . '.title', '%' . str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
-      ->orderBy($ad . '.title', 'ASC')
+    $query = db_select('api_documentation', 'ad');
+    $query
+      ->fields('ad')
+      ->condition('branch_id', $branch->branch_id)
+      ->condition('title', '%' . str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
+      ->orderBy('title', 'ASC')
       ->extend('PagerDefault')
       ->limit(50);
 
@@ -925,7 +917,7 @@ function api_page_class($class) {
   $hierarchy = api_class_hierarchy($class);
   $implements = array();
   if ($class->object_type === 'interface') {
-    // Make a list of all interfaces that extend this one.
+    // Make a list of all interfaces that extend this one, in this branch only.
     $to_check = array($class->object_name);
     $extend_list = array($class->object_name);
     while (count($to_check) > 0) {
@@ -945,6 +937,8 @@ function api_page_class($class) {
       }
     }
 
+    // Now find which classes implement either the base interface or
+    // any that extend it.
     $query = db_select('api_reference_storage', 'ars');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
     $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
@@ -961,6 +955,7 @@ function api_page_class($class) {
     }
   }
 
+  // Find and render all the class members.
   $query = db_select('api_members', 'am');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
   $query->fields($ad, array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did'));
@@ -971,6 +966,7 @@ function api_page_class($class) {
     ->orderBy('ad.title');
   $objects = api_render_listing($query->execute());
 
+  // Put it all together.
   $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see));
   $output .= _api_add_comments($class);
 
@@ -1163,7 +1159,8 @@ function api_object_title_and_breadcrumb($branch, $object, $title = NULL, $objec
 function api_class_hierarchy($class, $type = 'ancestors') {
   $branch = api_get_branch_by_id($class->branch_id);
 
-  // See if this class has any children.
+  // See if this class has any children. Note that this is only in the same
+  // branch.
   $child_output = '';
   if ($type == 'full') {
     $children = api_class_children($class, $class->did);
@@ -1172,7 +1169,9 @@ function api_class_hierarchy($class, $type = 'ancestors') {
     }
   }
 
-  // Find the direct-line extends ancestors of this class.
+  // Find the direct-line extends ancestors of this class, only in the same
+  // branch.
+  // @todo use namespaces?
   $parent = $class;
   $current = $class;
 
@@ -1223,7 +1222,7 @@ function api_class_hierarchy($class, $type = 'ancestors') {
       }
 
       if ($same) {
-        $parent = l(t('Multiple classes named @classname', array('@classname' => $parent->object_name)), 'api/search/' . $branch->branch_name . '/' . check_plain($parent->object_name));
+        $parent = l(t('Multiple classes named @classname', array('@classname' => $parent->object_name)), 'api/' . $branch->project . '/' . $branch->branch_name . '/search/' . check_plain($parent->object_name));
       }
       else {
         $this_line = array();
@@ -1247,7 +1246,7 @@ function api_class_hierarchy($class, $type = 'ancestors') {
 }
 
 /**
- * Finds and renders the children of a class.
+ * Finds and renders the children of a class within the same branch.
  *
  * @param $class
  *   Documentation object for the class.
@@ -1319,7 +1318,7 @@ function api_class_hierarchy_line($class, $current_did = 0) {
       }
       else {
         // Duplicate interface name, use a search.
-        $interfaces[$object->object_name] = l(t('Multiple interfaces named @classname', array('@classname' => $object->object_name)), 'api/search/' . $branch->branch_name . '/' . check_plain($object->object_name));
+        $interfaces[$object->object_name] = l(t('Multiple interfaces named @classname', array('@classname' => $object->object_name)), 'api/' . $branch->project . '/' . $branch->branch_name . '/search/' . check_plain($object->object_name));
       }
     }
     else {

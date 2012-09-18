@@ -62,7 +62,7 @@ class ApiLinkCodeTest extends ApiTestCase {
       array(
         'message' => 'Linking to method defined in multiple subclasses',
         'data' => '<span class="php-function-or-constant function member-of-variable">baz</span>',
-        'expected' => '<span class="php-function-or-constant"><a href="' . url('api/search/' . $branch->branch_name . '/baz') . '" title="Multiple implementations exist." class="local">baz</a></span>',
+        'expected' => '<span class="php-function-or-constant"><a href="' . url('api/' . $branch->project . '/' . $branch->branch_name . '/search/baz') . '" title="Multiple implementations exist." class="local">baz</a></span>',
       ),
       array(
         'message' => 'Marked-up class name linking',
@@ -72,12 +72,12 @@ class ApiLinkCodeTest extends ApiTestCase {
       array(
         'message' => 'Duplicate function name linking',
         'data' => '<span class="php-function-or-constant">duplicate_function</span>',
-        'expected' => '<span class="php-function-or-constant"><a href="' . url('api/search/6/duplicate_function') . '" title="Multiple implementations exist." class="local">duplicate_function</a></span>',
+        'expected' => '<span class="php-function-or-constant"><a href="' . url('api/' . $branch->project . '/' . $branch->branch_name . '/search/duplicate_function') . '" title="Multiple implementations exist." class="local">duplicate_function</a></span>',
       ),
       array(
         'message' => 'Duplicate constant linking',
         'data' => '<span class="php-function-or-constant">DUPLICATE_CONSTANT</span>',
-        'expected' => '<span class="php-function-or-constant"><a href="' . url('api/search/6/DUPLICATE_CONSTANT') . '" title="Multiple implementations exist." class="local">DUPLICATE_CONSTANT</a></span>',
+        'expected' => '<span class="php-function-or-constant"><a href="' . url('api/' . $branch->project . '/' . $branch->branch_name . '/search/DUPLICATE_CONSTANT') . '" title="Multiple implementations exist." class="local">DUPLICATE_CONSTANT</a></span>',
       ),
       array(
         'message' => 'Linking to a PHP function',

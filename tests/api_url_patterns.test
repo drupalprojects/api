@@ -39,6 +39,7 @@ class ApiURLPatternsTest extends ApiTestCase {
     // Check listing pages.
     $project_name = 'test';
     $branch_name = '6';
+    $branch_title = 'Testing 6';
 
     $tests = array(
       array(
@@ -205,14 +206,21 @@ class ApiURLPatternsTest extends ApiTestCase {
 
       // Check search page.
       array(
-        'url' => 'api/search/' . $branch_name . '/duplicate',
+        'url' => 'api/' . $project_name . '/' . $branch_name . '/search/duplicate',
         'text' => array('For testing duplicate function name linking'),
         'links' => array('DUPLICATE_CONSTANT', 'duplicates.php', 'duplicate_function'),
+        'aliases' => array('api/search/' . $branch_name . '/duplicate'),
       ),
       array(
-        'url' => 'api/search/' . $branch_name . '/foo',
+        'url' => 'api/' . $project_name . '/' . $branch_name . '/search/foo',
         'text' => array('Implements', 'Metasyntatic member function', 'Implements this API', 'Implements foo2.', 'A property that matches', 'Overrides parent function'),
         'links' => array('foo_sample_name', 'sample.php', 'Sample::foo', 'SampleInterface::foo', 'classes.php', 'SampleInSubDir::$foo', 'SampleInSubDir::foo', 'SampleInSubDirInterface::foo2', 'SubInSubDirSample::foo', 'Sample2InSubDir::foo2', 'classes-subdir.php'),
+        'aliases' => array('api/search/' . $branch_name . '/foo'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/' . $branch_name . '/search',
+        'text' => array($branch_title, 'Function, file, or topic'),
+        'aliases' => array('api/search'),
       ),
 
       // Check menu callbacks.

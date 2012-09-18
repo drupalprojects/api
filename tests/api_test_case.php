@@ -528,4 +528,19 @@ class ApiWebPagesBaseTest extends ApiTestCase {
   protected function assertURLContains($string, $message) {
     $this->assertTrue(strpos($this->url, $string) !== FALSE, $message);
   }
+
+  /**
+   * Asserts that the count of links with the given label is correct.
+   *
+   * @param $label
+   *   Label to search for.
+   * @param $count
+   *   Count to assert.
+   * @param $message
+   *   Message to display.
+   */
+  function assertLinkCount($label, $count, $message) {
+    $links = $this->xpath('//a[normalize-space(text())=:label]', array(':label' => $label));
+    $this->assertEqual(count($links), $count, $message);
+  }
 }

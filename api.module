@@ -413,14 +413,26 @@ function api_menu() {
     return $items;
   }
 
-  // Default search pages.
+  // Legacy search URLs.
   $items['api/search'] = array(
-    'title' => 'API search',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('api_search_form', $default_branch),
+    'page callback' => 'drupal_goto',
+    'page arguments' => array('api/' . $default_branch->project . '/' . $default_branch->branch_name . '/search'),
     'access arguments' => array('access API reference'),
-    'type' => MENU_SUGGESTED_ITEM,
+    'type' => MENU_CALLBACK,
   );
+
+  foreach ($branches as $branch) {
+    if (!isset($items['api/search/' . $branch->branch_name . '%'])) {
+      $items['api/search/' . $branch->branch_name . '/%'] = array(
+        'page callback' => 'api_legacy_search_redirect',
+        'page arguments' => array($branch, 3),
+        'access arguments' => array('access API reference'),
+        'type' => MENU_CALLBACK,
+        'file' => 'legacy.inc',
+      );
+    }
+  }
+
   $items['apis'] = array(
     'title' => 'API search',
     'page callback' => 'api_search_redirect',
@@ -472,18 +484,6 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
-
-  foreach ($branches as $branch) {
-    $items['api/search/' . $branch->branch_name . '/%menu_tail'] = array(
-      'title' => $branch->branch_name,
-      'page callback' => 'api_search_listing',
-      'page arguments' => array($branch->branch_name, 3),
-      'load arguments' => array('%map', '%index'),
-      'access arguments' => array('access API reference'),
-      'type' => MENU_LOCAL_TASK,
-      'file' => 'api.pages.inc',
-    );
-  }
 
   // Listings
 
@@ -666,6 +666,24 @@ function api_menu() {
       'page arguments' => array($branch),
       'access arguments' => array('access API reference'),
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+
+    $items['api/' . $branch->project . '/' . $branch->branch_name . '/search'] = array(
+      'title' => $branch->title,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('api_search_form', $branch),
+      'access arguments' => array('access API reference'),
+      'type' => MENU_NORMAL_ITEM,
+    );
+
+    $items['api/' . $branch->project . '/' . $branch->branch_name . '/search/%menu_tail'] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_search_listing',
+      'page arguments' => array($branch, 4),
+      'load arguments' => array('%map', '%index'),
+      'access arguments' => array('access API reference'),
+      'type' => MENU_NORMAL_ITEM,
       'file' => 'api.pages.inc',
     );
 
@@ -1559,7 +1577,7 @@ function api_block_view($delta) {
     case 'api-search':
       if (user_access('access API reference') && !empty($branch)) {
         return array(
-          'subject' => t('Search @branch', array('@branch' => $branch->branch_name)),
+          'subject' => t('Search @branch', array('@branch' => $branch->title)),
           'content' => drupal_get_form('api_search_form', $branch),
         );
       }
@@ -1988,7 +2006,8 @@ function api_search_form($form, $form_state, $branch) {
  * Form submission handler for api_search_form().
  */
 function api_search_form_submit($form, &$form_state) {
-  $form_state['redirect'] = 'api/search/' . $form['#branch']->branch_name . '/' . $form_state['values']['search'];
+  $branch = $form['#branch'];
+  $form_state['redirect'] = 'api/' . $branch->project . '/' . $branch->branch_name . '/search/' . $form_state['values']['search'];
 }
 
 /**
@@ -2138,6 +2157,7 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
       $pattern = '!<span class="php-function-or-constant">(' . DRUPAL_PHP_FUNCTION_PATTERN . ')</span>!';
       $prepend = '<span class="php-function-or-constant">';
       $append = '</span>';
+      $type = 'function_or_constant';
       break;
 
     case 'code string':
@@ -2302,6 +2322,7 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   - 'theme': $name is a theme hook name.
  *   - 'function': $name is specifically a function ('file', 'constant', etc.
  *     also are supported).
+ *   - 'function_or_constant': $name is either a function, constant, or class.
  *
  * @return
  *   The text as a link to the object page.
@@ -2347,9 +2368,92 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
   }
 
   // If we get here, we're looking to match some kind of documentation object.
+  $link = _api_make_match_link($name, $text, $type, $branch);
+  if ($link) {
+    return $prepend . $link . $append;
+  }
+
+  // If we get here, there wasn't a match. Try PHP functions.
+  if ($use_php) {
+    $query = db_select('api_php_documentation', 'd')
+      ->fields('d', array('object_name', 'documentation'));
+    $b = $query->innerJoin('api_php_branch', 'b', "b.branch_id = d.branch_id");
+    $query
+      ->fields($b, array('data'))
+      ->condition('d.object_type', 'function')
+      ->condition('d.object_name', $name);
+    $result = $query->execute();
+    foreach ($result as $info) {
+      // MySQL is not case-sensitive, so check the match for exact string.
+      if ($info->object_name != $name) {
+        continue;
+      }
+
+      $data = unserialize($info->data);
+      $link = strtr($data['path'], array('!function' => $name));
+      return $prepend . l($text, $link, array('attributes' => array('title' => api_entity_decode($info->documentation), 'class' => array('php-manual')))) . $append;
+    }
+  }
+
+  // If this is not a core branch, try matching in the core branch, and in
+  // others with the same core compatibility.
+  $core_branch = api_find_core_branch($branch);
+  if ($core_branch && $core_branch->branch_id != $branch->branch_id) {
+    $link = _api_make_match_link($name, $text, $type, $core_branch);
+    if ($link) {
+      return $prepend . $link . $append;
+    }
+
+    $link = _api_make_match_link($name, $text, $type, NULL, $branch->core_compatibility);
+    if ($link) {
+      return $prepend . $link . $append;
+    }
+  }
+
+  // If we get here, there still wasn't a match, so return non-linked text.
+  if (isset($prepend_if_not_found)) {
+    $prepend = $prepend_if_not_found;
+  }
+  if (isset($append_if_not_found)) {
+    $append = $append_if_not_found;
+  }
+
+  return $prepend . $text . $append;
+}
+
+/**
+ * Finds matches for an object name in a branch and makes a link.
+ *
+ * @param $name
+ *   Name to match (text found in the code or documentation).
+ * @param $text
+ *   Text to put in the link.
+ * @param $type
+ *   Type of object to match ('function', 'hook', 'alter hook', 'theme',
+ *   'file', 'constant', 'class').
+ * @param $branch
+ *   Object representing the branch to search. If NULL, use core compatibility
+ *   instead.
+ * @param $core_compatibility
+ *   If $branch is NULL, search all branches with this core compatibility.
+ *
+ * @return
+ *   Link to either a single matching object or a search if multiple matches
+ *   exist; if there are no matches, FALSE.
+ */
+function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compatibility = '') {
+  // Build a query to find the matches.
   $query = db_select('api_documentation', 'ad')
-    ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'))
-    ->condition('ad.branch_id', $branch->branch_id);
+    ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'));
+  $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+  $query->fields('b', array('branch_name', 'preferred', 'project'));
+  if (is_null($branch)) {
+    $query->condition('b.core_compatibility', $core_compatibility);
+  }
+  else {
+    $query->condition('ad.branch_id', $branch->branch_id);
+  }
+
   $match_name = $query->addField('ad', 'object_name', 'match_name');
   $match_name_field = 'ad.object_name';
 
@@ -2390,21 +2494,39 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
     // object title (which is the file base name).
     $query = db_select('api_documentation', 'ad')
       ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'))
-      ->condition('ad.branch_id', $branch->branch_id)
       ->condition('ad.object_type', array('file', 'function'));
+    $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $query->fields('b', array('branch_name', 'preferred', 'project'));
+    if (is_null($branch)) {
+      $query->condition('b.core_compatibility', $core_compatibility);
+    }
+    else {
+      $query->condition('ad.branch_id', $branch->branch_id);
+    }
+
     $match_name = $query->addField('ad', 'title', 'match_name');
     $match_name_field = 'ad.title';
   }
   elseif ($type == 'function') {
     $query->condition('ad.object_type', 'function');
   }
+  elseif ($type == 'function_or_constant') {
+    $query->condition('ad.object_type', array('function', 'constant', 'class', 'interface'));
+  }
   elseif ($type == 'file') {
     // Because this needs to match files, change the query to match on
     // basename field in {api_files}.
     $query = db_select('api_documentation', 'ad')
       ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'))
-      ->condition('ad.branch_id', $branch->branch_id)
       ->condition('ad.object_type', 'file');
+    $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $query->fields('b', array('branch_name', 'preferred', 'project'));
+    if (is_null($branch)) {
+      $query->condition('b.core_compatibility', $core_compatibility);
+    }
+    else {
+      $query->condition('ad.branch_id', $branch->branch_id);
+    }
     $af = $query->innerJoin('api_file', 'af', 'ad.did = af.did');
     $match_name = $query->addField('af', 'basename', 'match_name');
     $match_name_field = 'af.basename';
@@ -2416,11 +2538,13 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
     $query->condition('ad.object_type', array('class', 'interface'));
   }
 
+  // Execute the query and make an array of matches, making sure to only
+  // keep the highest-priority matches.
   $query->condition($match_name_field, $potential_names);
   $results = $query->execute();
-  $url = NULL;
-  $options = array();
-  $url_name_matched = '';
+  $best = array();
+  $name_matched = '';
+  $preferred_matched = 0;
   foreach ($results as $object) {
     // MySQL is not case-sensitive, so check the match for exact string.
     $matched = $object->match_name;
@@ -2429,69 +2553,46 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
     }
 
     // See if this matched name takes precedence over the previous one.
-    $priority = _api_match_priority($matched, $url_name_matched, $prefer_shorter);
-
-    if (isset($url) && $priority == 0) {
-      // This is the second match at same priority, so make this a search.
-      if (!isset($search_term)) {
-        $search_term = $matched;
-      }
-      $url = 'api/search/' . $branch->branch_name . '/' . $search_term;
-      $options = array(
-        'attributes' => array(
-          'title' => t('Multiple implementations exist.'),
-          'class' => array('local'),
-        ),
-      );
+    $priority = _api_match_priority($matched, $name_matched, $prefer_shorter);
+    if ($priority == 0 && ($preferred_matched == $object->preferred)) {
+      // Same priority: add to array.
+      $best[] = $object;
     }
-    elseif ($priority > 0) {
-      $url = api_url($object);
-      $options = array(
-        'attributes' => array(
-          'title' => api_entity_decode($object->summary),
-          'class' => array('local'),
-        ),
-      );
-      $url_name_matched = $matched;
+    elseif ($priority > 0 || ($object->preferred == 1 && $preferred_matched == 0)) {
+      // Higher priority: start new array.
+      $best = array($object);
+      $name_matched = $matched;
+      $preferred_matched = 1;
     }
   }
 
-  // See if we found a match.
-  if (isset($url)) {
-    return $prepend . l($text, $url, $options) . $append;
+  // See whether to return a direct link, a search, or FALSE.
+  if (!count($best)) {
+    return FALSE;
   }
 
-  // If we get here, there wasn't a match. Try PHP functions.
-  if ($use_php) {
-    $query = db_select('api_php_documentation', 'd')
-      ->fields('d', array('object_name', 'documentation'));
-    $b = $query->innerJoin('api_php_branch', 'b', "b.branch_id = d.branch_id");
-    $query
-      ->fields($b, array('data'))
-      ->condition('d.object_type', 'function')
-      ->condition('d.object_name', $name);
-    $result = $query->execute();
-    foreach ($result as $info) {
-      // MySQL is not case-sensitive, so check the match for exact string.
-      if ($info->object_name != $name) {
-        continue;
-      }
-
-      $data = unserialize($info->data);
-      $link = strtr($data['path'], array('!function' => $name));
-      return $prepend . l($text, $link, array('attributes' => array('title' => api_entity_decode($info->documentation), 'class' => array('php-manual')))) . $append;
-    }
+  if (count($best) == 1) {
+    $url = api_url($best[0]);
+    $options = array(
+      'attributes' => array(
+        'title' => api_entity_decode($best[0]->summary),
+        'class' => array('local'),
+      ),
+    );
+    return l($text, $url, $options);
   }
 
-  // If we get here, there still wasn't a match, so return non-linked text.
-  if (isset($prepend_if_not_found)) {
-    $prepend = $prepend_if_not_found;
-  }
-  if (isset($append_if_not_found)) {
-    $append = $append_if_not_found;
-  }
-
-  return $prepend . $text . $append;
+  // @todo If we found multiple matches in the case of a multi-branch
+  // search, we should probably go to a multi-branch search page, but this
+  // does not exist yet. So just go to the first found branch.
+  $url = 'api/' . $best[0]->project . '/' . $best[0]->branch_name . '/search/' . $best[0]->match_name;
+  $options = array(
+    'attributes' => array(
+      'title' => t('Multiple implementations exist.'),
+      'class' => array('local'),
+    ),
+  );
+  return l($text, $url, $options);
 }
 
 /**
@@ -2543,6 +2644,34 @@ function _api_match_priority($current, $previous, $prefer_shorter = TRUE) {
 }
 
 /**
+ * Attempts to locate a core branch corresponding to the given branch.
+ *
+ * @param $branch
+ *   Branch object to find a core branch for.
+ *
+ * @return
+ *   Branch object for the core branch, if there is one. If not, FALSE.
+ */
+function api_find_core_branch($branch) {
+  $query = db_select('api_branch', 'b');
+  $query->innerJoin('api_project', 'p', 'b.project = p.project_name');
+  $query->condition('p.project_type', 'core');
+  $query->condition('b.core_compatibility', $branch->core_compatibility);
+  $query->fields('b');
+  $query->fields('p', array('project_title', 'project_type'));
+  $query->orderBy('b.weight', 'ASC');
+  $result = $query->execute();
+  // There shouldn't be more than one result, so assume that's the case and
+  // return the first result found.
+  foreach ($result as $branch) {
+    drupal_unpack($branch);
+    return $branch;
+  }
+
+  return FALSE;
+}
+
+/**
  * Links text to an appropriate class member variable, constant, or function.
  *
  * @param $text
@@ -2566,67 +2695,125 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
   $member_type = $matches[2];
   $object_type = $matches[1];
 
-  if ($object_type == 'function') {
-    $object_type_where = " AND ad.object_type = 'function'";
-  }
-  else {
-    $object_type_where = " AND ad.object_type <> 'function'";
-  }
   $prepend = '<span class="php-function-or-constant">';
   $append = '</span>';
 
-  // Figure out what class we're looking for a member of, and build a query.
-  // $member_type is one of: parent, self, variable, or class-NAME.
-  // Convert parent and specific class names to a 'self' reference, by finding
-  // the class documentation IDs it could be.
-  // @todo Use namespaces eventually.
+  // Try matching in this branch.
+  $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, $branch);
+  if ($link) {
+    return $prepend . $link . $append;
+  }
+
+  // If this is not a core branch, try matching in the core branch, and then
+  // in other branches with the same core compatibility.
+  $core_branch = api_find_core_branch($branch);
+  if ($core_branch && $core_branch->branch_id != $branch->branch_id) {
+    $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, $branch);
+    if ($link) {
+      return $prepend . $link . $append;
+    }
+
+    $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, NULL, $branch->core_compatibility);
+    if ($link) {
+      return $prepend . $link . $append;
+    }
+  }
+
+  // If we got here, we didn't have a match.
+  return $prepend . $name . $append;
+}
+
+/**
+ * Finds matches for a class member object name in a branch and makes a link.
+ *
+ * @param $name
+ *   Name to match (text found in the code).
+ * @param $member_type
+ *   What type of reference to find: 'parent', 'self', 'variable', or
+ *   'class-NAME'. This is set up in the parser.
+ * @param $object_type
+ *   'function' if this is a member function.
+ * @param $class_did
+ *   Documentation ID of the class this is part of (if any).
+ * @param $branch
+ *   Object representing the branch to search. If NULL, use core compatibility
+ *   instead.
+ * @param $core_compatibility
+ *   If $branch is NULL, search all branches with this core compatibility.
+ *
+ * @return
+ *   Link to either a single matching object or a search if multiple matches
+ *   exist; if there are no matches, FALSE.
+ */
+function _api_make_match_link_class_member($name, $member_type, $object_type, $class_did = NULL, $branch = NULL, $core_compatibility = '') {
+
+  // If $member_type is parent, see if the parent class exists in this branch.
+  // @todo Eventually use namespaces here?
   if ($member_type == 'parent') {
     $query = db_select('api_reference_storage', 'ars');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.object_name = ars.object_name AND ad.branch_id = ars.branch_id');
+    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.object_name = ars.object_name');
     $query
       ->fields($ad, array('did'))
       ->condition('ars.from_did', $class_did)
       ->condition('ars.object_type', 'class')
       ->condition('ad.object_type', 'class');
+
+    if (is_null($branch)) {
+      $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+      $query->condition('b.core_compatibility', $core_compatibility);
+    }
+    else {
+      $query->condition('ad.branch_id', $branch->branch_id);
+    }
+
     $class_did = $query->execute()->fetchCol();
     $member_type = 'self';
     if (count($class_did) == 1) {
       $class_did = array_pop($class_did);
     }
     elseif (count($class_did) == 0) {
-      // There is no parent class recorded (probably a built-in PHP class).
-      $member_type = 'none';
+      return FALSE;
     }
   }
-  elseif (strpos($member_type, 'class-') === 0) {
-    // We're looking for a specific class. Find the class doc ID, or all class
-    // doc IDs it could be.
+
+  // If we're looking for a specific class, see if it exists in this branch.
+  // @todo Eventually use namespaces here?
+  if (strpos($member_type, 'class-') === 0) {
     $class_name = substr($member_type, 6);
-    $query = db_select('api_documentation', 'ad')
-      ->fields('ad', array('did'))
+    $query = db_select('api_documentation', 'ad');
+    $query->fields('ad', array('did'))
       ->condition('object_type', 'class')
-      ->condition('branch_id', $branch->branch_id)
       ->condition('object_name', $class_name);
+    if (is_null($branch)) {
+      $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+      $query->condition('b.core_compatibility', $core_compatibility);
+    }
+    else {
+      $query->condition('ad.branch_id', $branch->branch_id);
+    }
     $class_did = $query->execute()->fetchCol();
     $member_type = 'self';
     if (count($class_did) == 1) {
       $class_did = array_pop($class_did);
     }
     elseif (count($class_did) == 0) {
-      // This specific class is not recorded (probably a built-in PHP class).
-      $member_type = 'none';
+      // Class is not in this branch.
+      return FALSE;
     }
   }
 
   $result = NULL;
   if ($member_type == 'self') {
-    // Looking for a member of a particular class, or one of several classes
-    // with the same name. Use the {api_members} table to find the right
-    // method, since it includes members inherited from parent classes.
-    // @todo Eventually use namespaces here?
+    // Looking for a member of a particular class, or one of several classes,
+    // whose documentation ID we have already located. Use the {api_members}
+    // table to find the right method, since it includes members inherited from
+    // parent classes.
     $query = db_select('api_members', 'am');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
-    $query->fields('ad', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did', 'member_name'))
+    $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $query
+      ->fields('ad', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did', 'member_name'))
+      ->fields('b', array('branch_name', 'project'))
       ->condition('am.class_did', $class_did)
       ->condition('ad.member_name', $name);
 
@@ -2641,10 +2828,20 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
   }
   elseif ($member_type == 'variable') {
     // This was some kind of a variable like $foo->member(). So match any member
-    // of any class.
+    // of any class in this branch.
     $query = db_select('api_documentation', 'ad');
-    $query->fields('ad', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did', 'member_name'))
+    $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $query
+      ->fields('ad', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did', 'member_name'))
+      ->fields('b', array('branch_name', 'project'))
       ->condition('ad.member_name', $name);
+
+    if (is_null($branch)) {
+      $query->condition('b.core_compatibility', $core_compatibility);
+    }
+    else {
+      $query->condition('ad.branch_id', $branch->branch_id);
+    }
 
     if ($object_type == 'function') {
       $query->condition('ad.object_type', 'function');
@@ -2657,45 +2854,47 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
   }
 
   // See if we have one result, more than one result, or no results.
-  $url = NULL;
-  $options = array();
+  $matches = array();
   if (isset($result)) {
     foreach ($result as $object) {
       // MySQL is not case-sensitive, so check the match for exact string.
       if ($object->member_name != $name) {
         continue;
       }
-      if (strlen($url)) {
-        // This is the second match, so make this a search.
-        $url = 'api/search/' . $branch->branch_name . '/' . $name;
-        $options = array(
-          'attributes' => array(
-            'title' => t('Multiple implementations exist.'),
-            'class' => array('local'),
-          ),
-        );
-        break;
-      }
-      else {
-        // This is the first match, make a link.
-        $url = api_url($object);
-        $options = array(
-          'attributes' => array(
-            'title' => api_entity_decode($object->summary),
-            'class' => array('local'),
-          ),
-        );
-      }
-    }
-
-    // See if we found a match.
-    if (isset($url)) {
-      return $prepend . l($name, $url, $options) . $append;
+      $matches[] = $object;
     }
   }
 
-  // If we got here, we didn't have a match.
-  return $prepend . $name . $append;
+  // No matches.
+  if (!count($matches)) {
+    return FALSE;
+  }
+
+  // If we found one match, return its URL as a link.
+  if (count($matches) == 1) {
+    $object = $matches[0];
+    $url = api_url($object);
+    $options = array(
+      'attributes' => array(
+        'title' => api_entity_decode($object->summary),
+        'class' => array('local'),
+      ),
+    );
+    return l($name, $url, $options);
+  }
+
+  // If we found multiple matches, make a search URL.
+  // @todo If we found multiple matches in the case of a multi-branch
+  // search, we should probably go to a multi-branch search page, but this
+  // does not exist yet. So just go to the first found branch.
+  $url = 'api/' . $matches[0]->project . '/' . $matches[0]->branch_name . '/search/' . $name;
+  $options = array(
+    'attributes' => array(
+      'title' => t('Multiple implementations exist.'),
+      'class' => array('local'),
+    ),
+  );
+  return l($name, $url, $options);
 }
 
 /**
