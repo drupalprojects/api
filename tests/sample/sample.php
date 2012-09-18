@@ -205,6 +205,9 @@ function theme_sample_four($variables) {
  * Does something interesting, to test in-code linking.
  */
 function sample_in_code_links() {
+  // This should probably make a link to the global.
+  global $sample_global;
+
   // Should link to function.
   $foo = sample_function();
   // Should link to theme function.
@@ -255,6 +258,9 @@ function sample_in_code_links() {
     module_invoke($module, 'nonexistent_hook', $foo);
   }
   $d = drupal_alter('nonexistent_alter_name', $foo);
+
+  // This should make a link only if the second sample is loaded.
+  $x = second_sample_function();
 }
 
 /**

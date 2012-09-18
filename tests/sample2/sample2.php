@@ -27,6 +27,7 @@ function second_sample_function() {
   $sample_global = SAMPLE_CONSTANT;
 
   $foo = sample_function('a', 'b');
+  $bar = sample_class_function('x');
 }
 
 /**

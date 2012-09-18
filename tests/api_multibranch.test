@@ -1,6 +1,13 @@
+<?php
+/**
+ * @file
+ * Tests multiple-branch functionality of the API module.
+ */
+
+module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
- * Tests multiple-branch functionality.
+ * Tests multiple-branch functionality within a single project.
  */
 class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
 
@@ -136,5 +143,172 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->assertNoRaw($this->branch_info['branch_name'] . ' classes.php', 'This file name and branch are shown');
     $this->assertRaw($this->branch_info_2['branch_name'] . ' extras.php', 'Other sample file and branch name are shown');
     $this->assertNoRaw('Sample::foo', 'Sample method name is not shown');
+  }
+}
+
+/**
+ * Tests multiple-branch functionality with multiple projects.
+ */
+class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
+
+  /**
+   * Array of information about the second sample branch.
+   */
+  protected $branch_info_2;
+
+  /**
+   * Array of information about the sample core branch.
+   */
+  protected $branch_info_core;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Multiple projects functionality',
+      'description' => 'Tests that the multiple-project setup works correctly',
+      'group' => 'API module',
+    );
+  }
+
+  public function setUp() {
+    $this->baseSetUp();
+
+    // Create file branches with the two samples, each in its own project.
+    $this->branch_info = $this->setUpBranchUI('', TRUE, array(
+      'project' => 'sample',
+      'project_title' => 'Sample',
+      'branch_name' => '7.x-1.x',
+      'title' => 'Sample 7.x-1.x',
+      'core_compatibility' => '7.x',
+    ));
+
+    $this->branch_info_2 = $this->setUpBranchUI('', TRUE, array(
+      'project' => 'test',
+      'project_title' => 'Test',
+      'branch_name' => '7.x-2.x',
+      'title' => 'Test 7.x-2.x',
+      'core_compatibility' => '7.x',
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample2',
+      'excluded' => 'none',
+    ));
+
+    // Create a file branch to act as core.
+    $this->branch_info_core = $this->setUpBranchUI('', TRUE, array(
+      'project' => 'drupal',
+      'project_title' => 'Drupal',
+      'project_type' => 'core',
+      'branch_name' => '7.x',
+      'title' => 'Drupal 7.x',
+      'core_compatibility' => '7.x',
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample_drupal',
+      'excluded' => '',
+    ));
+
+    // Remove PHP branch.
+    $this->removePHPBranch();
+
+    // Parse the code.
+    $this->resetBranchesAndCache();
+    $this->updateBranches();
+    $count = $this->processApiParseQueue();
+    $this->assertEqual($count, 15, "15 files were parsed ($count)");
+
+    // Turn on the navigation block.
+    $this->drupalPost('admin/structure/block/list', array(
+        'blocks[api_navigation][region]' => 'sidebar_first',
+      ),
+      t('Save blocks')
+    );
+  }
+
+  /**
+   * Runs all tests in this section, to avoid multiple calls to setUp().
+   */
+  function testAll() {
+    $this->_testPages();
+    $this->_testBranchesCallingFunctions();
+    $this->_testBranchLinks();
+  }
+
+  /**
+   * Tests that various pages are working correctly.
+   */
+  function _testPages() {
+    $this->drupalGet('api/projects');
+    $this->assertLink('Drupal', 0, 'Drupal project link exists');
+    $this->assertLink('Sample', 0, 'Sample project link exists');
+    $this->assertLink('Test', 0, 'Test project link exists');
+
+    $this->drupalGet('api');
+    $this->assertRaw($this->branch_info_core['project_title'], 'Default project is correct');
+
+    $this->drupalGet('api/' . $this->branch_info_core['project'] . '/drupal.php/function/theme');
+    $this->assertResponse(200, 'Function page without branch suffix redirected correctly in core branch');
+    $this->assertText('Generates themed output.', 'Description appears on page');
+  }
+
+  /**
+   * Tests that the list of functions calling this function is branch-specific.
+   */
+  function _testBranchesCallingFunctions() {
+    // Visit the sample.php function sample_function().
+    // Note that you need to have the branch name in URLs unless it matches the
+    // default project's default branch name!
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function/' . $this->branch_info['branch_name']);
+
+    // Verify that there is only one function calling this function.
+    $this->assertLink('1 call to sample_function()', 0, 'Only one calling function');
+    $this->clickLink('1 call to sample_function()');
+    // Verify links on the calling functions page.
+    $this->assertLink('sample_in_code_links', 0, 'Calling function link is present');
+    $this->assertNoLink('second_sample_function', 'Calling function from other branch link is not present');
+
+    // Visit the other branch's function sample_function().
+    $this->drupalGet('api/' . $this->branch_info_2['project'] . '/sample2.php/function/sample_function/' . $this->branch_info_2['branch_name']);
+
+    // Verify that there is only one function calling this function.
+    $this->assertLink('1 call to sample_function()', 0, 'Only one calling function');
+    $this->clickLink('1 call to sample_function()');
+    // Verify links in the calling functions page.
+    $this->assertLink('second_sample_function', 0, 'Calling function link is present');
+    $this->assertNoLink('sample_in_code_links', 'Calling function from other branch link is not present');
+  }
+
+  /**
+   * Tests that the in-code links between projects are working correctly.
+   */
+  function _testBranchLinks() {
+
+    // Note that you need to have the branch name in URLs unless it matches the
+    // default project's default branch name!
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_in_code_links/' . $this->branch_info['branch_name']);
+
+    // Make sure the sample_function link stays in this branch.
+    $this->assertLinkURLSubstring('sample_function', $this->branch_info['project'] . '/sample.php/function/sample_function', 'sample_function link exists', 'sample_function link went to the right place');
+
+    // Make sure the link to the other non-core branch is made.
+    $this->assertLinkURLSubstring('second_sample_function', $this->branch_info_2['project'] . '/sample2.php/function/second_sample_function', 'second_sample_function link exists', 'second_sample_function link went to the right place');
+
+    // Make sure the core links are made.
+    $this->assertLinkURLSubstring('theme', $this->branch_info_core['project'] . '/drupal.php/function/theme', 'theme link exists', 'theme link went to the right place');
+    $this->assertLinkURLSubstring('module_invoke', $this->branch_info_core['project'] . '/drupal.php/function/module_invoke', 'module_invoke link exists', 'module_invoke link went to the right place');
+
+    $this->drupalGet('api/' . $this->branch_info_2['project'] . '/sample2.php/function/second_sample_function/' . $this->branch_info_2['branch_name']);
+
+    // Make sure the sample_function link stays in this branch.
+    $this->assertLinkURLSubstring('sample_function', $this->branch_info_2['project'] . '/sample2.php/function/sample_function', 'sample_function link exists', 'sample_function link went to the right place');
+
+    // Make sure the other links go to the other project/branch.
+    $this->assertLinkURLSubstring('sample_class_function', $this->branch_info['project'] . '/sample.php/function/sample_class_function', 'sample_class_function link exists', 'sample_class_function link went to the right place');
+    // @todo: Global links do not work. Un-comment this when they do. See issue
+    // http://drupal.org/node/1788456
+    //    $this->assertLinkURLSubstring('$sample_global', $this->branch_info['project'] . '/sample.php/global/sample_global', 'sample_global link exists', 'sample_global link went to the right place');
+    $this->assertLinkURLSubstring('SAMPLE_CONSTANT', $this->branch_info['project'] . '/sample.php/constant/SAMPLE_CONSTANT', 'SAMPLE_CONSTANT link exists', 'SAMPLE_CONSTANT link went to the right place');
+
+    $this->drupalGet('api/' . $this->branch_info_core['project'] . '/drupal.php/function/module_invoke_all/' . $this->branch_info_core['branch_name']);
+
+    // Check on links that should and should not be made.
+    $this->assertLinkURLSubstring('theme', $this->branch_info_core['project'] . '/drupal.php/function/theme', 'theme link exists', 'theme link went to the right place');
+    $this->assertText('sample_function', 'sample_function is there');
+    $this->assertNoLink('sample_function', 'sample_function is not a link');
   }
 }
