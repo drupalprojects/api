@@ -371,8 +371,6 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
     api_set_html_page_title(implode(' | ', $page_title));
   }
 
-  // Use the correct plural form to construct the URLs for the other branches.
-  $plural_type = $object_type . 's';
   $show_headings = FALSE;
 
   if ($object_type === 'group') {
@@ -386,7 +384,6 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
       ->execute();
   }
   elseif ($object_type === 'class') {
-    $plural_type = 'classes';
     $show_headings = TRUE;
     $result = db_select('api_documentation', 'd')
       ->fields('d')
