@@ -24,6 +24,11 @@ define('API_RE_FILENAME', '([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)');
 define('API_RE_FUNCTION_IN_TEXT', '[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff:]*');
 
 /**
+ * Regular expression for matching group/topic names.
+ */
+define('API_RE_GROUP_NAME', '[a-zA-Z_0-9\.\-]+');
+
+/**
  * Regular expression for matching hook names.
  *
  * Since the actual PHP function name already has a prefix, these can
@@ -2056,16 +2061,20 @@ function api_link_code($code, $branch, $class_did = NULL) {
  * @param $aggressive_classes
  *   Try linking every word with a capital letter to a class or interface, if
  *   TRUE.
+ * @param $aggressive_topics
+ *   For use in @see only, if TRUE try linking every paragraph as a topic name,
+ *   if it didn't match as something else first.
  *
  * @return
  *   Documentation with function names formatted as links.
  */
-function api_link_documentation($documentation, $branch, $class_did = NULL, $aggressive_classes = FALSE) {
+function api_link_documentation($documentation, $branch, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE) {
+
   $filter = new stdClass();
   $filter->callback = '_filter_url';
   $filter->settings = array( 'filter_url_length' => 72);
 
-  return _filter_url(api_filter_documentation($documentation, $branch, $class_did, $aggressive_classes), $filter);
+  return _filter_url(api_filter_documentation($documentation, $branch, $class_did, $aggressive_classes, $aggressive_topics), $filter);
 }
 
 /**
@@ -2084,20 +2093,30 @@ function api_link_documentation($documentation, $branch, $class_did = NULL, $agg
  * @param $aggressive_classes
  *   Try linking every word with a capital letter to a class or interface, if
  *   TRUE.
+ * @param $aggressive_topics
+ *   For use in @see only, if TRUE try linking every paragraph as a topic name,
+ *   if it didn't match as something else first.
  *
  * @return
  *   Text with function names turned into links.
  */
-function api_filter_documentation($text, $branch = NULL, $class_did = NULL, $aggressive_classes = FALSE) {
+function api_filter_documentation($text, $branch = NULL, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE) {
   if (is_null($branch)) {
     $branch = api_get_active_branch();
   }
 
-  // Remove escaping from \@.
-  $stages = array('tags', 'link', 'function', 'file', 'constant');
+  $stages = array('tags', 'link', 'function');
+  if ($aggressive_topics) {
+    // Look for topics before classes, constants, and files.
+    $stages[] = 'topic';
+  }
+  $stages[] = 'file';
+  $stages[] = 'constant';
   if ($aggressive_classes) {
     $stages[] = 'class';
   }
+
+  // Remove escaping from \@.
   return preg_replace('!\\\@!', '@', _api_link_documentation($text, $branch, $class_did, $stages));
 }
 
@@ -2130,6 +2149,7 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
   $use_php = TRUE;
   $type = '';
   $pattern = '';
+  $continue_matching = FALSE;
 
   switch ($stage) {
     case 'tags':
@@ -2229,6 +2249,15 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
       $pattern = '/\b(' . API_RE_CLASS_NAME_TEXT . ')\b/';
       $type = 'class';
       break;
+
+    case 'topic':
+      // Find topic/group names.
+      $pattern = '/\b(' . API_RE_GROUP_NAME . ')\b/';
+      $type = 'group';
+      // Patterns that match topics might also match other objects.
+      // keep looking for matches after running the linker.
+      $continue_matching = TRUE;
+      break;
   }
 
   if (count($stages) > 0) {
@@ -2238,7 +2267,7 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
     $callback = NULL;
   }
 
-  return api_split($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $class_did, NULL, NULL, $use_php, $prepend_if_not_found, NULL, $type), $callback, array($branch, $class_did, $stages));
+  return api_split($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $class_did, NULL, NULL, $use_php, $prepend_if_not_found, NULL, $type), $callback, array($branch, $class_did, $stages), $continue_matching);
 }
 
 /**
@@ -2260,12 +2289,15 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
  *   text through unchanged.
  * @param $callback_arguments
  *   An array of additional parameters for $callback.
+ * @param $continue_matching
+ *   If TRUE, call $callback again on the matched text if it is left unchanged
+ *   by its callback.
  *
  * @return
  *   The original string, with both matched and unmatched portions filtered by
  *   the appropriate callbacks.
  */
-function api_split($pattern, $subject, $callback_match = NULL, $callback_match_arguments = array(), $callback = NULL, $callback_arguments = array()) {
+function api_split($pattern, $subject, $callback_match = NULL, $callback_match_arguments = array(), $callback = NULL, $callback_arguments = array(), $continue_matching = FALSE) {
   $return = '';
   $matched = FALSE;
   foreach (preg_split($pattern . 'sm', $subject, -1, PREG_SPLIT_DELIM_CAPTURE) as $part) {
@@ -2274,7 +2306,12 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
         $return .= $part;
       }
       else {
-        $return .= call_user_func_array($callback_match, array_merge(array($part), $callback_match_arguments));
+        $new_text = call_user_func_array($callback_match, array_merge(array($part), $callback_match_arguments));
+
+        if ($new_text == $part && $continue_matching) {
+          $new_text = call_user_func_array($callback, array_merge(array($part), $callback_arguments));
+        }
+        $return .= $new_text;
       }
     }
     else {
@@ -2323,6 +2360,7 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   - 'function': $name is specifically a function ('file', 'constant', etc.
  *     also are supported).
  *   - 'function_or_constant': $name is either a function, constant, or class.
+ *   - 'group': $name is a group/topic identifier.
  *
  * @return
  *   The text as a link to the object page.
@@ -2429,8 +2467,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
  * @param $text
  *   Text to put in the link.
  * @param $type
- *   Type of object to match ('function', 'hook', 'alter hook', 'theme',
- *   'file', 'constant', 'class').
+ *   Type of object to match (see api_link_name() for options).
  * @param $branch
  *   Object representing the branch to search. If NULL, use core compatibility
  *   instead.
@@ -2442,6 +2479,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
  *   exist; if there are no matches, FALSE.
  */
 function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compatibility = '') {
+
   // Build a query to find the matches.
   $query = db_select('api_documentation', 'ad')
     ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'));
@@ -2537,6 +2575,9 @@ function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compati
   elseif ($type == 'class') {
     $query->condition('ad.object_type', array('class', 'interface'));
   }
+  elseif ($type == 'group') {
+    $query->condition('ad.object_type', 'group');
+  }
 
   // Execute the query and make an array of matches, making sure to only
   // keep the highest-priority matches.
@@ -2567,7 +2608,7 @@ function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compati
   }
 
   // See whether to return a direct link, a search, or FALSE.
-  if (!count($best)) {
+  if (!count($best) || ($type == 'group' && count($best) != 1)) {
     return FALSE;
   }
 
@@ -2579,6 +2620,9 @@ function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compati
         'class' => array('local'),
       ),
     );
+    if ($type == 'group') {
+      $text = $best[0]->title;
+    }
     return l($text, $url, $options);
   }
 

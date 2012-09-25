@@ -46,6 +46,7 @@ class ApiWebLinksTestCase extends ApiWebPagesBaseTest {
       'SubSample' => 'classes.php/class/SubSample',
       'SAMPLE_CONSTANT' => 'sample.php/constant/SAMPLE_CONSTANT',
       'DUPLICATE_CONSTANT' => $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search/DUPLICATE_CONSTANT',
+      'Samples' => 'sample.php/group/samp_GRP-6.x/',
     );
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_in_code_links');

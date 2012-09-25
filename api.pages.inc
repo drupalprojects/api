@@ -274,7 +274,7 @@ function api_page_file($file) {
   api_object_title_and_breadcrumb($branch, $file);
 
   $documentation = api_link_documentation($file->documentation, $branch);
-  $see = api_link_documentation($file->see, $branch, NULL, TRUE);
+  $see = api_link_documentation($file->see, $branch, NULL, TRUE, TRUE);
   $related_topics = api_related_topics($file->did, $branch);
   $code = api_link_code($file->code, $branch);
   $defined = $file->file_name;
@@ -597,7 +597,7 @@ function api_page_function($function) {
   $documentation = api_link_documentation($function->documentation, $branch, $function->class_did);
   $parameters = api_link_documentation($function->parameters, $branch, $function->class_did, TRUE);
   $return = api_link_documentation($function->return_value, $branch, $function->class_did, TRUE);
-  $see = api_link_documentation($function->see, $branch, $function->class_did, TRUE);
+  $see = api_link_documentation($function->see, $branch, $function->class_did, TRUE, TRUE);
   $throws = api_link_documentation($function->throws, $branch, $function->class_did, TRUE);
   $code = api_link_code($function->code, $branch, $function->class_did);
   $related_topics = api_related_topics($function->did, $branch);
@@ -865,7 +865,7 @@ function api_page_simple_item($item, $type) {
   $documentation = api_link_documentation($item->documentation, $branch, $item->class_did);
   $code = api_link_code($item->code, $branch, $item->class_did);
   $related_topics = api_related_topics($item->did, $branch);
-  $see = api_link_documentation($item->see, $branch, $item->class_did, TRUE);
+  $see = api_link_documentation($item->see, $branch, $item->class_did, TRUE, TRUE);
   $var = '';
   if ($type == 'property') {
     $var = api_link_name($item->var, $branch, '', '', $item->class_did);
@@ -903,7 +903,7 @@ function api_page_class($class) {
   $documentation = api_link_documentation($class->documentation, $branch, $class->did);
   $related_topics = api_related_topics($class->did, $branch);
   $code = api_link_code($class->code, $branch, $class->did);
-  $see = api_link_documentation($class->see, $branch, $class->did, TRUE);
+  $see = api_link_documentation($class->see, $branch, $class->did, TRUE, TRUE);
 
   // Figure out the class hierarchy, and what classes implement if this is
   // an interface.
@@ -987,7 +987,7 @@ function api_page_group($group) {
   api_object_title_and_breadcrumb($branch, $group);
 
   $documentation = api_link_documentation($group->documentation, $branch);
-  $see = api_link_documentation($group->see, $branch, NULL, TRUE);
+  $see = api_link_documentation($group->see, $branch, NULL, TRUE, TRUE);
 
   $query = db_select('api_reference_storage', 'r');
   $d = $query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');

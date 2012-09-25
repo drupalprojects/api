@@ -78,7 +78,7 @@ interface SampleInterface {
 /**
  * Subclass.
  *
- * @see Sample::foo() should be a link
+ * @see Sample::foo()
  */
 class SubSample extends Sample implements SampleInterfaceTwo, InterfaceNotDefinedHere {
   // Not documented (this is intentional for testing).

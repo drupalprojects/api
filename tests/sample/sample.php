@@ -203,6 +203,8 @@ function theme_sample_four($variables) {
 
 /**
  * Does something interesting, to test in-code linking.
+ *
+ * @see samp_GRP-6.x
  */
 function sample_in_code_links() {
   // This should probably make a link to the global.
