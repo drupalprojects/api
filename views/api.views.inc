@@ -101,6 +101,7 @@ function api_views_data() {
 
     'class_did' => array(
       'title' => t('Class documentation ID'),
+      'help' => t('Class ID'),
       'relationship' => array(
         'base' => 'api_documentation',
         'base field' => 'did',
@@ -108,6 +109,9 @@ function api_views_data() {
         'label' => t('Class object'),
         'title' => t('Class object'),
         'help' => t('The documentation object for the class this object is a member of'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
       ),
     ),
 
