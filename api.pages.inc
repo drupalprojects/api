@@ -42,24 +42,29 @@ function api_search_redirect() {
 /**
  * Page callback: Prints out OpenSearch plugin XML output.
  *
+ * @param $project
+ *   Name of the project to search.
  * @param $branch_name
  *   Name of the branch to search.
  *
  * @see https://developer.mozilla.org/en/Creating_OpenSearch_plugins_for_Firefox
  * @see api_menu()
  */
-function api_opensearch($branch_name) {
-  $branches = api_get_branches_by_name($branch_name);
-  if (!isset($branches) || is_null($branches) || !count($branches)) {
+function api_opensearch($project, $branch_name) {
+  $branch = api_get_branch_by_name($project, $branch_name);
+  if (!isset($branch)) {
     return drupal_not_found();
   }
-  $branch = $branches[0];
   $branch_id = $branch->branch_id;
 
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
 
-  $short_name = t('Drupal API - @branch', array('@branch' => $branch->title));
+  $short_name = check_plain($branch->title);
   $description = t('Drupal API documentation for @branch', array('@branch' => $branch->title));
+  $search_url = url('api/' . $branch->project . '/' . $branch->branch_name . '/search', array('absolute' => TRUE)) . '/{searchTerms}';
+  $suggest_url = url('api/suggest/' . $branch->project . '/' . $branch->branch_name, array('absolute' => TRUE)) . '/{searchTerms}';
+  $self_url = url($_GET['q'], array('absolute' => TRUE));
+
   // We need to use a theme function, so initialize the theme system.
   drupal_theme_initialize();
   if ($image = theme_get_setting('favicon')) {
@@ -71,22 +76,16 @@ function api_opensearch($branch_name) {
     $image = 'misc/favicon.ico';
   }
   $image = url($image, array('absolute' => TRUE));
-  $search_url = url('api/' . $branch->project . '/' . $branch->branch_name . '/search/', array('absolute' => TRUE)) . '/{searchTerms}';
-  $suggest_url = url('api/suggest/' . $branch_name, array('absolute' => TRUE)) . '/{searchTerms}';
-  $search_form_url = url('api', array('absolute' => TRUE));
-  $self_url = url($_GET['q'], array('absolute' => TRUE));
 
   print <<<EOD
-<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
-                       xmlns:moz="http://www.mozilla.org/2006/browser/search/">
-<ShortName>$short_name</ShortName>
-<Description>$description</Description>
-<InputEncoding>UTF-8</InputEncoding>
-<Image width="16" height="16" type="image/x-icon">$image</Image>
-<Url type="text/html" method="GET" template="$search_url" />
-<Url type="application/x-suggestions+json" template="$suggest_url"/>
-<Url type="application/opensearchdescription+xml" rel="self" template="$self_url" />
-<moz:SearchForm>$search_form_url</moz:SearchForm>
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>$short_name</ShortName>
+  <Description>$description</Description>
+  <Image width="16" height="16" type="image/x-icon">$image</Image>
+  <Url type="text/html" rel="results" method="GET" template="$search_url" />
+  <Url type="application/x-suggestions+json" rel="suggestions" template="$suggest_url"/>
+  <Url type="application/opensearchdescription+xml" rel="self" template="$self_url" />
 </OpenSearchDescription>
 EOD;
 }
@@ -94,6 +93,8 @@ EOD;
 /**
  * Page callback: Prints JSON-formatted potential matches for OpenSearch.
  *
+ * @param $project
+ *   Name of the project to list.
  * @param $branch
  *   Name of the branch to list.
  * @param ...
@@ -102,14 +103,16 @@ EOD;
  * @see http://www.opensearch.org/Specifications/OpenSearch/Extensions/Suggestions/1.0
  * @see api_menu()
  */
-function api_suggest($branch) {
+function api_suggest($project, $branch) {
   $search = func_get_args();
+  array_shift($search);
   array_shift($search);
   $query = db_select('api_documentation', 'd')
     ->fields('d', array('title'));
   $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
   $matches = $query->condition('d.title', '%' . implode('/', str_replace('_', '\_', $search)) . '%', 'LIKE')
     ->condition('b.branch_name', $branch)
+    ->condition('b.project', $project)
     ->range(0, 10)
     ->execute()
     ->fetchCol();

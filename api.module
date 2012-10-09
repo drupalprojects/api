@@ -447,18 +447,18 @@ function api_menu() {
   );
 
   // OpenSearch metadata callback.
-  $items['api/opensearch/%'] = array(
+  $items['api/opensearch/%/%'] = array(
     'page callback' => 'api_opensearch',
-    'page arguments' => array(2),
+    'page arguments' => array(2, 3),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
 
   // OpenSearch suggestions callback.
-  $items['api/suggest/%/%menu_tail'] = array(
+  $items['api/suggest/%/%/%menu_tail'] = array(
     'page callback' => 'api_suggest',
-    'page arguments' => array(2, 3),
+    'page arguments' => array(2, 3, 4),
     'load arguments' => array('%map', '%index'),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
@@ -1516,13 +1516,6 @@ function api_preprocess_html(&$variables) {
 function api_init() {
   $branch = api_get_active_branch();
 
-  // Add OpenSearch autodiscovery links.
-  foreach (api_get_branch_names() as $branch_name) {
-    $title = t('Drupal API @branch', array('@branch' => $branch_name));
-    $url = url('api/opensearch/' . $branch_name, array('absolute' => TRUE));
-    drupal_add_html_head('<link rel="search" type="application/opensearchdescription+xml" href="' . $url . '" title="' . $title . '" />', 'api_opensearch_' . $branch_name);
-  }
-
   // If we happen to be on an API node page, redirect.
   if (($node = menu_get_object('node')) && $node->type == 'api') {
     $result = db_select('api_documentation', 'd')
@@ -1532,6 +1525,24 @@ function api_init() {
       ->execute()
       ->fetchObject();
     drupal_goto(api_url($result));
+  }
+
+  // Add OpenSearch autodiscovery links.
+  $weight = 100;
+  foreach (api_get_branches() as $branch) {
+    $title = t('Drupal API @branch', array('@branch' => $branch->title));
+    $url = url('api/opensearch/' . $branch->project . '/' . $branch->branch_name, array('absolute' => TRUE));
+    drupal_add_html_head(array(
+        '#tag' => 'link',
+        '#weight' => $weight,
+        '#attributes' => array(
+          'href' => $url,
+          'title' => $title,
+          'rel' => 'search',
+          'type' => 'application/opensearchdescription+xml',
+        ),
+      ), $title);
+    $weight++;
   }
 }
 
@@ -1904,22 +1915,52 @@ function api_reset_branches() {
 /**
  * Sorts branches by project, version number, and branch name.
  *
- * Callback for usort() within api_save_branch().
+ * Callback for usort() within api_reset_branches().
  */
 function api_branch_sort($a, $b) {
   // Sort by project.
-  $result = strcasecmp($a->project, $b->project);
-  if ($result != 0) {
-    return $result;
+  if ($a->project != $b->project) {
+    $default_project = variable_get('api_default_project', '');
+    // If one of a or b is in the default project and the other isn't, that
+    // one is preferred.
+    if ($a->project == $default_project) {
+      return -1;
+    }
+    if ($b->project == $default_project) {
+      return 1;
+    }
+
+    // If one is core and the other isn't, that's preferred.
+    if ($a->project_type == 'core' && $b->project_type != 'core') {
+      return -1;
+    }
+    if ($a->project_type != 'core' && $b->project_type == 'core') {
+      return 1;
+    }
+
+    // Otherwise, sort alphabetically.
+    return strcasecmp($a->project, $b->project);
   }
 
   // Sort by core compatibility.
-  $result = version_compare($a->core_compatibility, $b->core_compatibility);
-  if ($result != 0) {
-    return $result;
+  if ($a->core_compatibility != $b->core_compatibility) {
+    $default_version = variable_get('api_default_core_compatibility', '');
+
+    // If one of a or b is in the default compatibility and the other isn't,
+    // that one is preferred.
+    if ($a->core_compatibility == $default_version) {
+      return -1;
+    }
+    if ($b->core_compatibility == $default_version) {
+      return 1;
+    }
+
+    // Otherwise, sort by version.
+    $result = version_compare($a->core_compatibility, $b->core_compatibility);
   }
 
-  // Sort by preferred (preferred over not preferred).
+  // Sort by preferred (preferred over not preferred within one project and
+  // core compatibility).
   if ($a->preferred && !$b->preferred) {
     return -1;
   }

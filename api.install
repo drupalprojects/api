@@ -1175,6 +1175,14 @@ function api_update_7115() {
 }
 
 /**
+ * Reset branches as sorting has been updated.
+ */
+function api_update_7116() {
+  module_load_include('module', 'api');
+  api_reset_branches();
+}
+
+/**
  * Remove variables and other data on uninstall.
  */
 function api_uninstall() {
