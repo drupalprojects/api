@@ -3064,7 +3064,7 @@ function api_queue_parse_file($data) {
   $branch = $data['branch'];
   $new_branch = api_get_branch_by_id($branch->branch_id);
   if (is_null($new_branch)) {
-    watchdog('api', 'Invalid or deleted branch requested in API parse %branch %file', array('%branch' => $branch->branch_name, '%file' => $data['file']));
+    watchdog('api', 'Invalid or deleted branch requested in API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
     return;
   }
   $branch = $new_branch;
@@ -3074,12 +3074,12 @@ function api_queue_parse_file($data) {
   $when_queued = (isset($data['timestamp']) ? $data['timestamp'] : 0);
   $valid_time = (isset($branch->queue_valid) ? $branch->queue_valid : 0);
   if ($when_queued < $valid_time) {
-    watchdog('api', 'Skipped API parse %branch %file', array('%branch' => $data['branch_name'], '%file' => $data['file']));
+    watchdog('api', 'Skipped API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
     return;
   }
 
   if ($when_queued >= $valid_time) {
-    watchdog('api', 'API parse %branch %file', array('%branch' => $data['branch_name'], '%file' => $data['file']));
+    watchdog('api', 'API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
 
     module_load_include('inc', 'api', 'parser');
     api_parse_file($data['parser'], $data['path'], $branch, $data['file']);
@@ -3115,7 +3115,6 @@ function api_queue_update_branch($data) {
 
   watchdog('api', 'Invalid or deleted branch requested in API update %type branch %branch', array('%type' => $type, '%branch' => $id), WATCHDOG_ERROR);
 }
-
 
 /**
  * Deletes obsolete nodes.

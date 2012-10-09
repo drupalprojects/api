@@ -91,7 +91,7 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     $this->checkAndClearLog(array(
         $this->cron_message,
         'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
-        'API parse ' . $this->branch_info['branch_name'],
+        'API parse ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
       ), array($this->php_message));
 
     // Run cron a few times more, which should be enough to parse the rest of

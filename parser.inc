@@ -1622,7 +1622,7 @@ function api_update_all_branches() {
       drupal_write_record('api_branch', $branch, 'branch_id');
     }
     else {
-      watchdog('api', 'Skipped update of branch %branch', array('%branch' => $branch->branch_name));
+      watchdog('api', 'Skipped update of %project branch %branch', array('%branch' => $branch->branch_name, '%project' => $branch->project));
     }
   }
 
@@ -1772,7 +1772,7 @@ function api_parse_functions() {
 function api_update_branch_files($branch) {
   $files_to_scan = api_scan_directories($branch->directories, $branch->excluded_directories);
   if (!count($files_to_scan)) {
-    watchdog('api', 'No files were found in %branch', array('%branch' => $branch->branch_name), WATCHDOG_ERROR);
+    watchdog('api', 'No files were found in %project branch %branch', array('%branch' => $branch->branch_name, '%project' => $branch->project), WATCHDOG_ERROR);
     $branch->queued = 0;
     drupal_write_record('api_branch', $branch, array('branch_id'));
     return FALSE;
