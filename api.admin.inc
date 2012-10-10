@@ -132,15 +132,16 @@ function api_branch_list_form($form, &$form_state) {
 
   $filters = isset($form_state['values']['filters']) ? $form_state['values']['filters'] : array();
 
-  $branches = api_filter_branches($filters);
-  $rows = array();
   $header = array(
-    t('Project'),
-    t('Core compatibility'),
-    t('Branch title'),
-    t('Branch identifier'),
+    array('data' => t('Project'), 'field' => 'project'),
+    array('data' => t('Core compatibility'), 'field' => 'core_compatibility'),
+    array('data' => t('Branch title'), 'field' => 'title'),
+    array('data' => t('Branch identifier'), 'field' => 'branch_name'),
     t('Operations'),
   );
+
+  $branches = api_filter_branches($filters, $header);
+  $rows = array();
 
   foreach ($branches as $branch) {
     $row = array();
@@ -185,16 +186,20 @@ function api_branch_list_form_submit($form, &$form_state) {
  *
  * @param $filters
  *   Associative array of fields/values to filter on.
+ * @param $headers
+ *   Associative array of table headers.
  *
  * @return
  *   Array of branch objects matching the filters.
  */
-function api_filter_branches($filters) {
+function api_filter_branches($filters, $headers) {
   $query = db_select('api_branch', 'b')
+    ->extend('TableSort')
+    ->extend('PagerDefault');
+  $query = $query
     ->fields('b')
-    ->extend('PagerDefault')
     ->limit(50)
-    ->orderBy('branch_name');
+    ->orderByHeader($headers);
 
   foreach ($filters as $field => $value) {
     if (strlen($field) > 0 && strlen($value) > 0) {
