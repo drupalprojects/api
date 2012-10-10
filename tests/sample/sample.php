@@ -207,8 +207,10 @@ function theme_sample_four($variables) {
  * @see samp_GRP-6.x
  */
 function sample_in_code_links() {
-  // This should probably make a link to the global.
+  // This should make a link to the global.
   global $sample_global;
+  // This is not really a global.
+  global $nonexistent_global;
 
   // Should link to function.
   $foo = sample_function();

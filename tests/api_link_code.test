@@ -85,6 +85,11 @@ class ApiLinkCodeTest extends ApiTestCase {
         'expected' => '<span class="php-function-or-constant"><a href="http://php.net/strpos" title="int strpos(string $haystack, mixed $needle [, int $offset = &#039;&#039;]) Find position of first occurrence of a string" class="php-manual">strpos</a></span>',
       ),
       array(
+        'message' => 'Marked-up global linking',
+        'data' => '<span class="php-keyword">global</span> <span class="php-variable">$sample_global</span>',
+        'expected' => '<span class="php-keyword">global</span> <span class="php-variable">$<a href="' . url('api/test/sample.php/global/sample_global/6') . '" title="A sample global." class="local">sample_global</a></span>',
+      ),
+      array(
         'message' => 'String that is function name linking',
         'data' => '<span class="php-string">\'sample_function\'</span>',
         'expected' => '<span class="php-function-or-constant">\'<a href="' . url('api/test/sample.php/function/sample_function/6') . '" title="A sample function." class="local">sample_function</a>\'</span>',
@@ -146,7 +151,12 @@ class ApiLinkCodeTest extends ApiTestCase {
         'expected' => '<span class="php-string">\'not_an_actual_function\'</span>',
       ),
       array(
-        'message' => 'String that is nonexestent theme hook',
+        'message' => 'String that is nonexistent global',
+        'data' => '<span class="php-keyword">global</span> <span class="php-variable">$not_a_global_name</span>',
+        'expected' => '<span class="php-keyword">global</span> <span class="php-variable">$not_a_global_name</span>',
+      ),
+      array(
+        'message' => 'String that is nonexistent theme hook',
         'data' => '<span class="php-function-or-constant">theme</span>(<span class="php-string potential-theme">\'not_a_theme_hook_name\'</span>',
         'expected' => '<span class="php-function-or-constant">theme</span>(<span class="php-string">\'not_a_theme_hook_name\'</span>',
       ),
@@ -156,7 +166,7 @@ class ApiLinkCodeTest extends ApiTestCase {
         'expected' => '<span class="php-function-or-constant">module_invoke_all</span>(<span class="php-string">\'not_a_sample_hook_name\'</span>',
       ),
       array(
-        'message' => 'String that is nonexestent hook in module_implements()',
+        'message' => 'String that is nonexistent hook in module_implements()',
         'data' => '<span class="php-function-or-constant">module_implements</span>(<span class="php-string potential-hook">\'not_a_sample_hook_name\'</span>',
         'expected' => '<span class="php-function-or-constant">module_implements</span>(<span class="php-string">\'not_a_sample_hook_name\'</span>',
       ),
@@ -166,7 +176,7 @@ class ApiLinkCodeTest extends ApiTestCase {
         'expected' => '<span class="php-function-or-constant">module_invoke</span>(<span class="php-variable">$module</span>, <span class="php-string">\'not_a_hook_name\'</span>',
       ),
       array(
-        'message' => 'String that is nonexestent alter hook in drupal_alter()',
+        'message' => 'String that is nonexistent alter hook in drupal_alter()',
         'data' => '<span class="php-function-or-constant">drupal_alter</span>(<span class="php-string potential-alter">\'not_a_hook_name\'</span>',
         'expected' => '<span class="php-function-or-constant">drupal_alter</span>(<span class="php-string">\'not_a_hook_name\'</span>',
       ),

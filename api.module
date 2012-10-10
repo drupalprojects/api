@@ -2087,7 +2087,7 @@ function api_cron() {
  *   Code with function names formatted as links.
  */
 function api_link_code($code, $branch, $class_did = NULL) {
-  return _api_link_documentation($code, $branch, $class_did, array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string'));
+  return _api_link_documentation($code, $branch, $class_did, array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global'));
 }
 
 /**
@@ -2219,6 +2219,14 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
       $prepend = '<span class="php-function-or-constant">';
       $append = '</span>';
       $type = 'function_or_constant';
+      break;
+
+    case 'code global':
+      // Find global variable names in marked-up code.
+      $pattern = '!<span class="php-keyword">global</span> <span class="php-variable">\$(' . DRUPAL_PHP_FUNCTION_PATTERN . ')</span>!';
+      $prepend = '<span class="php-keyword">global</span> <span class="php-variable">$';
+      $append = '</span>';
+      $type = 'global';
       break;
 
     case 'code string':
@@ -2402,6 +2410,7 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *     also are supported).
  *   - 'function_or_constant': $name is either a function, constant, or class.
  *   - 'group': $name is a group/topic identifier.
+ *   - 'global': $name is a global variable.
  *
  * @return
  *   The text as a link to the object page.
@@ -2588,6 +2597,9 @@ function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compati
   }
   elseif ($type == 'function') {
     $query->condition('ad.object_type', 'function');
+  }
+  elseif ($type == 'global') {
+    $query->condition('ad.object_type', 'global');
   }
   elseif ($type == 'function_or_constant') {
     $query->condition('ad.object_type', array('function', 'constant', 'class', 'interface'));

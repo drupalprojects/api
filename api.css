@@ -14,7 +14,8 @@
 .php .php-function-or-constant {
   color: #00a;
 }
-.php .php-function-or-constant a.local {
+.php .php-function-or-constant a.local,
+.php .php-variable a.local {
   color: #00a;
   font-weight: bold;
 }
