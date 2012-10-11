@@ -608,7 +608,7 @@ function api_page_function($function) {
 
   // Build reference links.
   $links = array();
-  foreach (array('calls', 'references', 'implementations', 'invokes', 'theme_invokes') as $type) {
+  foreach (array('calls', 'references', 'implementations', 'invokes', 'theme_invokes', 'overrides') as $type) {
     $call_count = api_find_references($function->object_name, $branch, $type, TRUE, $function->did);
     if ($call_count > 0) {
       $links[] = theme('api_function_reference_link', array('type' => $type, 'count' => $call_count, 'function' => $function));
@@ -636,10 +636,12 @@ function api_page_function($function) {
  *   - 'theme_invokes': $name is the name of a theme function or file, find
  *     theme calls.
  *   - 'references': $name is the name of a function, find string references.
+ *   - 'overrides': $exclude_did is the ID of a method, find overriding methods.
  * @param $count
  *   If TRUE (default), return a count. If FALSE, return an array.
  * @param $exclude_did
- *   (optional) Document ID to exclude from the query.
+ *   (optional) Document ID to exclude from the query, or to use as the ID for
+ *   overrides.
  *
  * @return
  *   The number of references or an array of references.
@@ -657,6 +659,14 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       ->condition('d.did', $exclude_did, '<>')
       ->condition('r.object_type', array('function', 'member-class', 'computed-member'))
       ->condition('r.object_name', $name);
+  }
+  if ($type == 'overrides') {
+    // Use overrides storage to find overrides of the ID passed in as "exclude".
+    $did = $exclude_did;
+    $base_query = db_select('api_overrides', 'o');
+    $d = $base_query->leftJoin('api_documentation', 'd', 'o.did = d.did');
+    $base_query->condition('d.branch_id', $branch_id)
+      ->condition('o.overrides_did', $exclude_did);
   }
   elseif ($type == 'references') {
     // Use reference storage to find functions that use this name as a string.
@@ -802,8 +812,10 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
  *   Type of page to generate, one of:
  *   - 'calls': Functions that call this function.
  *   - 'implementations': Functions that implement this hook.
- *   - 'theme_invokes': Functions that invoke this theme hook.
  *   - 'invokes': Functions that invoke this hook.
+ *   - 'theme_invokes': Functions that invoke this theme hook.
+ *   - 'references': String references to a function name.
+ *   - 'overrides': Methods that override this method.
  *
  * @return
  *   HTML output for the page.
@@ -1456,6 +1468,7 @@ function api_file_link($object) {
  *   - 'theme_invokes': Theme calls to a function or file.
  *   - 'invokes': Calls to module_invokes and similar functions.
  *   - 'references': String references to a function name.
+ *   - 'overrides': Methods that override this method.
  *   - 'hierarchy': Class hierarchy ($count is ignored).
  * @param $count
  *   The number of referenced items.
@@ -1480,6 +1493,9 @@ function api_reference_text($type, $count, $function) {
   }
   if ($type == 'implementations') {
     return format_plural($count, '1 function implements !name', '@count functions implement !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'overrides') {
+    return format_plural($count, '1 method overrides !name', '@count methods override !name', array('!name' => $name_to_use));
   }
   if ($type == 'theme_invokes') {
     return format_plural($count, '1 theme call to !name', '@count theme calls to !name', array('!name' => $name_to_use));

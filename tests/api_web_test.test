@@ -475,6 +475,11 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     // While we're here, check some text...
     $this->assertLink('Sample', 0, 'Link to sample class appears on interface page');
     $this->assertLink('Sample2', 0, 'Link to sample2 class appears on interface page');
+    // Click through to method and verify overrides link.
+    $this->clickLink('SampleInterface::foo');
+    $this->clickLink('2 methods override SampleInterface::foo()');
+    $this->assertLink('Sample::foo', 0, 'First override is found');
+    $this->assertLink('SampleInSubDir::foo', 0, 'Second override is found');
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->clickLink('Sample::$property');
@@ -540,6 +545,13 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('foo');
     $this->assertLinkURLSubstring('foo', 'classes-subdir.php/property/SampleInSubDir', 'foo property link is present', 'foo property link goes to right place');
     $this->assertLink('1 call to SampleInSubDir::foo()', 0, 'Calling functions link is present');
+    $this->assertLink('1 method overrides SampleInSubDir::foo()', 0, 'Overrides link is present');
+    $this->clickLink('1 method overrides SampleInSubDir::foo()');
+    $this->assertTitleContains('1 method overrides SampleInSubDir::foo()', 'Title of overrides page is correct');
+    $this->assertURLContains('classes-subdir.php/function/overrides/SampleInSubDir', 'Overrides link went to right place');
+    $this->assertLink('SubInSubDirSample::foo', 0, 'Overriding function link is on overrides page');
+    $this->assertLink('classes-subdir.php', 0, 'Overriding function file link is on overrides page');
+    $this->assertText('Overrides parent function.', 'Overriding function description is on overrides page');
 
     // Visit the class that is for overrides testing.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!classes-subdir.php/class/SubInSubDirSample');
