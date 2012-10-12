@@ -76,9 +76,9 @@ function api_help($path, $arg) {
 
 <h3>Set up</h3>
 
-<p>Visit the !api_settings_page to configure the module. You must have the relevant Drupal code base on the same machine as the site hosting the API module. Follow the descriptions in the \'Branches to index\' section to set up the code base for indexing.</p>
+<p>Visit the !api_settings_page to configure the module. You must have the relevant Drupal code base on the same machine as the site hosting the API module. Set up Projects and Branches to index your Drupal code base.</p>
 
-<p>Indexing of PHP functions is also supported. If the site has internet access, then the default settings for the \'PHP Manual\' section should work fine. For local development environments that have a PHP manual installed, you can edit the paths to point to the appropriate locations.</p>
+<p>Indexing of PHP functions is also supported, by setting up a PHP Reference Branch. If the site has internet access, then the default settings should work fine. For local development environments that have a PHP manual installed, you can edit the link path to point to the appropriate location.</p>
 
 <p>The module indexes code branches during cron runs, so make sure the site has cron functionality set up properly.</p>
 ', array('!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'), '!doxygen_link' => l('http://drupal.org/node/1354', 'http://drupal.org/node/1354')));
