@@ -99,7 +99,7 @@ form.api-search-form div.form-item {
 }
 
 form.api-search-form input.api-search-keywords {
-  width: 115px;
+  width: 100%;
 }
 
 /* Other styles */
