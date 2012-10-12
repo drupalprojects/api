@@ -10,6 +10,17 @@
  *
  * A sample group.
  *
+ * @section sec_one Section 1
+ * This is the content of the first section. This is a link to the other
+ * section @ref sec_two right here in the text.
+ *
+ * @subsection sub_a Sub-section A
+ * Here's a sub-section.
+ *
+ * @section sec_two Section 2
+ * This is the content of the section section. This is a link to the
+ * sub-section @ref sub_a right here in the text.
+ *
  * @{
  */
 

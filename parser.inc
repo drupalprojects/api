@@ -671,6 +671,38 @@ function api_format_documentation($documentation, $auto_p = TRUE) {
   // Site URLs.
   $documentation = preg_replace('/' . API_RE_TAG_START . 'link \/([a-zA-Z0-9_\/-]+) (.*?) ' . API_RE_TAG_START . 'endlink/', str_replace('%24', '$', l('$2', '$1')), $documentation);
 
+  // Process sections.
+  $regexp = '/^' . API_RE_TAG_START . 'section ([a-zA-Z0-9_-]+) (.*)$/m';
+  preg_match_all($regexp, $documentation, $section_matches, PREG_SET_ORDER);
+  if (!empty($section_matches)) {
+    $documentation = preg_replace($regexp, '<h3 id="$1">$2</h3>', $documentation);
+  }
+
+  // Process sub-sections.
+  $regexp = '/^' . API_RE_TAG_START . 'subsection ([a-zA-Z0-9_-]+) (.*)$/m';
+  preg_match_all($regexp, $documentation, $subsection_matches, PREG_SET_ORDER);
+  if (!empty($subsection_matches)) {
+    $documentation = preg_replace($regexp, '<h4 id="$1">$2</h4>', $documentation);
+  }
+
+  // Process in-page references to sections/subsections.
+  if (!empty($section_matches) || !empty($subsection_matches)) {
+    $search = array();
+    $replace = array();
+    foreach (array_merge($section_matches, $subsection_matches) as $match) {
+      array_shift($match);
+      $id = array_shift($match);
+      $caption = trim(array_shift($match));
+      $search[] = '/' . API_RE_TAG_START . 'ref ' . $id . '/';
+      // Note that we cannot use l() here to make the link -- it doesn't have
+      // a way to make a self-link, since url('') is a synonym for front page.
+      // Also note that the ID here is already constrained to legal characters
+      // by the regexp above.
+      $replace[] = '<a href="#' . $id . '">' . check_plain($caption) . '</a>';
+    }
+    $documentation = preg_replace($search, $replace, $documentation);
+  }
+
   // Replace left over curly braces
   $documentation = preg_replace('/' . API_RE_TAG_START . '[{}]/', '', $documentation);
 

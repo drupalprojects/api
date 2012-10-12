@@ -601,6 +601,13 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('A sample global.', 'sample_global description is on sample topic page');
     $this->assertLink('sample_insubdir_function', 0, 'sample_insubdir_function link is on sample topic page');
 
+    // Verify section, sub-section, and ref links.
+    $this->assertRaw('<h3 id="sec_one">Section 1</h3>', 'Section 1 header is there');
+    $this->assertRaw('<h3 id="sec_two">Section 2</h3>', 'Section 2 header is there');
+    $this->assertRaw('<h4 id="sub_a">Sub-section A</h4>', 'Sub-section header is there');
+    $this->assertRaw('<a href="#sub_a">Sub-section A</a>', 'Sub-section link is there');
+    $this->assertRaw('<a href="#sec_two">Section 2</a>', 'Section 2 link is there');
+
     // Verify links.
     $this->assertLinkURLSubstring('sample_function', $this->branch_info['project'] . '/sample.php/function/sample_function', 'sample_function link exists', 'sample_function link went to the right place');
     $this->assertLinkURLSubstring('sample.php', $this->branch_info['project'] . '/sample.php', 'sample.php link exists', 'sample.php link went to the right place');
