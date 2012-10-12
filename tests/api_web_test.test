@@ -954,6 +954,7 @@ class ApiSearchTestCase extends ApiWebPagesBaseTest {
       ),
       t('Search'));
     $this->assertURLContains('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search/foo', 'Search went to search results listing page');
+    $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
     $this->assertTitleContains('Search for foo', 'Search result listing has right title');
     $this->assertText('Search for foo', 'Search result listing has title on page');
     $this->assertLink('foo_sample_name', 0, 'foo_sample_name is listed');

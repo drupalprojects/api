@@ -427,7 +427,7 @@ function api_menu() {
   );
 
   foreach ($branches as $branch) {
-    if (!isset($items['api/search/' . $branch->branch_name . '%'])) {
+    if (!isset($items['api/search/' . $branch->branch_name . '/%'])) {
       $items['api/search/' . $branch->branch_name . '/%'] = array(
         'page callback' => 'api_legacy_search_redirect',
         'page arguments' => array($branch, 3),

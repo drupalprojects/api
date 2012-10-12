@@ -143,6 +143,21 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->assertNoRaw($this->branch_info['branch_name'] . ' classes.php', 'This file name and branch are shown');
     $this->assertRaw($this->branch_info_2['branch_name'] . ' extras.php', 'Other sample file and branch name are shown');
     $this->assertNoRaw('Sample::foo', 'Sample method name is not shown');
+
+    // Test on a search page.
+    $this->drupalget('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search/samp');
+    $this->assertLink('Sample', 0, 'Sample class is found');
+    $this->assertLink('sample.php', 0, 'Sample file is found');
+    $this->assertLink('sample_function', 0, 'Sample function is found');
+    $this->assertNoLink('another_sample_function', 'Another sample function is not found');
+    $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
+
+    // Go to the other branch via link.
+    $this->clickLink('Search ' . $this->branch_info_2['title'] . ' for samp');
+    $this->assertNoLink('another_function', 'Another function is not found');
+    $this->assertLink('second_sample_function', 0, 'Second sample function is found');
+    $this->assertLink('Search ' . $this->branch_info['title'] . ' for samp', 0, 'Link to other search is found');
+    $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
   }
 }
 

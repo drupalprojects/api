@@ -200,8 +200,46 @@ function api_search_listing($branch) {
       ->limit(50);
 
     $result = $query->execute();
-    return api_render_listing($result, t('No search results found.'), TRUE, TRUE) . theme('pager');
+    return api_search_links($branch, $search_text) . api_render_listing($result, t('No search results found.'), TRUE, TRUE) . theme('pager');
   }
+}
+
+/**
+ * Renders a list of links to search other branches for the same text.
+ *
+ * @param $branch
+ *   The current branch being searched.
+ * @param $search_text
+ *   The text being searched for.
+ *
+ * @return
+ *   HTML for links to search other branches for the same text, and a link to
+ *   the Projects page.
+ */
+function api_search_links($branch, $search_text) {
+  $search_text = check_plain($search_text);
+  $others = db_select('api_branch', 'b')
+    ->fields('b')
+    ->condition('b.project', $branch->project)
+    ->condition('b.branch_id', $branch->branch_id, '<>')
+    ->orderBy('b.branch_name')
+    ->execute();
+
+  $links = array();
+  foreach ($others as $other) {
+    $links[] = '<li>' . l(t('Search @branch_name for !search_text', array('@branch_name' => $other->title, '!search_text' => $search_text)), 'api/' . $other->project . '/' . $other->branch_name . '/search/' . $search_text) . '</li>';
+  }
+
+  $other = api_other_projects_link(FALSE);
+  if (strlen($other)) {
+    $links[] = '<li>' . $other . '</li>';
+  }
+
+  if (!count($links)) {
+    return '';
+  }
+
+  return '<ol id="api-alternatives">' . implode("\n", $links) . '</ol>';
 }
 
 /**
@@ -433,18 +471,29 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
 /**
  * Generates a link to the projects page if there is more than one project.
  *
+ * @param $wrap_in_p
+ *   TRUE to wrap in a P tag; FALSE to not do that.
  * @return
- *   Link to the API projects page, inside a P tag, or an empty string if there
- *   would only be one project to display on that page.
+ *   Link to the API projects page, maybe inside a P tag, or an empty string if
+ *   there would only be one project to display on that page.
  */
-function api_other_projects_link() {
+function api_other_projects_link($wrap_in_p = TRUE) {
   // Figure out how many different projects there are.
   $count = db_select('api_project', 'p')
     ->countQuery()
     ->execute()
     ->fetchField();
   if ($count > 1) {
-    return '<p class="api-switch"><strong>' . l(t('Other projects'), 'api/projects') . '</strong></p>';
+    $text = '';
+    if ($wrap_in_p) {
+      $text .= '<p class="api-switch"><strong>';
+    }
+    $text .= l(t('Other projects'), 'api/projects');
+    if ($wrap_in_p) {
+      $text .= '</strong></p>';
+    }
+
+    return $text;
   }
 
   return '';
