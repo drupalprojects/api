@@ -360,6 +360,11 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('SampleInterface', 0, 'Return value type is linked');
     $this->assertLinkURLSubstring('SubSample', $this->branch_info['project'] . '/classes.php/class/SubSample', 'SubSample link exists', 'SubSample link went to the right place');
     $this->assertLinkURLSubstring('SampleInterface', $this->branch_info['project'] . '/classes.php/interface/SampleInterface', 'SampleInterface link exists', 'SampleInterface link went to the right place');
+    $this->assertLink('sample_function', 0, 'Function in code sample is linked');
+    $this->assertLink('sample_one', 0, 'Theme invoke in code sample is linked');
+    $this->assertLink('sample_name', 0, 'Hook in code sample is linked');
+    $this->assertLink('another_sample', 0, 'Alter hook in code sample is linked');
+    $this->assertLink('SAMPLE_CONSTANT', 0, 'Constant in code sample is linked');
 
     // Verify the "functions that call this" page exists and references the
     // classes.php file, which calls this function from the global scope.

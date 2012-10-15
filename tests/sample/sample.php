@@ -115,6 +115,15 @@ function sample_function($parameter, $complex_parameter) {
 /**
  * Function that has classes for parameter and return value.
  *
+ * This code segment is used to test linking.
+ * @code
+ * $foo = sample_function();
+ * $bar = theme('sample_one', $foo);
+ * $x = module_invoke_all('sample_name', $foo, $bar);
+ * $xx = drupal_alter('another_sample', $foo);
+ * $k = SAMPLE_CONSTANT;
+ * @endcode
+ *
  * @param SubSample $parameter
  *   This parameter should link to the class.
  *

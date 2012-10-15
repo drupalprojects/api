@@ -2155,7 +2155,10 @@ function api_filter_documentation($text, $branch = NULL, $class_did = NULL, $agg
     $branch = api_get_active_branch();
   }
 
-  $stages = array('tags', 'link', 'function');
+  // Start with the code-related stages, for the @code sections. Follow with
+  // the basic documentation stages.
+  $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'tags', 'link', 'function');
+
   if ($aggressive_topics) {
     // Look for topics before classes, constants, and files.
     $stages[] = 'topic';
