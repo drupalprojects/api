@@ -1467,6 +1467,7 @@ function api_theme() {
         'type' => '',
         'count' => 0,
         'function' => (object) array(),
+        'override_text' => '',
       ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'file' => 'api.theme.inc',

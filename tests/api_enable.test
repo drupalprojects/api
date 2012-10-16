@@ -110,8 +110,8 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('Sample::baz', 0, 'Inherited method is shown');
     $this->assertLink('SubSample::bar', 0, 'Direct method is shown');
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function');
-    $this->assertLink('1 call to sample_function()', 0, 'Calling link is shown');
-    $this->assertLink("1 string reference to 'sample_function'", 0, 'String reference link is shown');
+    $this->assertRaw('10 calls to sample_function()', 'Calling text is shown');
+    $this->assertRaw("1 string reference to 'sample_function'", 'String reference link is shown');
 
     // Turn on the comment module. Change settings so that comments are allowed.
     // Verify that a comment can be added. Note that the Comments test covers

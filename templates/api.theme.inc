@@ -115,6 +115,7 @@ function api_preprocess_api_object_page(&$variables) {
  *     - 'hierarchy': Class hierarchy.
  *   - count: The number of referenced items.
  *   - function: The function, class, or file object being referenced.
+ *   - override_text: Text to override the link text.
  *
  * @ingroup themeable
  */
@@ -127,7 +128,7 @@ function theme_api_function_reference_link($variables) {
     return '';
   }
 
-  $link_title = api_reference_text($type, $count, $function);
+  $link_title = (isset($variables['override_text']) && !empty($variables['override_text'])) ? $variables['override_text'] : api_reference_text($type, $count, $function);
 
   // Create the link path.
   $processed_file_name = str_replace(API_FILEPATH_SEPARATOR, API_FILEPATH_SEPARATOR_REPLACEMENT, $function->file_name);
@@ -146,5 +147,5 @@ function theme_api_function_reference_link($variables) {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/function/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
   }
 
-  return '<h3>' . l($link_title, $link_path) . '</h3>';
+  return l($link_title, $link_path);
 }

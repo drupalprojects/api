@@ -332,11 +332,7 @@ function api_page_file($file) {
   $objects = api_render_listing($result);
 
   // If this is a theme template, make reference link.
-  $links = array();
-  $theme_count = api_find_references($file->title, $branch, 'theme_invokes');
-  if ($theme_count > 0) {
-    $links[] = theme('api_function_reference_link', array('type' => 'theme_invokes', 'count' => $theme_count, 'function' => $file));
-  }
+  $links = api_build_references(array('theme_invokes'), $file, $branch);
 
   $output = theme('api_file_page', array('object' => $file, 'documentation' => $documentation, 'objects' => $objects, 'code' => $code, 'see' => $see, 'related_topics' => $related_topics, 'defined' => $defined, 'call_links' => $links));
   $output .= _api_add_comments($file);
@@ -656,13 +652,7 @@ function api_page_function($function) {
   $class = api_class_section($function, $branch);
 
   // Build reference links.
-  $links = array();
-  foreach (array('calls', 'references', 'implementations', 'invokes', 'theme_invokes', 'overrides') as $type) {
-    $call_count = api_find_references($function->object_name, $branch, $type, TRUE, $function->did);
-    if ($call_count > 0) {
-      $links[] = theme('api_function_reference_link', array('type' => $type, 'count' => $call_count, 'function' => $function));
-    }
-  }
+  $links = api_build_references(array('calls', 'references', 'implementations', 'invokes', 'theme_invokes', 'overrides'), $function, $branch);
 
   // Put it all together and theme the output.
   $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'throws' => $throws, 'class' => $class));
@@ -691,11 +681,13 @@ function api_page_function($function) {
  * @param $exclude_did
  *   (optional) Document ID to exclude from the query, or to use as the ID for
  *   overrides.
+ * @param $limit
+ *   (optional) Limit the number of references returned to this amount.
  *
  * @return
  *   The number of references or an array of references.
  */
-function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0) {
+function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0) {
   $branch_id = $branch->branch_id;
   $base_query = NULL;
   $args = array();
@@ -839,6 +831,10 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   // If we get here, we want to return a list.
   $base_query->fields('d', array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type'))
     ->orderBy('d.title', 'ASC');
+  if ($limit > 0) {
+    $base_query->range(0, $limit);
+  }
+
   $result = $base_query->execute();
   $list = array();
   foreach ($result as $object) {
@@ -850,6 +846,40 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   }
 
   return $list;
+}
+
+/**
+ * Builds and returns a references section for a documentation object.
+ *
+ * @param $types
+ *   Types of references to make (see api_find_references() for the list).
+ * @param $object
+ *   Documentation object to find references for.
+ * @param $branch
+ *   Branch to find references in.
+ *
+ * @return
+ *   Array of HTML strings for the references section. Each one is a
+ *   collapsible list of a few references, with a link to the full references
+ *   page. Empty sections are omitted.
+ */
+function api_build_references($types, $object, $branch) {
+  $output = array();
+  foreach ($types as $type) {
+    $count = api_find_references($object->title, $branch, $type, TRUE, $object->did);
+    if ($count > 0) {
+      $limit = variable_get('api_reference_limit', 5);
+      $section = '';
+      $section .= api_list_references($object, $branch, $type, $limit);
+      if ($count > $limit) {
+        $section .= '<p>' . theme('api_function_reference_link', array('type' => $type, 'count' => $count, 'function' => $object, 'override_text' => t('... See full list'))) . '</p>';
+      }
+      $title = api_reference_text($type, $count, $object);
+      $output[] = theme('ctools_collapsible', array('content' => $section, 'handle' => $title, 'collapsed' => TRUE));
+    }
+  }
+
+  return $output;
 }
 
 /**
@@ -876,7 +906,23 @@ function api_page_function_calls($function, $type) {
   $call_title = api_reference_text($type, $call_count, $function);
   api_object_title_and_breadcrumb($branch, $function, $call_title, TRUE);
 
-  $call_functions = api_find_references($function->object_name, $branch, $type, FALSE, $function->did);
+  return api_list_references($function, $branch, $type);
+}
+
+/**
+ * Generates a list of references as HTML.
+ *
+ * @param $object
+ *   Object to list references for.
+ * @param $branch
+ *   Branch the object is in.
+ * @param $type
+ *   Type of references: see api_find_references() for list.
+ * @param $limit
+ *   (optional) Limit list to a few references.
+ */
+function api_list_references($object, $branch, $type, $limit = 0) {
+  $call_functions = api_find_references($object->object_name, $branch, $type, FALSE, $object->did, $limit);
 
   $note = '';
   if ($type == 'implementations') {

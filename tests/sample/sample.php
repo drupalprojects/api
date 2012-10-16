@@ -155,6 +155,7 @@ function sample_class_function($parameter) {
  * @link http://example.com Won't the apostophe "just work" here too? @endlink
  */
 function duplicate_function() {
+  $foo = sample_function();
 }
 
 /**
@@ -179,6 +180,7 @@ function hook_sample_name() {
  * This hook is for testing alter hook linking.
  */
 function hook_another_sample_alter() {
+  $foo = sample_function();
 }
 
 /**
@@ -192,6 +194,7 @@ function hook_another_sample_alter() {
  *   - show_bar: TRUE to show the bar component, FALSE to omit it.
  */
 function theme_sample_one($variables) {
+  $foo = sample_function();
 }
 
 /**
@@ -206,6 +209,7 @@ function theme_sample_one($variables) {
  *   - show_bar: TRUE to show the bar component, FALSE to omit it.
  */
 function theme_sample_two($variables) {
+  $foo = sample_function();
 }
 
 /**
@@ -219,6 +223,7 @@ function theme_sample_two($variables) {
  *   - show_bar: TRUE to show the bar component, FALSE to omit it.
  */
 function theme_sample_four($variables) {
+  $foo = sample_function();
 }
 
 /**
@@ -294,6 +299,7 @@ function sample_in_code_links() {
  * pages.
  */
 function foo_sample_name() {
+  $foo = sample_function();
 }
 
 /**
@@ -303,6 +309,7 @@ function sample_name() {
   // This should turn into a link to the hook, and the hook should reference
   // this function as an invoker.
   module_invoke_all('sample_name');
+  $foo = sample_function();
 }
 
 /**
@@ -312,6 +319,7 @@ function another_sample() {
   // This should turn into a link to the hook, and the hook should reference
   // this function as an invoker.
   drupal_alter('another_sample');
+  $foo = sample_function();
 }
 
 /**
@@ -321,4 +329,5 @@ function sample_one() {
   // This should turn into a link to the theme function, , and the theme
   // function should reference this function as an invoker.
   theme('sample_one');
+  $foo = sample_function();
 }
