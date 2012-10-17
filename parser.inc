@@ -706,6 +706,10 @@ function api_format_documentation($documentation, $auto_p = TRUE) {
   // Replace left over curly braces
   $documentation = preg_replace('/' . API_RE_TAG_START . '[{}]/', '', $documentation);
 
+  // Change @Plugin section into @code. This has to be at the very end of the
+  // documentation block.
+  $documentation = preg_replace('/' . API_RE_TAG_START . 'Plugin(.*)$/s', '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@Plugin" . '$1' . "\n@endcode", $documentation);
+
   // Process the @code @endcode tags.
   $documentation = preg_replace_callback('/' . API_RE_TAG_START . 'code(.+?)' . API_RE_TAG_START . 'endcode/s', 'api_format_embedded_php', $documentation);
 

@@ -14,6 +14,16 @@
 
 /**
  * Sample class.
+ *
+ * This example now includes some annotation for testing, including a function
+ * name that should turn into a link in the code section.
+ *
+ * @Plugin(
+ *   id = "samplefoo",
+ *   title = @Translation("A great plugin title"),
+ *   description = @Translation("A very descriptive plugin description."),
+ *   something = 'foo_sample_name'
+ * )
  */
 class Sample extends ClassNotDefinedHere implements SampleInterface {
   /**
