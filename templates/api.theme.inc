@@ -45,48 +45,52 @@ function api_preprocess_api_object_page(&$variables) {
   // Find alternative versions in different files and branches.
   $object = $variables['object'];
   $branches = api_get_branches();
+  $branch = api_get_branch_by_id($variables['object']->branch_id);
   $alternatives = array(
     '#prefix' => '<ol id="api-alternatives">',
     '#suffix' => '</ol>',
   );
   // Try to find objects of the same type with the same object name. But for
   // files, the object name includes the path, so the matching needs to go on
-  // the title instead of the object_name.
+  // the title instead of the object_name. Limit these to the same project.
   if ($object->object_type == 'file') {
-    $result = db_select('api_documentation', 'ad')
+    $query = db_select('api_documentation', 'ad')
       ->fields('ad', array('branch_id', 'file_name', 'object_type', 'object_name'))
       ->condition('ad.object_type', $variables['object']->object_type)
-      ->condition('ad.title', $variables['object']->title)
-      ->execute();
+      ->condition('ad.title', $variables['object']->title);
+    $query->leftJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $query->condition('b.project', $branch->project);
+    $result = $query->execute();
   }
   else {
-    $result = db_select('api_documentation', 'ad')
+    $query = db_select('api_documentation', 'ad')
       ->fields('ad', array('branch_id', 'file_name', 'object_type', 'object_name'))
       ->condition('ad.object_type', $variables['object']->object_type)
-      ->condition('ad.object_name', $variables['object']->object_name)
-      ->execute();
+      ->condition('ad.object_name', $variables['object']->object_name);
+    $query->leftJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $query->condition('b.project', $branch->project);
+    $result = $query->execute();
   }
 
+  $count = 0;
   foreach ($result as $alternative) {
-    // Group by project.
-    if (!isset($alternatives[$branches[$alternative->branch_id]->project])) {
-      $alternatives[$branches[$alternative->branch_id]->project] = array(
-        '#prefix' => '<li><strong>' . $branches[$alternative->branch_id]->project_title . '</strong><ol>',
-        '#suffix' => '</ol></li>',
-      );
-    }
-
     // Construct link label.
     $label = $branches[$alternative->branch_id]->branch_name . ' ' . $alternative->file_name;
-
+    $suffix = ($object->object_type == 'file') ? '' : ' ' . $variables['object']->object_name;
     $alternatives[$branches[$alternative->branch_id]->project][] = array(
       '#prefix' => '<li>',
-      '#markup' => l($label, api_url($alternative)),
+      '#markup' => l($label, api_url($alternative)) . $suffix,
       '#weight' => $branches[$alternative->branch_id]->weight,
       '#suffix' => '</li>',
     );
+    $count++;
   }
-  $variables['alternatives'] = drupal_render($alternatives);
+  if ($count > 1) {
+    $variables['alternatives'] = drupal_render($alternatives);
+  }
+  else {
+    $variables['alternatives'] = '';
+  }
 
   // See if this is an override of another method/etc.
   $variables['override'] = '';

@@ -101,13 +101,11 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/constant/DUPLICATE_CONSTANT');
     $this->assertRaw($this->branch_info['branch_name'] . ' duplicates.php', 'Other file in same branch is shown');
     $this->assertRaw($this->branch_info_2['branch_name'] . ' maybe_exclude/extras.php', 'Other sample file and branch name are shown');
-    $this->assertRaw($this->branch_info['project_title'], 'This project title is shown');
 
     // Test class and method linking.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->assertRaw($this->branch_info['branch_name'] . ' classes.php', 'This file name and branch are shown');
     $this->assertRaw($this->branch_info_2['branch_name'] . ' maybe_exclude/extras.php', 'Other sample file and branch name are shown');
-    $this->assertRaw($this->branch_info['project_title'], 'This project title is shown');
 
     // Now visit the method page.
     $this->clickLink('Sample::foo');

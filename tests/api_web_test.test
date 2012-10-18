@@ -193,7 +193,6 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertTitleContains('DUPLICATE_CONSTANT', 'Constant page title includes constant name');
     $this->assertText('For testing duplicate constant linking.', 'Description is present on constant page');
     $this->assertText("define('DUPLICATE_CONSTANT'", 'Code is present on constant page');
-    $this->assertText($this->branch_info['project_title'], 'Project title is on constant page');
     $this->assertNoText('Class', 'Class section is not on constant page');
 
     // Verify link destinations.
@@ -397,7 +396,6 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertTitleContains('$sample_global', 'Global page title includes global name');
     $this->assertText('A sample global.', 'Description is present on global page');
     $this->assertLink('sample.php', 0, 'Link to file is present on global page');
-    $this->assertText($this->branch_info['project_title'], 'Project title is on global page');
     $this->assertLink('Samples', 0, 'Topic link appears on the global page');
     $this->assertText('A sample group.', 'Topic description appears on the global page');
 
@@ -453,7 +451,6 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertTitleContains('Sample', 'Class page title includes class name');
     $this->assertText('Sample class.', 'Description is present on class page');
     $this->assertLink('classes.php', 0, 'Link to file is present on class page');
-    $this->assertText($this->branch_info['project_title'], 'Project title is on class page');
     $this->assertLink('Class Samples', 0, 'Topic link appears on the class page');
     $this->assertText('A sample group of classes.', 'Topic description appears on the class page');
     $this->assertLink('SampleInterface', 0, 'Link to interface appears on class page');

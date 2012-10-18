@@ -513,7 +513,8 @@ function api_page_function($function) {
   api_object_title_and_breadcrumb($branch, $function);
 
   // Make the signatures section, which lists all the other function signatures
-  // (branches and duplicate function names) that we can find.
+  // (branches and duplicate function names) that we can find. Limit this to
+  // the current project.
   $last_signature = '';
   $signatures = array();
   $n = 0;
@@ -524,6 +525,7 @@ function api_page_function($function) {
   $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
   $query->condition('d.object_type', 'function')
     ->condition('d.title', $function->title)
+    ->condition('b.project', $branch->project)
     ->orderBy($b . '.weight');
   $result = $query->execute();
   foreach ($result as $signature) {
