@@ -1183,6 +1183,24 @@ function api_update_7116() {
 }
 
 /**
+ * Remove blank documentation entries.
+ */
+function api_update_7117() {
+  module_load_include('module', 'api');
+
+  // Find any entries in api_documentation with blank names. There should not
+  // be many.
+  $dids = db_select('api_documentation', 'd')
+    ->fields('d', array('did'))
+    ->condition('d.object_name', '')
+    ->execute()
+    ->fetchCol();
+
+  // Remove them from all associated tables.
+  api_delete_items($dids);
+}
+
+/**
  * Remove variables and other data on uninstall.
  */
 function api_uninstall() {

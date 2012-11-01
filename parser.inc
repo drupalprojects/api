@@ -329,6 +329,13 @@ function api_save_documentation($docblocks) {
       }
     }
 
+    // Skip blocks with blank object_name, which come from lines like this:
+    // function () use ($var) {};
+    // Don't make this check higher up -- some object names are substituted in.
+    if (empty($docblock['object_name'])) {
+      continue;
+    }
+
     // Determine group membership.
     $match = array();
     if (preg_match_all('/' . API_RE_TAG_START . '(ingroup|addtogroup) ([a-zA-Z0-9_.-]+)/', $docblock['content'], $match)) {
