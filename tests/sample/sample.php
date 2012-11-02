@@ -331,3 +331,9 @@ function sample_one() {
   theme('sample_one');
   $foo = sample_function();
 }
+
+
+// For testing that functions without names are not saved as doc objects.
+$var = 1;
+function () use ($var) {};
+function () use ($var) {};

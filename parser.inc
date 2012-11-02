@@ -329,13 +329,6 @@ function api_save_documentation($docblocks) {
       }
     }
 
-    // Skip blocks with blank object_name, which come from lines like this:
-    // function () use ($var) {};
-    // Don't make this check higher up -- some object names are substituted in.
-    if (empty($docblock['object_name'])) {
-      continue;
-    }
-
     // Determine group membership.
     $match = array();
     if (preg_match_all('/' . API_RE_TAG_START . '(ingroup|addtogroup) ([a-zA-Z0-9_.-]+)/', $docblock['content'], $match)) {
@@ -367,7 +360,10 @@ function api_save_documentation($docblocks) {
       array_pop($nested_groups[$docblock['class']]);
     }
 
-    if (empty($docblock['object_type'])) {
+    // At this point, we might have been dealing with a "block" that is
+    // just an @} or an object with no name, or something like that. We needed
+    // to do the processing above, but we don't want to save this as an object.
+    if (empty($docblock['object_type']) || empty($docblock['object_name'])) {
       continue;
     }
 
@@ -1790,6 +1786,10 @@ function api_parse_functions() {
 
     'txt' => 'api_parse_text_file',
     'info' => 'api_parse_text_file',
+    'css' => 'api_parse_text_file',
+    'sh' => 'api_parse_text_file',
+    'yml' => 'api_parse_text_file',
+    'twig' => 'api_parse_text_file',
 
     'htm' => 'api_parse_html_file',
     'html' => 'api_parse_html_file',
