@@ -107,7 +107,7 @@ function api_get_branches($_reset = FALSE) {
       ->execute();
     $branches = array();
     foreach ($result as $branch) {
-      drupal_unpack($branch);
+      api_unpack_branch_data($branch);
       $branches[$branch->branch_id] = $branch;
     }
   }
@@ -179,7 +179,7 @@ function api_get_php_branches($_reset = FALSE) {
       ->execute();
     $branches = array();
     foreach ($result as $branch) {
-      drupal_unpack($branch);
+      api_unpack_branch_data($branch);
       $branches[$branch->branch_id] = $branch;
     }
   }
@@ -2774,7 +2774,7 @@ function api_find_core_branch($branch) {
   // There shouldn't be more than one result, so assume that's the case and
   // return the first result found.
   foreach ($result as $branch) {
-    drupal_unpack($branch);
+    api_unpack_branch_data($branch);
     return $branch;
   }
 
@@ -3483,4 +3483,20 @@ function api_views_api() {
     'path' => drupal_get_path('module', 'api') . '/views',
     'template path' => drupal_get_path('module', 'api') . '/views/templates',
   );
+}
+
+/**
+ * Unpacks and adds defaults to branch data.
+ */
+function api_unpack_branch_data($branch) {
+  drupal_unpack($branch);
+  if (!isset($branch->directories)) {
+    $branch->directories = '';
+  }
+  if (!isset($branch->excluded_directories)) {
+    $branch->excluded_directories = '';
+  }
+  if (!isset($branch->exclude_files_regexp)) {
+    $branch->exclude_files_regexp = '';
+  }
 }

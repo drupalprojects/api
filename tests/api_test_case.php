@@ -104,6 +104,7 @@ class ApiTestCase extends DrupalWebTestCase {
       'update_frequency' => 1,
       'directory' => drupal_get_path('module', 'api') . '/tests/sample',
       'excluded' => drupal_get_path('module', 'api') . '/tests/sample/to_exclude',
+      'regexps' => '',
     );
     $info['preferred'] = $default ? 1 : 0;
 
@@ -130,6 +131,7 @@ class ApiTestCase extends DrupalWebTestCase {
     $branch->data = array(
       'directories' => $prefix . $info['directory'],
       'excluded_directories' => $prefix . $info['excluded'],
+      'exclude_files_regexp' => $info['regexps'],
     );
     api_save_branch($branch);
 
@@ -383,6 +385,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
       'update_frequency' => 1,
       'directory' => drupal_get_path('module', 'api') . '/tests/sample',
       'excluded' => drupal_get_path('module', 'api') . '/tests/sample/to_exclude',
+      'regexps' => '',
     );
     $info['preferred'] = $default ? 1 : 0;
 
@@ -413,6 +416,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
       'core_compatibility' => $info['core_compatibility'],
       'update_frequency' => $info['update_frequency'],
       'data[directories]' => $prefix . $info['directory'],
+      'data[exclude_files_regexp]' => $info['regexps'],
     );
     if ($info['excluded'] != 'none') {
       $branch_info['data[excluded_directories]'] = $prefix . $info['excluded'];

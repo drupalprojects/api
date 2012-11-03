@@ -1813,7 +1813,7 @@ function api_parse_functions() {
  * @see api_update_all_branches()
  */
 function api_update_branch_files($branch) {
-  $files_to_scan = api_scan_directories($branch->directories, $branch->excluded_directories);
+  $files_to_scan = api_scan_directories($branch->directories, $branch->excluded_directories, $branch->exclude_files_regexp);
   if (!count($files_to_scan)) {
     watchdog('api', 'No files were found in %project branch %branch', array('%branch' => $branch->branch_name, '%project' => $branch->project), WATCHDOG_ERROR);
     $branch->queued = 0;
@@ -1911,6 +1911,9 @@ function api_update_branch_files($branch) {
  *   List of directories to scan, as text (separated by newlines).
  * @param $excluded_directories
  *   List of directories to exclude, as text (separated by newlines).
+ * @param $regexps
+ *   List of regular expressions to exclude (files or directories), separated
+ *   by newlines.
  *
  * @return
  *   Associative array of files, where the keys are the full paths to the
@@ -1920,10 +1923,12 @@ function api_update_branch_files($branch) {
  *   list). Hidden directories (names starting with .) below top-level entries
  *   in $directories are excluded, as well as directories called CVS.
  */
-function api_scan_directories($directories, $excluded_directories) {
+function api_scan_directories($directories, $excluded_directories, $regexps) {
   $directory_array = array_filter(explode("\n", $directories));
   $excluded_array = array_filter(explode("\n", $excluded_directories));
   $extensions = array_keys(api_parse_functions());
+  $regexps = explode("\n", $regexps);
+  $regexps = array_filter(array_map('trim', $regexps));
 
   // Figure out the shared part of the file name that is in all the directories.
   if (count($directory_array) > 1) {
@@ -1961,6 +1966,18 @@ function api_scan_directories($directories, $excluded_directories) {
     $directory = array_shift($todo);
     $files = file_scan_directory($directory, '/.*/', array('recurse' => FALSE));
     foreach ($files as $path => $file) {
+      // Exclude anything that matches one of our regular expressions.
+      $ok = TRUE;
+      foreach($regexps as $regexp) {
+        if (preg_match($regexp, $path)) {
+          $ok = FALSE;
+          break;
+        }
+      }
+      if (!$ok) {
+        continue;
+      }
+
       if (is_dir($path)) {
         // See if we want to scan this path, and if so, add to To Do list.
         // Don't keep any directory that starts with ".", or anything in the

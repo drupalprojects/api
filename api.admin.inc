@@ -428,6 +428,7 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     $branch->project = '';
     $branch->directories = '';
     $branch->excluded_directories = '';
+    $branch->exclude_files_regexp = '';
     $branch->update_frequency = 1;
   }
 
@@ -497,6 +498,14 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#description' => t('Absolute paths to exclude from the index, one per line.'),
     '#element_validate' => array('api_check_directories'),
   );
+  $form['data']['exclude_files_regexp'] = array(
+    '#title' => t('Exclude files by regular expressions'),
+    '#type' => 'textarea',
+    '#default_value' => $branch->exclude_files_regexp,
+    '#rows' => 3,
+    '#description' => t('Regular expressions: all matching files and directories will be excluded, one per line. Include delimeters.'),
+    '#element_validate' => array('api_check_regexps'),
+  );
 
   $form['update_frequency'] = array(
     '#type' => 'select',
@@ -550,7 +559,7 @@ function api_branch_edit_form_validate($form, &$form_state) {
  * Verifies that all directories exist and are actually directories.
  *
  * Element validation callback for the directories elements of
- * api_branch_edit_form_files().
+ * api_branch_edit_form().
  */
 function api_check_directories($element, &$form_state) {
   // Check for valid directories.
@@ -558,14 +567,36 @@ function api_check_directories($element, &$form_state) {
     $directory = trim($directory);
     if (!empty($directory)) {
       if (!is_dir($directory)) {
-        form_set_error($element['#name'], t('%directory is not a directory.', array('%directory' => $directory)));
+        form_set_error(implode('][', $element['#parents']), t('%directory is not a directory.', array('%directory' => $directory)));
       }
       elseif (!is_readable($directory)) {
-        form_set_error($element['#name'], t('%directory is not readable by PHP.', array('%directory' => $directory)));
+        form_set_error(implode('][', $element['#parents']), t('%directory is not readable by PHP.', array('%directory' => $directory)));
       }
     }
   }
   form_set_value($element, api_clean_directory_list($element['#value']), $form_state);
+}
+
+/**
+ * Verifies that all regular expressions are legal.
+ *
+ * Element validation callback for the exclude regexp element of
+ * api_branch_edit_form().
+ */
+function api_check_regexps($element, &$form_state) {
+  $msg = array();
+  $regexps = explode("\n", $element['#value']);
+  $regexps = array_filter(array_map('trim', $regexps));
+
+  foreach ($regexps as $regexp) {
+    // Validate by calling preg_match() and checking for error.
+    if (@preg_match(trim($regexp), 'a') === FALSE) {
+      $msg[] = t('%regexp is not a valid regular expression', array('%regexp' => $regexp));
+    }
+  }
+  if (count($msg)) {
+    form_set_error(implode('][', $element['#parents']), implode('; ', $msg));
+  }
 }
 
 /**
