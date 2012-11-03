@@ -22,6 +22,9 @@ function api_drush_command() {
     'api-reset-queue' => array(
       'description' => 'Reset the API parsing queue',
     ),
+    'api-count-queues' => array(
+      'description' => 'Count API queues',
+    ),
     'api-ensure-branch' => array(
       'description' => 'Add or update an API branch and project',
       'arguments' => array(
@@ -58,6 +61,27 @@ function drush_api_reset_queue() {
   api_reset_parse_queue();
 
   drush_log(dt('API parse queue reset. Necessary jobs will be added in the next cron run'), 'ok');
+}
+
+/**
+ * Counts the API queues.
+ */
+function drush_api_count_queues() {
+  $rows = array();
+
+  $queue = DrupalQueue::get('api_parse');
+  $num = $queue->numberOfItems();
+  $rows[] = array(dt('Parse files'), $num);
+
+  $queue = DrupalQueue::get('api_branch_update');
+  $num = $queue->numberOfItems();
+  $rows[] = array(dt('Branch update'), $num);
+
+  $queue = DrupalQueue::get('api_node_delete');
+  $num = $queue->numberOfItems();
+  $rows[] = array(dt('Node cleanup'), $num);
+
+  drush_print_table($rows, TRUE);
 }
 
 /**

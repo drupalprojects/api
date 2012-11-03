@@ -63,6 +63,14 @@ function api_page_admin_overview() {
     ''
   );
 
+  $queue = DrupalQueue::get('api_node_delete');
+  $num = $queue->numberOfItems();
+  $rows[] = array(
+    t('Node cleanup'),
+    $num,
+    ''
+  );
+
   $output['queue_status'] = array(
     '#type' => 'markup',
     '#markup' => theme('table', array('rows' => $rows, 'header' => $header)),
