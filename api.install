@@ -1246,9 +1246,20 @@ function api_uninstall() {
 }
 
 /**
- * Wraps api_mark_for_reparse() so it can be called from update functions.
+ * Works like api_mark_for_reparse() without loading modules.
  */
-function api_update_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
-  module_load_include('module', 'api');
-  return api_mark_for_reparse($branch_or_file, $is_branch_name);
+function api_update_mark_for_reparse() {
+  // Get rid of everything currently in the parse queue.
+  $queue = DrupalQueue::get('api_parse');
+  $queue->deleteQueue();
+
+  // Set all files to reparse: say they are not yet queued, and that the
+  // last time they were touched was long ago.
+  $time_in_past = 52;
+  return db_update('api_file')
+    ->fields(array(
+        'modified' => $time_in_past,
+        'queued' => 0,
+      ))
+    ->execute();
 }
