@@ -114,13 +114,18 @@ function api_parse_php_file($docblock) {
   // Retrieve items of interest.
   $statements = $reader->getStatements();
   if (!$statements) {
+
     // This is a text file or template file with no declarations of functions,
     // constants, etc. But we do want to track references in it.
     $docblock['code'] = api_format_php($docblock['source'], $docblock['references'], TRUE);
 
     api_save_documentation(array($docblock));
     // Free up memory.
+    $docblock = NULL;
+    $statements = NULL;
     $reader->reset();
+    $reader = NULL;
+    $editor = NULL;
     return;
   }
 
@@ -143,9 +148,6 @@ function api_parse_php_file($docblock) {
 
   $found_references = api_documentation_loop($statements, $default_block, $docblocks);
 
-  // Free up memory.
-  $reader->reset();
-
   // For the file, save only the references not found in parsing the
   // statements within the file. This will only save references to function
   // calls in the global area of the file, excluding those found in
@@ -158,6 +160,17 @@ function api_parse_php_file($docblock) {
   $docblocks[0]['references'] = $references;
 
   api_save_documentation($docblocks);
+
+  // Free up memory.
+  $references = NULL;
+  $found_references = NULL;
+  $docblock = NULL;
+  $default_block = NULL;
+  $docblocks = NULL;
+  $statements = NULL;
+  $reader->reset();
+  $reader = NULL;
+  $editor = NULL;
 }
 
 /**
