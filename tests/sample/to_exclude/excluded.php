@@ -32,5 +32,30 @@ interface SampleInterface {
 }
 
 /**
+ * A non-duplicate function to verify it gets into the main group.
+ */
+function non_duplicate_name() {
+}
+
+/**
  * @} end samp_GRP-6.x
  */
+
+/**
+ * @defgroup sample_function Test group
+ *
+ * A group whose machine name is the same as another function.
+ *
+ * @{
+ */
+
+/**
+ * Some function in this group.
+ */
+function some_name() {
+}
+
+/**
+ * @} end sample_function
+ */
+

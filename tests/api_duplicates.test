@@ -76,10 +76,18 @@ class ApiDuplicatesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('sample_insubdir_function', 0, 'Sample subdir function is on topic page');
     $this->assertLink('SAMPLE_CONSTANT', 0, 'Sample constant is on topic page');
     $this->assertLink('$sample_global', 0, 'Sample global is on topic page');
+    $this->assertLink('non_duplicate_name', 0, 'Function from duplicate group is on topic page');
 
     // Verify that the watchdog message about duplicate group definitions was
     // logged.
     $this->drupalGet('admin/reports/dblog');
     $this->assertRaw('Duplicate @defgroup in', 'Duplicate defgroup message is in log');
+
+    // Verify that the other group gets created.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/groups');
+    $this->assertLinkCount('Test group', 1, 'Exactly one link to test group exists');
+    $this->clickLink('Test group');
+    $this->assertLink('some_name', 0, 'Correct function is on topic page');
+    $this->assertText('A group whose machine name', 'Description is on topic page');
   }
 }

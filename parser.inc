@@ -320,6 +320,7 @@ function api_save_documentation($docblocks) {
         // if so, treat this as an @addtogroup.
         $did = db_select('api_documentation', 'd')
           ->condition('object_name', $group_name)
+          ->condition('object_type', 'group')
           ->condition('file_name', $docblock['file_name'], '<>')
           ->condition('branch_id', $docblocks[0]['branch']->branch_id)
           ->fields('d', array('did'))
