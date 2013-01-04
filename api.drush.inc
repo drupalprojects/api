@@ -89,20 +89,13 @@ function drush_api_count_queues() {
  */
 function drush_api_list_branches() {
   $branches = api_get_branches();
-  $rows = array(array(dt('ID'), dt('Project'), dt('Name'), dt('Type'), dt('Location')));
+  $rows = array(array(dt('ID'), dt('Project'), dt('Name'), dt('Location')));
   foreach ($branches as $branch) {
-    if (isset($branch->directories)) {
-      $location = $branch->directories;
-    }
-    else {
-      $location = isset($branch->summary) ? $branch->summary : '';
-    }
     $rows[] = array(
       $branch->branch_id,
       $branch->project,
       $branch->branch_name,
-      $branch->type,
-      $location,
+      $branch->directories,
     );
   }
   drush_print_table($rows, TRUE);

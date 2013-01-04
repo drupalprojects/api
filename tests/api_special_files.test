@@ -8,13 +8,13 @@
 module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
- * Tests that files containing two-byte Unicode characters can be dealt with.
+ * Tests that files containing special issues can be dealt with.
  */
-class ApiUnicodeTestCase extends ApiWebPagesBaseTest {
+class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   public static function getInfo() {
     return array(
-      'name' => 'Unicode',
-      'description' => 'Tests that files containing two-byte Unicode characters can be dealt with.',
+      'name' => 'Special files',
+      'description' => 'Tests that files containing two-byte Unicode characters and other special cases can be dealt with.',
       'group' => 'API module',
     );
   }
@@ -66,5 +66,22 @@ class ApiUnicodeTestCase extends ApiWebPagesBaseTest {
     $this->assertText('$this', 'Source code is shown');
     $this->assertText('written to the persistent', 'Source code is shown');
     $this->assertText('keysToPersist', 'Source code is shown');
+  }
+
+  /**
+   * Tests that a file with defgroup/mainpage in the file header can be parsed.
+   */
+  function testBadFileHeader() {
+    // This file is in the special_files directory. Check that it triggered
+    // a log message when it was parsed.
+    $this->drupalGet('admin/reports/dblog');
+    $this->assertRaw('@file docblock containing @defgroup', 'Warning message is present for bad file');
+
+    // Verify that the file is listed and the file's page can be visited.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
+    $this->assertLinkURLSubstring('badheader.php', $this->branch_info['project'] . '/badheader.php', 'File link exists', 'File link goes to right place');
+    $this->clickLink('badheader.php');
+    $this->assertLink('badheader_fun', 0, 'Function link is present on file page');
+    $this->assertTitleContains('badheader.php', 'Page title has file name');
   }
 }

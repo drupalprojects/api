@@ -144,6 +144,7 @@ function api_parse_php_file($docblock) {
     'documentation' => '',
     'references' => array(),
     'see' => '',
+    'start_line' => 0,
   );
 
   $found_references = api_documentation_loop($statements, $default_block, $docblocks);
@@ -300,7 +301,25 @@ function api_save_documentation($docblocks) {
   // Look for @file block first so $docblocks[0] gets filled in before it is processed.
   foreach ($docblocks as $docblock) {
     if (preg_match('/' . API_RE_TAG_START . 'file/', $docblock['content'])) {
-      $docblocks[0]['content'] = str_replace('@file', '', $docblock['content']);
+      $content = $docblock['content'];
+      // Remove @file tag from this docblock.
+      $content = str_replace('@file', '', $content);
+
+      // If this docblock contains @mainpage or @defgroup, this will cause
+      // problems, because we won't have a @file doc block any more -- it will
+      // be co-opted, and then the site will be screwed up. So, remove these
+      // tags and save a watchdog message.
+
+      if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $content) ||
+        preg_match('/' . API_RE_TAG_START . 'defgroup/', $content)) {
+
+        $content = str_replace('@mainpage', '', $content);
+        $content = str_replace('@defgroup', '', $content);
+
+        watchdog('api', '@file docblock containing @defgroup or @mainpage in %file at line %line. Extraneous tags ignored.', array('%file' => $docblocks[0]['file_name'], '%line' => $docblock['start_line']), WATCHDOG_WARNING);
+      }
+
+      $docblocks[0]['content'] = $content;
       break;
     }
   }
