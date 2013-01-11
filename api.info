@@ -7,6 +7,7 @@ php = 5.3
 dependencies[] = node
 dependencies[] = ctools
 dependencies[] = gplib
+dependencies[] = views
 stylesheets[all][] = api.css
 files[] = tests/api_comments.test
 files[] = tests/api_cruft.test

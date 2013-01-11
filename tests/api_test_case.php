@@ -37,7 +37,7 @@ class ApiTestCase extends DrupalWebTestCase {
    * Sets up modules for API tests, and a super-user.
    */
   function baseSetUp() {
-    DrupalWebTestCase::setUp('api', 'ctools', 'gplib', 'node', 'comment', 'dblog');
+    DrupalWebTestCase::setUp('api', 'ctools', 'gplib', 'node', 'comment', 'dblog', 'views');
 
     // For debug purposes, visit the Recent Log Messages report page.
     $this->drupalGet('admin/reports/dblog');

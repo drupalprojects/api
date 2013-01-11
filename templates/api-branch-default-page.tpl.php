@@ -21,7 +21,7 @@
   if ($counts['groups'] > 0) {
 ?>
   <h3><?php print l(t('Topics'), 'api/' . $branch->project . '/groups/' . $branch->branch_name); ?></h3>
-  <?php print api_page_listing($branch, 'group', FALSE); ?>
+  <?php $out = api_page_listing($branch, 'group', FALSE); print drupal_render($out); ?>
 <?php
   }
   if ($counts['files'] > 0) {

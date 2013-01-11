@@ -379,7 +379,6 @@ function api_page_branch($branch) {
  *   HTML for the listing page.
  */
 function api_page_listing($branch, $object_type, $is_page = TRUE) {
-
   // Set the HTML page title and breadcrumb.
   if ($is_page) {
     $breadcrumb = array(
@@ -409,59 +408,71 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
   }
 
   $show_headings = FALSE;
+  $output = array();
 
-  if ($object_type === 'group') {
-    $result = db_select('api_documentation', 'd')
-      ->fields('d')
-      ->condition('branch_id', $branch->branch_id)
-      ->condition('object_type', 'group')
-      ->orderBy('title')
-      ->extend('PagerDefault')
-      ->limit(50)
-      ->execute();
+  if ($object_type === 'function' || $object_type == 'constant' || $object_type == 'global' ) {
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_listings', 'block_listing', array($branch->project, $object_type, $branch->branch_name)),
+    );
+  }
+  elseif ($object_type === 'group' ) {
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_listings', 'block_groups', array($branch->project, $branch->branch_name)),
+    );
+  }
+
+  elseif ( $object_type === 'file') {
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_listings', 'block_files', array($branch->project, $branch->branch_name)),
+    );
   }
   elseif ($object_type === 'class') {
-    $show_headings = TRUE;
-    $result = db_select('api_documentation', 'd')
-      ->fields('d')
-      ->condition('branch_id', $branch->branch_id)
-      ->condition('object_type', array('class', 'interface'))
-      ->condition('class_did', 0)
-      ->orderBy('title')
-      ->extend('PagerDefault')
-      ->limit(50)
-      ->execute();
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_listings', 'block_class', array($branch->project, $branch->branch_name)),
+    );
   }
-  elseif ($object_type === 'file') {
-    // Order by path + file name, not base name of file.
-    $result = db_select('api_documentation', 'd')
-      ->fields('d')
-      ->condition('branch_id', $branch->branch_id)
-      ->condition('object_type', 'file')
-      ->condition('class_did', 0)
-      ->orderBy('object_name')
-      ->extend('PagerDefault')
-      ->limit(50)
-      ->execute();
+
+  if ($is_page) {
+    $output['suffix'] = array(
+      '#type' => 'markup',
+      '#markup' => api_other_projects_link(),
+    );
+  }
+
+  return $output;
+}
+
+/**
+ * Displays the output of a view, assumed to be a block display.
+ *
+ * @param $view_name
+ *   Machine name of the view.
+ * @param $display_name
+ *   Machine name of the display within the view.
+ * @param $args
+ *   (optional) Array of arguments for the view display.
+ *
+ * @return
+ *   Render array of the view.
+ */
+function api_display_view($view_name, $display_name, $args = array()) {
+  $output = array();
+
+  // Load the view.
+  $view = views_get_view($view_name);
+
+  if ($view) {
+    $output = $view->preview($display_name, $args);
   }
   else {
-    $result = db_select('api_documentation', 'd')
-      ->fields('d')
-      ->condition('branch_id', $branch->branch_id)
-      ->condition('object_type', $object_type)
-      ->condition('class_did', 0)
-      ->orderBy('title')
-      ->extend('PagerDefault')
-      ->limit(50)
-      ->execute();
+    $output = t('Could not find view @name', array('@name' => $view_name));
   }
 
-  $suffix = '';
-  if ($is_page) {
-    $suffix = api_other_projects_link();
-  }
-
-  return api_render_listing($result, NULL, $show_headings, $object_type !== 'file' && $object_type !== 'group') . theme('pager') . $suffix;
+  return $output;
 }
 
 /**
