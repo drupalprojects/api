@@ -199,18 +199,29 @@ function api_views_default_views() {
   $handler->display->display_options['arguments']['branch_name']['default_argument_type'] = 'fixed';
   $handler->display->display_options['arguments']['branch_name']['summary']['format'] = 'default_summary';
   $handler->display->display_options['defaults']['filter_groups'] = FALSE;
+  $handler->display->display_options['filter_groups']['groups'] = array(
+    1 => 'AND',
+    2 => 'OR',
+  );
   $handler->display->display_options['defaults']['filters'] = FALSE;
   /* Filter criterion: API documentation: Class documentation ID */
   $handler->display->display_options['filters']['class_did']['id'] = 'class_did';
   $handler->display->display_options['filters']['class_did']['table'] = 'api_documentation';
   $handler->display->display_options['filters']['class_did']['field'] = 'class_did';
   $handler->display->display_options['filters']['class_did']['value']['value'] = '0';
+  $handler->display->display_options['filters']['class_did']['group'] = 1;
   /* Filter criterion: API documentation: Object type */
   $handler->display->display_options['filters']['object_type']['id'] = 'object_type';
   $handler->display->display_options['filters']['object_type']['table'] = 'api_documentation';
   $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
-  $handler->display->display_options['filters']['object_type']['operator'] = 'word';
-  $handler->display->display_options['filters']['object_type']['value'] = 'class interface';
+  $handler->display->display_options['filters']['object_type']['value'] = 'class';
+  $handler->display->display_options['filters']['object_type']['group'] = 2;
+  /* Filter criterion: API documentation: Object type */
+  $handler->display->display_options['filters']['object_type_1']['id'] = 'object_type_1';
+  $handler->display->display_options['filters']['object_type_1']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['object_type_1']['field'] = 'object_type';
+  $handler->display->display_options['filters']['object_type_1']['value'] = 'interface';
+  $handler->display->display_options['filters']['object_type_1']['group'] = 2;
 
   /* Display: Topic Listing Block */
   $handler = $view->new_display('block', 'Topic Listing Block', 'block_groups');
@@ -259,6 +270,72 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type']['table'] = 'api_documentation';
   $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type']['value'] = 'group';
+
+  /* Display: Items in file block */
+  $handler = $view->new_display('block', 'Items in file block', 'block_items_file');
+  $handler->display->display_options['display_description'] = 'Block for listing functions, constants, etc. in a particular file';
+  $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
+  $handler->display->display_options['defaults']['pager'] = FALSE;
+  $handler->display->display_options['pager']['type'] = 'none';
+  $handler->display->display_options['pager']['options']['offset'] = '0';
+  $handler->display->display_options['defaults']['fields'] = FALSE;
+  /* Field: API documentation: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['label'] = 'Name';
+  $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Summary */
+  $handler->display->display_options['fields']['summary']['id'] = 'summary';
+  $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['summary']['field'] = 'summary';
+  $handler->display->display_options['fields']['summary']['label'] = 'Description';
+  $handler->display->display_options['defaults']['arguments'] = FALSE;
+  /* Contextual filter: API project: Project name */
+  $handler->display->display_options['arguments']['project_name']['id'] = 'project_name';
+  $handler->display->display_options['arguments']['project_name']['table'] = 'api_project';
+  $handler->display->display_options['arguments']['project_name']['field'] = 'project_name';
+  $handler->display->display_options['arguments']['project_name']['relationship'] = 'project';
+  $handler->display->display_options['arguments']['project_name']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['project_name']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['project_name']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['project_name']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['project_name']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['project_name']['limit'] = '0';
+  /* Contextual filter: API documentation: Branch name */
+  $handler->display->display_options['arguments']['branch_name']['id'] = 'branch_name';
+  $handler->display->display_options['arguments']['branch_name']['table'] = 'api_branch';
+  $handler->display->display_options['arguments']['branch_name']['field'] = 'branch_name';
+  $handler->display->display_options['arguments']['branch_name']['relationship'] = 'branch_id';
+  $handler->display->display_options['arguments']['branch_name']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['branch_name']['summary']['format'] = 'default_summary';
+  /* Contextual filter: API documentation: File name */
+  $handler->display->display_options['arguments']['file_name']['id'] = 'file_name';
+  $handler->display->display_options['arguments']['file_name']['table'] = 'api_documentation';
+  $handler->display->display_options['arguments']['file_name']['field'] = 'file_name';
+  $handler->display->display_options['arguments']['file_name']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['file_name']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['file_name']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['file_name']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['file_name']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['file_name']['limit'] = '0';
+  /* Contextual filter: API documentation: Object type */
+  $handler->display->display_options['arguments']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['arguments']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['arguments']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['arguments']['object_type']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['object_type']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['object_type']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['object_type']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['object_type']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['object_type']['limit'] = '0';
+  $handler->display->display_options['defaults']['filter_groups'] = FALSE;
+  $handler->display->display_options['defaults']['filters'] = FALSE;
+  /* Filter criterion: API documentation: Class documentation ID */
+  $handler->display->display_options['filters']['class_did']['id'] = 'class_did';
+  $handler->display->display_options['filters']['class_did']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['class_did']['field'] = 'class_did';
+  $handler->display->display_options['filters']['class_did']['value']['value'] = '0';
 
   $views[$view->name] = $view;
 

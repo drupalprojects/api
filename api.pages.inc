@@ -320,16 +320,28 @@ function api_page_file($file) {
   $code = api_link_code($file->code, $branch);
   $defined = $file->file_name;
 
-  $result = db_select('api_documentation', 'd')
-    ->fields('d', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did'))
-    ->condition('file_name', $file->object_name)
-    ->condition('branch_id', $file->branch_id)
-    ->condition('class_did', 0)
-    ->condition('object_type', array('constant', 'global', 'function', 'interface', 'class'))
-    ->orderBy('title')
-    ->execute();
+  $types = array(
+    'function' => t('Functions'),
+    'constant' => t('Constants'),
+    'global' => t('Globals'),
+    'class' => t('Classes'),
+    'interface' => t('Interfaces'),
+  );
 
-  $objects = api_render_listing($result);
+  $objects = array();
+  foreach ($types as $type => $label) {
+    // Render the view of this type of object in this file.
+    $out = api_display_view('api_listings', 'block_items_file', array($branch->project, $branch->branch_name, $file->object_name, $type));
+    // Only display if there was something there.
+    if ($out) {
+      $objects[$type] = array(
+        '#type' => 'markup',
+        '#markup' => '<h3>' . $label . '</h3>' . $out,
+      );
+    }
+  }
+
+  $objects = drupal_render($objects);
 
   // If this is a theme template, make reference link.
   $links = api_build_references(array('theme_invokes'), $file, $branch);
@@ -457,10 +469,10 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
  *   (optional) Array of arguments for the view display.
  *
  * @return
- *   Render array of the view.
+ *   String containing the view output. If the view was empty, an empty string.
  */
 function api_display_view($view_name, $display_name, $args = array()) {
-  $output = array();
+  $output = '';
 
   // Load the view.
   $view = views_get_view($view_name);
@@ -468,8 +480,10 @@ function api_display_view($view_name, $display_name, $args = array()) {
   if ($view) {
     $output = $view->preview($display_name, $args);
   }
-  else {
-    $output = t('Could not find view @name', array('@name' => $view_name));
+
+  // Check for no content.
+  if (!strlen(trim(strip_tags($output)))) {
+    $output = '';
   }
 
   return $output;
