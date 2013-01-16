@@ -7,14 +7,18 @@
 /**
  * Implements hook_views_default_views().
  *
- * Defines the view 'api_listings', which generates the API listing pages.
+ * Defines the following views:
+ * - api_listings: Generates the API listing pages.
+ * - api_projects: Generates the Projects page.
  */
 function api_views_default_views() {
   $views = array();
 
+  // API Listings view.
+
   $view = new view();
   $view->name = 'api_listings';
-  $view->description = 'Blocks for listing API documentation items. Used directly by the API module. Do not disable.';
+  $view->description = 'Blocks for listing API documentation items. Used directly by the API module. Do not delete or disable.';
   $view->tag = 'default';
   $view->base_table = 'api_documentation';
   $view->human_name = 'API Listings';
@@ -336,6 +340,56 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['class_did']['table'] = 'api_documentation';
   $handler->display->display_options['filters']['class_did']['field'] = 'class_did';
   $handler->display->display_options['filters']['class_did']['value']['value'] = '0';
+
+  $views[$view->name] = $view;
+
+
+  // API Projects view.
+  $view = new view();
+  $view->name = 'api_projects';
+  $view->description = 'Blocks for listing projects in the API module. Used directly by the API module. Do not delete or disable.';
+  $view->tag = 'default';
+  $view->base_table = 'api_project';
+  $view->human_name = 'API Projects';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['title'] = 'API Projects';
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['access']['perm'] = 'access API reference';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'full';
+  $handler->display->display_options['pager']['options']['items_per_page'] = '50';
+  $handler->display->display_options['style_plugin'] = 'list';
+  $handler->display->display_options['row_plugin'] = 'fields';
+  /* Field: API project: Project title */
+  $handler->display->display_options['fields']['project_title']['id'] = 'project_title';
+  $handler->display->display_options['fields']['project_title']['table'] = 'api_project';
+  $handler->display->display_options['fields']['project_title']['field'] = 'project_title';
+  $handler->display->display_options['fields']['project_title']['label'] = '';
+  $handler->display->display_options['fields']['project_title']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['project_title']['link_to_project'] = 'project';
+  /* Sort criterion: API project: Project title */
+  $handler->display->display_options['sorts']['project_title']['id'] = 'project_title';
+  $handler->display->display_options['sorts']['project_title']['table'] = 'api_project';
+  $handler->display->display_options['sorts']['project_title']['field'] = 'project_title';
+
+  /* Display: Block */
+  $handler = $view->new_display('block', 'Block', 'block_project_list');
+  $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
+  $handler->display->display_options['defaults']['style_plugin'] = FALSE;
+  $handler->display->display_options['style_plugin'] = 'list';
+  $handler->display->display_options['style_options']['wrapper_class'] = 'api-project-links';
+  $handler->display->display_options['defaults']['style_options'] = FALSE;
+  $handler->display->display_options['defaults']['row_plugin'] = FALSE;
+  $handler->display->display_options['row_plugin'] = 'fields';
+  $handler->display->display_options['defaults']['row_options'] = FALSE;
 
   $views[$view->name] = $view;
 

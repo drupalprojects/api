@@ -249,27 +249,19 @@ function api_search_links($branch, $search_text) {
  *   Themed HTML output for the page.
  */
 function api_page_projects() {
-  $num_per_page = 50;
+  $output = array();
 
-  $result = db_select('api_project', 'p')
-    ->fields('p', array('project_name', 'project_title'))
-    ->orderBy('project_title')
-    ->extend('PagerDefault')
-    ->limit(50)
-    ->execute();
+  $output['project_form'] = drupal_get_form('api_project_form');
 
-  $links = array();
-  foreach ($result as $project) {
-    $links[$project->project_name] = array(
-      'title' => $project->project_title,
-      'href' => 'api/' . $project->project_name,
+  $links = api_display_view('api_projects', 'block_project_list', array());
+  if ($links) {
+    $output['project_list'] = array(
+      '#type' => 'markup',
+      '#markup' => $links,
     );
   }
 
-  $form = drupal_get_form('api_project_form');
-  return drupal_render($form) .
-    theme('links', array('links' => $links, 'attributes' => array('class' => array('api-project-links')))) .
-    theme('pager');
+  return $output;
 }
 
 /**

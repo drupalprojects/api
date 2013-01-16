@@ -30,4 +30,5 @@ files[] = tests/api_web_links.test
 files[] = tests/api_web_test.test
 files[] = views/api.views.inc
 files[] = views/handlers/api_views_handler_field_api_linkable.inc
+files[] = views/handlers/api_views_handler_field_api_project.inc
 files[] = views/handlers/api_views_handler_field_api_docs.inc

@@ -292,7 +292,7 @@ function api_views_data() {
         'help' => t('All documentation branches in this project. This will create duplicate records, so you probably want a documentation or branch view instead.'),
       ),
       'field' => array(
-        'handler' => 'views_handler_field',
+        'handler' => 'api_views_handler_field_api_project',
         'click sortable' => TRUE,
       ),
       'sort' => array(
@@ -311,7 +311,7 @@ function api_views_data() {
       'title' => t('Project title'),
       'help' => t('Long, human-readable name of the project'),
       'field' => array(
-        'handler' => 'views_handler_field',
+        'handler' => 'api_views_handler_field_api_project',
         'click sortable' => TRUE,
       ),
       'sort' => array(
