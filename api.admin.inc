@@ -107,118 +107,6 @@ function api_page_admin_form($form, &$form_state) {
 }
 
 /**
- * Form constructor for the API branches list form.
- *
- * @ingroup forms
- */
-function api_branch_list_form($form, &$form_state) {
-  variable_set('api_do_cron', 1);
-
-  $form['add_new'] = array(
-    '#type' => 'markup',
-    '#markup' => l(t('Add new branch'), 'admin/config/development/api/branches/new'),
-  );
-
-  // Build a filtered list of files branches.
-  $form['filters'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Filter branches'),
-    '#tree' => TRUE,
-  );
-
-  $form['filters']['project'] = array(
-    '#type' => 'textfield',
-    '#autocomplete_path' => 'api/project/autocomplete',
-    '#title' => t('Project'),
-    '#default_value' => !empty($form_state['values']['filters']['project']) ? $form_state['values']['filters']['project'] : '',
-  );
-
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Apply'),
-  );
-
-  $filters = isset($form_state['values']['filters']) ? $form_state['values']['filters'] : array();
-
-  $header = array(
-    array('data' => t('Project'), 'field' => 'project'),
-    array('data' => t('Core compatibility'), 'field' => 'core_compatibility'),
-    array('data' => t('Branch title'), 'field' => 'title'),
-    array('data' => t('Branch identifier'), 'field' => 'branch_name'),
-    t('Operations'),
-  );
-
-  $branches = api_filter_branches($filters, $header);
-  $rows = array();
-
-  foreach ($branches as $branch) {
-    $row = array();
-
-    $row[] = check_plain($branch->project);
-    $row[] = check_plain($branch->core_compatibility);
-    $row[] = check_plain($branch->title);
-    $row[] = check_plain($branch->branch_name);
-    $ops = array();
-    $ops[] = l(t('edit'), 'admin/config/development/api/branches/' . $branch->branch_id);
-    $ops[] = l(t('reparse'), 'admin/config/development/api/branches/' . $branch->branch_id . '/reparse');
-    $ops[] = l(t('update'), 'admin/config/development/api/branches/' . $branch->branch_id . '/update');
-    $ops[] = l(t('delete'), 'admin/config/development/api/branches/' . $branch->branch_id . '/delete');
-
-    $row[] = implode(' ', $ops);
-
-    $rows[] = $row;
-  }
-
-  $form['branches'] = array(
-    '#type' => 'markup',
-    '#markup' => theme('table', array(
-      'header' => $header,
-      'rows' => $rows,
-      'empty' => t('There are no branches yet. You can <a href="@url">add a branch</a>.', array('@url' => url('admin/config/development/api/branches/new/files'))),
-      )) . theme('pager', array('tags' => NULL)),
-  );
-
-  return $form;
-}
-
-/**
- * Submission handler for api_branch_list_form().
- */
-function api_branch_list_form_submit($form, &$form_state) {
-  // Simply rebuild the form so the page has the filter values.
-  $form_state['rebuild'] = TRUE;
-}
-
-/**
- * Finds branches matching the filtering options.
- *
- * @param $filters
- *   Associative array of fields/values to filter on.
- * @param $headers
- *   Associative array of table headers.
- *
- * @return
- *   Array of branch objects matching the filters.
- */
-function api_filter_branches($filters, $headers) {
-  $query = db_select('api_branch', 'b')
-    ->extend('TableSort')
-    ->extend('PagerDefault');
-  $query = $query
-    ->fields('b')
-    ->limit(50)
-    ->orderByHeader($headers);
-
-  foreach ($filters as $field => $value) {
-    if (strlen($field) > 0 && strlen($value) > 0) {
-      $query->condition($field, $value);
-    }
-  }
-
-  return $query->execute();
-}
-
-/**
  * Builds a list of PHP branches.
  *
  * @return
@@ -270,120 +158,45 @@ function api_php_branch_list() {
 }
 
 /**
- * Form constructor for the API projects list form.
- *
- * @see api_project_list_form_submit()
- * @ingroup forms
+ * Generates the projects admin page.
  */
-function api_project_list_form($form, &$form_state) {
+function api_admin_project_list() {
   variable_set('api_do_cron', 1);
 
-  $form['add_new'] = array(
+  $out = array();
+
+  $out['add_new'] = array(
     '#type' => 'markup',
     '#markup' => l(t('Add new project'), 'admin/config/development/api/projects/new'),
   );
 
-  // Build a filtered list of projects
-  $form['filters'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Filter projects'),
-    '#tree' => TRUE,
-  );
-
-  $types = db_select('api_project', 'p')
-    ->fields('p', array('project_type'))
-    ->groupBy('project_type')
-    ->orderBy('project_type')
-    ->execute()
-    ->fetchCol();
-  $safe_types = array('' => '');
-  foreach ($types as $type) {
-    $type = check_plain($type);
-    $safe_types[$type] = $type;
-  }
-
-  $form['filters']['project_type'] = array(
-    '#type' => 'select',
-    '#options' => $safe_types,
-    '#title' => t('Type'),
-    '#default_value' => !empty($form_state['values']['filters']['type']) ? $form_state['values']['filters']['type'] : '',
-  );
-
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => t('Apply'),
-  );
-
-  $filters = isset($form_state['values']['filters']) ? $form_state['values']['filters'] : array();
-
-  $projects = api_filter_projects($filters);
-  $rows = array();
-  $header = array(
-    t('Project identifier'),
-    t('Project title'),
-    t('Type'),
-    t('Operations'),
-  );
-
-  foreach ($projects as $project) {
-    $row = array();
-
-    $row[] = check_plain($project->project_name);
-    $row[] = check_plain($project->project_title);
-    $row[] = check_plain($project->project_type);
-    $ops = array();
-    $ops[] = l(t('edit'), 'admin/config/development/api/projects/' . check_plain($project->project_name));
-    $ops[] = l(t('delete'), 'admin/config/development/api/projects/' . check_plain($project->project_name) . '/delete');
-    $row[] = implode(' ', $ops);
-
-    $rows[] = $row;
-  }
-
-  $empty = (count($filters) > 0) ? t('No projects fit your criteria.') : t('There are no projects yet. You can <a href="@url">add a project</a>.', array('@url' => url('admin/config/development/api/projects/new')));
-
-  $form['projects'] = array(
+  $out['project_list'] = array(
     '#type' => 'markup',
-    '#markup' => theme('table', array(
-      'header' => $header,
-      'rows' => $rows,
-      'empty' => $empty,
-      )) . theme('pager', array('tags' => NULL)),
+    '#markup' => api_display_view('api_projects', 'block_project_admin', array()),
   );
 
-  return $form;
+  return $out;
 }
 
 /**
- * Submission handler for api_project_list_form().
+ * Generates the branch admin page.
  */
-function api_project_list_form_submit($form, &$form_state) {
-  // Simply rebuild the form so the page has the filter values.
-  $form_state['rebuild'] = TRUE;
-}
+function api_admin_branch_list() {
+  variable_set('api_do_cron', 1);
 
-/**
- * Finds projects matching the filtering options.
- *
- * @param $filters
- *   Associative array of fields/values to filter on.
- *
- * @return
- *   Array of project objects matching the filters.
- */
-function api_filter_projects($filters) {
-  $query = db_select('api_project', 'p')
-    ->fields('p')
-    ->extend('PagerDefault')
-    ->limit(50)
-    ->orderBy('project_name');
+  $out = array();
 
-  foreach ($filters as $field => $value) {
-    if (strlen($field) > 0 && strlen($value) > 0) {
-      $query->condition($field, $value);
-    }
-  }
+  $out['add_new'] = array(
+    '#type' => 'markup',
+    '#markup' => l(t('Add new branch'), 'admin/config/development/api/branches/new'),
+  );
 
-  return $query->execute();
+  $out['branch_list'] = array(
+    '#type' => 'markup',
+    '#markup' => api_display_view('api_branches', 'block_branch_admin', array()),
+  );
+
+  return $out;
 }
 
 /**

@@ -268,6 +268,14 @@ function api_views_data() {
         'help' => t('The project this branch is part of'),
       ),
     ),
+
+    'branch_ops' => array(
+      'title' => t('Branch operations'),
+      'help' => t('Administrative operations for branches'),
+      'field' => array(
+        'handler' => 'api_views_handler_field_api_branch_ops',
+      ),
+    ),
   );
 
   $data['api_project'] = array(
@@ -300,7 +308,7 @@ function api_views_data() {
         'click sortable' => TRUE,
       ),
       'filter' => array(
-        'handler' => 'views_handler_filter_string',
+        'handler' => 'api_views_handler_filter_project_name',
       ),
       'argument' => array(
         'handler' => 'views_handler_argument_string',
@@ -335,10 +343,19 @@ function api_views_data() {
         'click sortable' => TRUE,
       ),
       'filter' => array(
-        'handler' => 'views_handler_filter_string',
+        'handler' => 'views_handler_filter_in_operator',
+        'options callback' => 'api_list_project_type_options',
       ),
       'argument' => array(
         'handler' => 'views_handler_argument_string',
+      ),
+    ),
+
+    'project_ops' => array(
+      'title' => t('Project operations'),
+      'help' => t('Administrative operations for projects'),
+      'field' => array(
+        'handler' => 'api_views_handler_field_api_project_ops',
       ),
     ),
   );
@@ -371,4 +388,18 @@ function api_views_data_alter(&$data) {
     'left_field' => 'did',
     'field' => 'nid',
   );
+}
+
+/**
+ * Returns a list of existing project types.
+ *
+ * Options callback for filtering by project type.
+ */
+function api_list_project_type_options() {
+  return drupal_map_assoc(db_select('api_project', 'p')
+    ->fields('p', array('project_type'))
+    ->groupBy('p.project_type')
+    ->orderBy('p.project_type')
+    ->execute()
+    ->fetchCol());
 }

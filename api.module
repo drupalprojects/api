@@ -226,8 +226,7 @@ function api_menu() {
     'title' => 'Projects',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('api_project_list_form'),
+    'page callback' => 'api_admin_project_list',
     'file' => 'api.admin.inc',
     'type' => MENU_LOCAL_TASK,
     'weight' => 5,
@@ -273,8 +272,7 @@ function api_menu() {
     'title' => 'Branches',
     'access callback' => 'user_access',
     'access arguments' => array('administer API reference'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('api_branch_list_form'),
+    'page callback' => 'api_admin_branch_list',
     'file' => 'api.admin.inc',
     'type' => MENU_LOCAL_TASK,
     'weight' => 10,
@@ -3507,4 +3505,35 @@ function api_unpack_branch_data($branch) {
   if (!isset($branch->exclude_files_regexp)) {
     $branch->exclude_files_regexp = '';
   }
+}
+
+/**
+ * Displays the output of a view, assumed to be a block display.
+ *
+ * @param $view_name
+ *   Machine name of the view.
+ * @param $display_name
+ *   Machine name of the display within the view.
+ * @param $args
+ *   (optional) Array of arguments for the view display.
+ *
+ * @return
+ *   String containing the view output. If the view was empty, an empty string.
+ */
+function api_display_view($view_name, $display_name, $args = array()) {
+  $output = '';
+
+  // Load the view.
+  $view = views_get_view($view_name);
+
+  if ($view) {
+    $output = $view->preview($display_name, $args);
+  }
+
+  // Check for no content.
+  if (!strlen(trim(strip_tags($output)))) {
+    $output = '';
+  }
+
+  return $output;
 }

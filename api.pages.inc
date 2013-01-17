@@ -451,37 +451,6 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
 }
 
 /**
- * Displays the output of a view, assumed to be a block display.
- *
- * @param $view_name
- *   Machine name of the view.
- * @param $display_name
- *   Machine name of the display within the view.
- * @param $args
- *   (optional) Array of arguments for the view display.
- *
- * @return
- *   String containing the view output. If the view was empty, an empty string.
- */
-function api_display_view($view_name, $display_name, $args = array()) {
-  $output = '';
-
-  // Load the view.
-  $view = views_get_view($view_name);
-
-  if ($view) {
-    $output = $view->preview($display_name, $args);
-  }
-
-  // Check for no content.
-  if (!strlen(trim(strip_tags($output)))) {
-    $output = '';
-  }
-
-  return $output;
-}
-
-/**
  * Generates a link to the projects page if there is more than one project.
  *
  * @param $wrap_in_p
