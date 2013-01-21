@@ -65,7 +65,7 @@ class api_views_handler_field_api_project extends views_handler_field {
         switch ($this->options['link_to_project']) {
           case 'project':
             $this->options['alter']['make_link'] = TRUE;
-            $this->options['alter']['path'] = url('api/' . $project_name);
+            $this->options['alter']['path'] = url('api/' . $project_name, array('absolute' => TRUE));
             break;
         }
       }
