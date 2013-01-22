@@ -355,6 +355,15 @@ function api_page_file($file) {
  * @see api_menu()
  */
 function api_page_branch($branch) {
+  // Set HTML page title.
+  $title = t('API reference');
+  $page_title = array(
+    check_plain($branch->title),
+    check_plain($title),
+    check_plain(variable_get('site_name', 'Drupal')),
+  );
+  api_set_html_page_title(implode(' | ', $page_title));
+
   $docs = db_select('api_documentation', 'd')
     ->fields('d', array('documentation'))
     ->condition('branch_id', $branch->branch_id)
