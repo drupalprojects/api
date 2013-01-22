@@ -1198,7 +1198,8 @@ function api_render_listing($result, $empty_message = NULL, $show_headings = TRU
  * @param $object
  *   Object representing the documentation item on the current page.
  * @param $title
- *   A string to be used as a replacement for the title (optional).
+ *   A string to be used as a replacement for the title (optional). Assumed to
+ *   already be sanitized.
  * @param $object_name_in_breadcrumb
  *   A boolean indicating whether to add the object name to the breadcrumb.
  */
@@ -1207,7 +1208,7 @@ function api_object_title_and_breadcrumb($branch, $object, $title = NULL, $objec
   if (empty($title)) {
     $title = check_plain($object->title);
   }
-  drupal_set_title($title);
+  drupal_set_title($title, PASS_THROUGH);
 
   $breadcrumb = array(
     l(t('Home'), '<front>'),

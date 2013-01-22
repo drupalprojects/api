@@ -101,7 +101,7 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertNoRaw('hidden.php', 'Hidden file is not shown on files list page');
     $this->assertNoRaw('hidden2.php', 'Second hidden file is not shown on files list page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
-    $this->assertText('Sample HTML file title', 'HTML file description is present');
+    $this->assertText("Sample HTML file's title", 'HTML file description is present');
     $this->assertLink('htmlfile.html', 0, 'HTML file link is present');
     $this->assertText('This is a sample text file for testing.', 'Text file description is present');
     $this->assertLink('subdirectory/textfile.txt', 0, 'Text file link is present');
@@ -689,8 +689,9 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
 
     // Now try the HTML sample file.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/htmlfile.html/');
-    $this->assertTitleContains('Sample HTML file title', 'HTML file page has right title');
-    $this->assertText('Sample HTML file body', 'HTML file body is displayed');
+    $this->assertTitleContains("Sample HTML file's title", 'HTML file page has right title');
+    $this->assertText("Sample HTML file's body", 'HTML file body is displayed');
+    $this->assertText("Sample HTML file's title", 'HTML file title is displayed');
     $this->assertText('head', 'HTML file source is displayed');
 
     // Now try the text sample file.
