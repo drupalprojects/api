@@ -1252,6 +1252,9 @@ function api_object_title_and_breadcrumb($branch, $object, $title = NULL, $objec
  *   only thing to display would be the class itself.
  */
 function api_class_hierarchy($class, $type = 'ancestors') {
+  // Avoid inheritance loops.
+  $processed = array();
+
   $branch = api_get_branch_by_id($class->branch_id);
 
   // See if this class has any children. Note that this is only in the same
@@ -1271,6 +1274,8 @@ function api_class_hierarchy($class, $type = 'ancestors') {
   $current = $class;
 
   while ($parent) {
+    $processed[] = $parent->did;
+
     // Query to find the next ancestor.
     // @todo Use namespaces. Currently we are just assuming that if the
     // class declaration says "class A extends B", then either the name B is
@@ -1327,6 +1332,12 @@ function api_class_hierarchy($class, $type = 'ancestors') {
         }
         $parent = implode('; ', $this_line);
       }
+      break;
+    }
+
+    // If we get here, make sure we're not in an infinite loop.
+    if (in_array($parent->did, $processed)) {
+      $parent = api_class_hierarchy_line($current, $class->did);
       break;
     }
   }

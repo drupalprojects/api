@@ -84,4 +84,15 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('badheader_fun', 0, 'Function link is present on file page');
     $this->assertTitleContains('badheader.php', 'Page title has file name');
   }
+
+  /**
+   * Tests that circular class dependencies do not screw us up.
+   */
+  function testExtendsLoops() {
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassExtendsLoop.php/class/FirstClass');
+    $this->assertText('First class', 'Description is on the class page');
+    $this->clickLink('Expanded class hierarchy of FirstClass');
+    $this->assertRaw('SecondClass', 'Second class link exists');
+    $this->assertRaw('ThirdClass', 'Third class link exists');
+  }
 }

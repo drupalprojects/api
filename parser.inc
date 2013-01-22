@@ -1421,15 +1421,20 @@ function api_shutdown() {
       'documented_did' => api_has_documentation($object) ? $object->did : 0,
     );
     $overrides_did = 0;
+
     // Go up the parent stack and see if this member overrides a parent member.
     $classes_to_check = array($object->class_did);
+    $classes_checked = $classes_to_check;
     while ($class_did = array_shift($classes_to_check)) {
       // If we have al the information we need here, stop this loop.
       if ($override['overrides_did'] > 0 && $override['documented_did'] > 0) {
         break;
       }
 
-      // Add parents of this class to the class parent stack.
+      // Avoid loops.
+      $classes_checked[] = $class_did;
+
+      // Add parents of this class to the class parent stack, but avoid loops.
       $query = db_select('api_reference_storage', 'ars');
       $query->innerJoin('api_documentation', 'pd', 'ars.object_name = pd.object_name AND ars.branch_id = pd.branch_id');
       $query
@@ -1439,7 +1444,9 @@ function api_shutdown() {
         ->fields('pd', array('did'));
       $parents = $query->execute()->fetchCol();
       foreach ($parents as $did) {
-        $classes_to_check[] = $did;
+        if (!in_array($did, $classes_checked)) {
+          $classes_to_check[] = $did;
+        }
       }
 
       // Skipping the object's own class, see if this class has any members
@@ -1492,9 +1499,13 @@ function api_shutdown() {
   // class/interface.
   $members_query = NULL;
   $members_delete = array();
+  $processed_classes = array();
   while (list($class_did, ) = each($changed_classes)) {
+    // Avoid loops.
+    $processed_classes[] = $class_did;
+
     // Add current class's implementing/extending classes to the list, because
-    // they need to be recomputed too.
+    // they need to be recomputed too. But avoid loops.
     $query = db_select('api_reference_storage', 'ars')
       ->fields('ars', array('from_did'));
     // @todo Use namespaces here rather than just blindly matching on the
@@ -1507,7 +1518,9 @@ function api_shutdown() {
       ->execute()
       ->fetchCol();
     foreach ($result_children as $new_class) {
-      $changed_classes[$new_class] = TRUE;
+      if (!in_array($new_class, $processed_classes)) {
+        $changed_classes[$new_class] = TRUE;
+      }
     }
 
     // Walk up the tree to find members. Since methods, properties, and
@@ -1518,8 +1531,12 @@ function api_shutdown() {
       'constant' => array(''),
     );
     $parents = array($class_did);
+    $processed_parents = array();
     while ($parent = array_shift($parents)) {
-      // Add this class's parents to the list.
+      // Avoid loops.
+      $processed_parents[] = $parent;
+
+      // Add this class's parents to the list, avoiding loops.
       // @todo Use namespaces here. Right now we're just matching on the class
       // name.
       $query = db_select('api_reference_storage', 'ars');
@@ -1532,7 +1549,9 @@ function api_shutdown() {
         ->execute()
         ->fetchCol();
       foreach ($result_parents as $new_class) {
-        $parents[] = $new_class;
+        if (!in_array($new_class, $processed_parents)) {
+          $parents[] = $new_class;
+        }
       }
 
       // Find members of each type on this parent that haven't yet been added
