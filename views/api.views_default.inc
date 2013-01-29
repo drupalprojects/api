@@ -976,13 +976,18 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['object_name']['id'] = 'object_name';
   $handler->display->display_options['fields']['object_name']['table'] = 'api_documentation';
   $handler->display->display_options['fields']['object_name']['field'] = 'object_name';
-  $handler->display->display_options['fields']['object_name']['label'] = 'Name';
+  $handler->display->display_options['fields']['object_name']['label'] = 'Class';
   $handler->display->display_options['fields']['object_name']['link_to_docs'] = 'object';
   /* Field: API documentation: File name */
   $handler->display->display_options['fields']['file_name']['id'] = 'file_name';
   $handler->display->display_options['fields']['file_name']['table'] = 'api_documentation';
   $handler->display->display_options['fields']['file_name']['field'] = 'file_name';
   $handler->display->display_options['fields']['file_name']['label'] = 'Location';
+  /* Field: API documentation: Summary */
+  $handler->display->display_options['fields']['summary']['id'] = 'summary';
+  $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['summary']['field'] = 'summary';
+  $handler->display->display_options['fields']['summary']['label'] = 'Description';
   $handler->display->display_options['defaults']['sorts'] = FALSE;
   /* Sort criterion: API documentation: Object name */
   $handler->display->display_options['sorts']['object_name']['id'] = 'object_name';

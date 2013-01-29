@@ -47,6 +47,8 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('ClassA', 0, 'ClassA is on first namespace page');
     $this->assertLink('InterfaceD', 0, 'InterfaceD is on first namespace page');
     $this->assertText('InterfaceD.php', 'Right InterfaceD file is on first namespace page');
+    $this->assertNoLink('ClassB', 'ClassB is not on first namespace page');
+    $this->assertText('Sample class in a namespace.', 'ClassA description is on first namespace page');
 
     $this->clickLink('ClassA');
     $this->assertText('Namespace', 'Namespace header is on class page');
@@ -61,6 +63,7 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('InterfaceC', 0, 'InterfaceE is on second namespace page');
     $this->assertLink('InterfaceD', 0, 'InterfaceD is on second namespace page');
     $this->assertText('InterfaceD2.php', 'Right InterfaceD file is on second namespace page');
+    $this->assertNoLink('ClassA', 'ClassA is not on second namespace page');
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassA.php');
     $this->assertText('Namespace', 'Namespace header is on file page');
