@@ -96,6 +96,35 @@ function api_help($path, $arg) {
 
 <p>The module indexes code branches during cron runs, so make sure the site has cron functionality set up properly.</p>
 ', array('!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'), '!doxygen_link' => l('http://drupal.org/node/1354', 'http://drupal.org/node/1354')));
+
+    case 'admin/config/development/api':
+      return '<h3>' . t('Definitions:') . '</h3><ul>' .
+        '<li>' . t('File parse queue: parses PHP and other files for display.') . '</li>' .
+        '<li>' . t('Branch update queue: scans branches for files that have been updated or removed, and adds jobs to the file parse and node cleanup queues.') . '</li>' .
+        '<li>' . t('Node cleanup queue: deletes nodes for removed files.') . '</li>' .
+        '<li>' . t('Reset the file parse queue: remove existing jobs and mark files as not queued for parsing. Next time each branch is scanned, files will be re-added to the queue as needed.') . '</li>' .
+        '</ul>';
+
+    case 'admin/config/development/api/projects':
+      return '<h3>' . t('Definitions:') . '</h3><ul>' .
+        '<li>' . t('Project: A module, theme, Drupal Core, or other group of files that the API module is parsing.') . '</li>' .
+        '<li>' . t('Project type: Normally "core", "module", "theme", or "library". The type "core" is special: core project functions are given priority when turning function, class, and other names into links in code listings.') . '</li>' .
+        '</ul>';
+
+    case 'admin/config/development/api/branches':
+      return '<h3>' . t('Definitions:') . '</h3><ul>' .
+        '<li>' . t('Project: A module, theme, Drupal Core, or other group of files that the API module is parsing. Set up on the Projects tab.') . '</li>' .
+        '<li>' . t('Branch: Within a Project, a particular version of the files (6.x-1.x, 7.x, 7.x-1.3, etc.).') . '</li>' .
+        '<li>' . t('Core compatibility: usually 7.x, 6.x, etc. Branches with matching core compatibility are used to make cross-project links, and the default project and core compatibility (set on the Overview tab) determines the default branch.') . '</li>' .
+        '<li>' . t('Reparse: Force a parse of every file in the branch, starting next time the branch is updated.') . '</li>' .
+        '<li>' . t('Update: Force a scan of the file directories in the branch for updated and removed files. This normally happens during cron runs after a minimum time (set on branch edit page) has passed.') . '</li>' .
+        '</ul>';
+
+    case 'admin/config/development/api/php_branches':
+      return '<h3>' . t('Definitions:') . '</h3><ul>' .
+        '<li>' . t('PHP reference branch: an external web site that is used to make links to externally-defined functions (such as making links to php.net for the built-in PHP functions).') . '</li>' .
+        '<li>' . t('Update: Force a scan of the download of function information. This normally happens during cron runs after a minimum time (set on branch edit page) has passed.') . '</li>' .
+        '</ul>';
   }
 }
 
