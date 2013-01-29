@@ -26,6 +26,7 @@ function api_views_data() {
 
     'did' => array(
       'title' => t('Documentation ID'),
+      'help' => t('Numeric ID of the documentation item'),
       'relationship' => array(
         'base' => 'comment',
         'base field' => 'nid',
@@ -34,16 +35,42 @@ function api_views_data() {
         'title' => t('All comments'),
         'help' => t('All comments on this documentation object. This will create duplicate records, so you probably want a comment view instead.'),
       ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
+    'namespace_did' => array(
+      'title' => t('Namespace dummy field'),
+      'relationship' => array(
+        'base' => 'api_namespace',
+        'base field' => 'did',
+        'field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('All namespace information for file'),
+        'title' => t('All namespace information for file'),
+        'help' => t('All information on namespaces and use aliases for this file. This will create duplicate records, unless you filter.'),
+      ),
     ),
 
     'branch_id' => array(
       'title' => t('Branch'),
+      'help' => t('Numeric ID of the branch on documentation item'),
       'relationship' => array(
         'base' => 'api_branch',
         'handler' => 'views_handler_relationship',
         'label' => t('Branch'),
         'title' => t('Branch'),
         'help' => t('The branch this documentation is in'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
       ),
     ),
 
@@ -157,6 +184,19 @@ function api_views_data() {
     'file_name' => array(
       'title' => t('File name'),
       'help' => t('File this object is in, relative to branch directory'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'base field' => 'file_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'object_type', 'value' => 'file'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('File object'),
+        'title' => t('File object'),
+        'help' => t('The documentation object for the file this object is in'),
+      ),
       'field' => array(
         'handler' => 'api_views_handler_field_api_linkable',
         'click sortable' => TRUE,
@@ -180,6 +220,24 @@ function api_views_data() {
       ),
     ),
 
+    'namespace' => array(
+      'title' => t('Namespace'),
+      'help' => t('Namespace this object is in'),
+      'field' => array(
+        'handler' => 'api_views_handler_field_api_namespace',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
+
   );
 
   $data['api_branch'] = array(
@@ -195,12 +253,19 @@ function api_views_data() {
 
     'branch_id' => array(
       'title' => t('Branch ID'),
+      'help' => t('Numeric ID of the branch on branch item'),
       'relationship' => array(
         'base' => 'api_documentation',
         'handler' => 'views_handler_relationship',
         'label' => t('Documentation objects'),
         'title' => t('All documentation objects'),
         'help' => t('All documentation objects in this branch. This will create duplicate records, so you probably want a documentation view instead.'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
       ),
     ),
 
@@ -260,12 +325,19 @@ function api_views_data() {
 
     'project' => array(
       'title' => t('Project'),
+      'help' => t('Short name of the project'),
       'relationship' => array(
         'base' => 'api_project',
         'handler' => 'views_handler_relationship',
         'label' => t('Project'),
         'title' => t('Project'),
         'help' => t('The project this branch is part of'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
       ),
     ),
 
@@ -360,6 +432,91 @@ function api_views_data() {
     ),
   );
 
+  $data['api_namespace'] = array(
+    'table' => array(
+      'group' => t('API documentation'),
+      'base' => array(
+        'field' => 'did',
+        'title' => t('API namespace'),
+        'help' => t('Namespace and use information for files in the API module'),
+        'weight' => 40,
+      ),
+    ),
+
+    'did' => array(
+      'title' => t('Documentation ID of file'),
+      'help' => t('Numeric ID of file object'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'handler' => 'views_handler_relationship',
+        'label' => t('File object for namespace'),
+        'title' => t('File object for namespace'),
+        'help' => t('Documentation object for the file that this namespace record pertains to'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
+    'object_type' => array(
+      'title' => t('Namespace information type'),
+      'help' => t('Type of namespace information (namespace or use_alias)'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
+
+    'class_alias' => array(
+      'title' => t('Class alias'),
+      'help' => t('Alias for the class in this file from a use statement. Blank for namespaces.'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
+
+    'class_name' => array(
+      'title' => t('Full class or namespace'),
+      'help' => t('Full name of the class for a use alias, or full namespace for a namespace'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
+
+  );
+
   return $data;
 }
 
@@ -402,4 +559,128 @@ function api_list_project_type_options() {
     ->orderBy('p.project_type')
     ->execute()
     ->fetchCol());
+}
+
+/**
+ * Views join handler that does extras better.
+ *
+ * The class views_join is supposed to let you put extra conditions on the
+ * join, but it doesn't actually work very well for conditions involving both
+ * tables' fields. This class overrides so that you can just put a 'field' in
+ * for the extra (eliminating the value part) and it will be treated as a
+ * formula without operator or placeholder.
+ */
+class api_views_join_extras extends views_join {
+
+  /**
+   * Overrides views_join::build_join().
+   *
+   * This is exactly the same as the base class, except where indicated
+   * with an API comment.
+   */
+  function build_join($select_query, $table, $view_query) {
+    if (empty($this->definition['table formula'])) {
+      $right_table = $this->table;
+    }
+    else {
+      $right_table = $this->definition['table formula'];
+    }
+
+    if ($this->left_table) {
+      $left = $view_query->get_table_info($this->left_table);
+      $left_field = "$left[alias].$this->left_field";
+    }
+    else {
+      // This can be used if left_field is a formula or something. It should be used only *very* rarely.
+      $left_field = $this->left_field;
+    }
+
+    $condition = "$left_field = $table[alias].$this->field";
+    $arguments = array();
+
+    // Tack on the extra.
+    if (isset($this->extra)) {
+      if (is_array($this->extra)) {
+        $extras = array();
+        foreach ($this->extra as $info) {
+          $extra = '';
+          // Figure out the table name. Remember, only use aliases provided
+          // if at all possible.
+          $join_table = '';
+          if (!array_key_exists('table', $info)) {
+            $join_table = $table['alias'] . '.';
+          }
+          elseif (isset($info['table'])) {
+            // If we're aware of a table alias for this table, use the table
+            // alias instead of the table name.
+            if (isset($left) && $left['table'] == $info['table']) {
+              $join_table = $left['alias'] . '.';
+            }
+            else {
+              $join_table = $info['table'] . '.';
+            }
+          }
+
+          // Convert a single-valued array of values to the single-value case,
+          // and transform from IN() notation to = notation
+
+          // API: Allow value to be omitted.
+          if (!isset($info['value'])) {
+            if (isset($info['prepend_left']) && $info['prepend_left']) {
+              $left = $view_query->get_table_info($this->left_table);
+              $extras[] = "$left[alias].$info[field]";
+            }
+            else {
+              $extras[] = "$join_table$info[field]";
+            }
+          }
+          else {
+            if (is_array($info['value']) && count($info['value']) == 1) {
+              if (empty($info['operator'])) {
+                $operator = '=';
+              }
+              else {
+                $operator = $info['operator'] == 'NOT IN' ? '!=' : '=';
+              }
+              $info['value'] = array_shift($info['value']);
+            }
+
+            if (is_array($info['value'])) {
+              // With an array of values, we need multiple placeholders and the
+              // 'IN' operator is implicit.
+              foreach ($info['value'] as $value) {
+                $placeholder_i = ':views_join_condition_' . $select_query->nextPlaceholder();
+                $arguments[$placeholder_i] = $value;
+              }
+
+              $operator = !empty($info['operator']) ? $info['operator'] : 'IN';
+              $placeholder = '( ' . implode(', ', array_keys($arguments)) . ' )';
+            }
+            else {
+              // With a single value, the '=' operator is implicit.
+              $operator = !empty($info['operator']) ? $info['operator'] : '=';
+              $placeholder = ':views_join_condition_' . $select_query->nextPlaceholder();
+              $arguments[$placeholder] = $info['value'];
+            }
+
+            $extras[] = "$join_table$info[field] $operator $placeholder";
+          }
+        }
+        if ($extras) {
+          if (count($extras) == 1) {
+            $condition .= ' AND ' . array_shift($extras);
+          }
+          else {
+            $condition .= ' AND (' . implode(' ' . $this->extra_type . ' ', $extras) . ')';
+          }
+        }
+      }
+      elseif ($this->extra && is_string($this->extra)) {
+        $condition .= " AND ($this->extra)";
+      }
+    }
+
+    $select_query->addJoin($this->type, $right_table, $table['alias'], $condition, $arguments);
+  }
+
 }

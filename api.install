@@ -191,17 +191,20 @@ function api_schema() {
   $schema['api_documentation'] = array(
     'fields' => array(
       'did' => array(
+        'description' => 'Primary key, documentation ID',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
       ),
       'branch_id' => array(
+        'description' => 'Branch ID',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
       'object_name' => array(
+        'description' => 'Name of object',
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
@@ -215,63 +218,88 @@ function api_schema() {
         'default' => '',
       ),
       'object_type' => array(
+        'description' => 'Type of object: function, class, etc.',
         'type' => 'varchar',
         'length' => '31',
         'not null' => TRUE,
         'default' => '',
       ),
       'title' => array(
+        'description' => 'Display title',
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
         'default' => '',
       ),
       'file_name' => array(
+        'description' => 'Full path of file',
         'type' => 'varchar',
         'length' => '255',
         'not null' => TRUE,
         'default' => '',
       ),
       'summary' => array(
+        'description' => 'Short description from documentation',
         'type' => 'text',
         'size' => 'medium',
         'not null' => TRUE,
       ),
       'documentation' => array(
+        'description' => 'Full documentation',
         'type' => 'text',
         'size' => 'medium',
         'not null' => TRUE,
       ),
       'code' => array(
+        'description' => 'Formatted source code',
         'type' => 'text',
         'size' => 'medium',
         'not null' => TRUE,
       ),
       'start_line' => array(
+        'description' => 'Start line of object in file',
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
       ),
       'see' => array(
+        'description' => 'See also references',
         'type' => 'text',
         'size' => 'medium',
         'not null' => TRUE,
       ),
       'var' => array(
+        'description' => 'Variable type from var tag',
         'type' => 'varchar',
         'length' => 127,
         'not null' => TRUE,
       ),
       'throws' => array(
+        'description' => 'Throws section',
         'type' => 'text',
         'size' => 'medium',
         'not null' => TRUE,
       ),
       'class_did' => array(
+        'description' => 'Documentation ID of class this is part of',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
+      ),
+      'namespace' => array(
+        'description' => 'Namespace, if any',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'namespaced_name' => array(
+        'description' => 'Fully-qualified namespaced name, starting with backslash',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
       ),
     ),
     'primary key' => array('did'),
@@ -283,6 +311,8 @@ function api_schema() {
       'class_did' => array('class_did'),
       'file_name' => array('file_name'),
       'member_name' => array('member_name'),
+      'namespace' => array('namespace'),
+      'namespaced_name' => array('namespaced_name'),
     ),
   );
 
@@ -493,6 +523,45 @@ function api_schema() {
     ),
   );
 
+  $schema['api_namespace'] = array(
+    'documentation' => 'Keep track of namespace and use declarations.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Documentation ID of file',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'object_type' => array(
+        'description' => 'namespace or use_alias',
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'class_alias' => array(
+        'description' => 'Alias of the class, blank for namespaces',
+        'type' => 'varchar',
+        'mysql_type' => 'varbinary(127)',
+        'length' => '127',
+        'default' => '',
+      ),
+      'class_name' => array(
+        'description' => 'Name of class or namespace',
+        'type' => 'varchar',
+        'mysql_type' => 'varbinary(127)',
+        'length' => '127',
+        'default' => '',
+      ),
+    ),
+    'indexes' => array(
+      'did' => array('did'),
+      'object_type' => array('object_type'),
+      'class_alias' => array('class_alias'),
+    ),
+  );
+
   return $schema;
 }
 
@@ -688,6 +757,7 @@ function api_update_7106() {
   db_drop_index('api_documentation', 'file_name');
   db_drop_index('api_documentation', 'object_name');
   db_change_field('api_documentation', 'file_name', 'file_name', array(
+      'description' => 'Full path of file',
       'type' => 'varchar',
       'length' => '255',
       'not null' => TRUE,
@@ -695,6 +765,7 @@ function api_update_7106() {
     ),
     array('indexes' => array('file_name' => array('file_name'))));
   db_change_field('api_documentation', 'object_name', 'object_name', array(
+      'description' => 'Name of object',
       'type' => 'varchar',
       'length' => '255',
       'not null' => TRUE,
@@ -1204,6 +1275,75 @@ function api_update_7117() {
  * Mark all files for reparse, due to some updates to the parsing code.
  */
 function api_update_7118() {
+  $count = api_update_mark_for_reparse();
+  return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
+
+/**
+ * Add the {api_namespace} table and namespace fields to the database.
+ */
+function api_update_7119() {
+  // Create new table.
+  db_create_table('api_namespace', array(
+    'documentation' => 'Keep track of namespace and use declarations.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Documentation ID of file',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'object_type' => array(
+        'description' => 'namespace or use_alias',
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'class_alias' => array(
+        'description' => 'Alias of the class, blank for namespaces',
+        'type' => 'varchar',
+        'mysql_type' => 'varbinary(127)',
+        'length' => '127',
+        'default' => '',
+      ),
+      'class_name' => array(
+        'description' => 'Name of class or namespace',
+        'type' => 'varchar',
+        'mysql_type' => 'varbinary(127)',
+        'length' => '127',
+        'default' => '',
+      ),
+    ),
+    'indexes' => array(
+      'did' => array('did'),
+      'object_type' => array('object_type'),
+      'class_alias' => array('class_alias'),
+    ),
+  ));
+
+  db_add_field('api_documentation', 'namespace', array(
+        'description' => 'Namespace, if any',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+    ), array('indexes' => array('namespace' => array('namespace'))));
+
+  db_add_field('api_documentation', 'namespaced_name', array(
+      'description' => 'Fully-qualified namespaced name, starting with backslash',
+      'type' => 'varchar',
+      'length' => '255',
+      'not null' => TRUE,
+      'default' => '',
+    ), array('indexes' => array('namespaced_name' => array('namespaced_name'))));
+}
+
+/**
+ * Mark all files for reparse, due to some updates to the parsing code.
+ */
+function api_update_7120() {
   $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }

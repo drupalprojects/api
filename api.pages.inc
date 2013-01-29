@@ -306,10 +306,10 @@ function api_page_file($file) {
 
   api_object_title_and_breadcrumb($branch, $file);
 
-  $documentation = api_link_documentation($file->documentation, $branch);
-  $see = api_link_documentation($file->see, $branch, NULL, TRUE, TRUE);
+  $documentation = api_link_documentation($file->documentation, $branch, $file->did);
+  $see = api_link_documentation($file->see, $branch, $file->did, NULL, TRUE, TRUE);
   $related_topics = api_related_topics($file->did, $branch);
-  $code = api_link_code($file->code, $branch);
+  $code = api_link_code($file->code, $branch, $file->did);
   $defined = $file->file_name;
 
   $types = array(
@@ -323,7 +323,7 @@ function api_page_file($file) {
   $objects = array();
   foreach ($types as $type => $label) {
     // Render the view of this type of object in this file.
-    $out = api_display_view('api_listings', 'block_items_file', array($branch->project, $branch->branch_name, $file->object_name, $type));
+    $out = api_display_view('api_listings', 'block_items_file', array($file->object_name, $type, $file->branch_id));
     // Only display if there was something there.
     if ($out) {
       $objects[$type] = array(
@@ -408,6 +408,7 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
       'function' => t('Functions'),
       'global' => t('Globals'),
       'group' => t('Topics'),
+      'namespace' => t('Namespaces'),
     );
     $title = $titles[$object_type];
     drupal_set_title($title);
@@ -420,32 +421,36 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
     api_set_html_page_title(implode(' | ', $page_title));
   }
 
-  $show_headings = FALSE;
   $output = array();
 
   if ($object_type === 'function' || $object_type == 'constant' || $object_type == 'global' ) {
     $output['listing'] = array(
       '#type' => 'markup',
-      '#markup' => api_display_view('api_listings', 'block_listing', array($branch->project, $object_type, $branch->branch_name)),
+      '#markup' => api_display_view('api_listings', 'block_listing', array($object_type, $branch->branch_id)),
     );
   }
   elseif ($object_type === 'group' ) {
     $output['listing'] = array(
       '#type' => 'markup',
-      '#markup' => api_display_view('api_listings', 'block_groups', array($branch->project, $branch->branch_name)),
+      '#markup' => api_display_view('api_listings', 'block_groups', array($branch->branch_id)),
     );
   }
-
   elseif ( $object_type === 'file') {
     $output['listing'] = array(
       '#type' => 'markup',
-      '#markup' => api_display_view('api_listings', 'block_files', array($branch->project, $branch->branch_name)),
+      '#markup' => api_display_view('api_listings', 'block_files', array($branch->branch_id)),
     );
   }
   elseif ($object_type === 'class') {
     $output['listing'] = array(
       '#type' => 'markup',
-      '#markup' => api_display_view('api_listings', 'block_class', array($branch->project, $branch->branch_name)),
+      '#markup' => api_display_view('api_listings', 'block_class', array($branch->branch_id)),
+    );
+  }
+  elseif ($object_type === 'namespace') {
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_namespaces', 'block_namespace_list', array($branch->branch_id)),
     );
   }
 
@@ -455,6 +460,57 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
       '#markup' => api_other_projects_link(),
     );
   }
+
+  return $output;
+}
+
+/**
+ * Page callback: Generates a namespace page.
+ *
+ * @param $project
+ *   Short name of project to generate page for.
+ * @param $branch_name
+ *   Short name of branch to generate page for.
+ * @param $namespace
+ *   Namespace to generate page for (with substitution characters).
+ *
+ * @return
+ *   HTML for the namespace page.
+ */
+function api_page_namespace($project, $branch_name, $namespace) {
+
+  $branch = api_get_branch_by_name($project, $branch_name);
+  if (is_null($branch)) {
+    return MENU_NOT_FOUND;
+  }
+
+  $namespace = str_replace(API_FILEPATH_SEPARATOR_REPLACEMENT, API_NAMESPACE_SEPARATOR, $namespace);
+
+  // Set the HTML page title and breadcrumb.
+  $breadcrumb = array(
+    l(t('Home'), '<front>'),
+    l(t('API reference'), 'api/' . $branch->project),
+    l($branch->title, 'api/' . $branch->project . '/' . $branch->branch_name),
+  );
+  drupal_set_breadcrumb($breadcrumb);
+
+  // Do not use t() here since this is a PHP construct.
+  $title = 'namespace ' . $namespace;
+  drupal_set_title($title);
+
+  $page_title = array(
+    check_plain($title),
+    check_plain($branch->title),
+    check_plain(variable_get('site_name', 'Drupal')),
+  );
+  api_set_html_page_title(implode(' | ', $page_title));
+
+  $output = array();
+
+  $output['listing'] = array(
+    '#type' => 'markup',
+    '#markup' => api_display_view('api_namespaces', 'block_items_namespace', array($branch->branch_id, $namespace)),
+  );
 
   return $output;
 }
@@ -639,12 +695,12 @@ function api_page_function($function) {
   }
 
   // Build the page sections.
-  $documentation = api_link_documentation($function->documentation, $branch, $function->class_did);
-  $parameters = api_link_documentation($function->parameters, $branch, $function->class_did, TRUE);
-  $return = api_link_documentation($function->return_value, $branch, $function->class_did, TRUE);
-  $see = api_link_documentation($function->see, $branch, $function->class_did, TRUE, TRUE);
-  $throws = api_link_documentation($function->throws, $branch, $function->class_did, TRUE);
-  $code = api_link_code($function->code, $branch, $function->class_did);
+  $documentation = api_link_documentation($function->documentation, $branch, $function->file_did, $function->class_did);
+  $parameters = api_link_documentation($function->parameters, $branch, $function->file_did, $function->class_did, TRUE);
+  $return = api_link_documentation($function->return_value, $branch, $function->file_did, $function->class_did, TRUE);
+  $see = api_link_documentation($function->see, $branch, $function->file_did, $function->class_did, TRUE, TRUE);
+  $throws = api_link_documentation($function->throws, $branch, $function->file_did, $function->class_did, TRUE);
+  $code = api_link_code($function->code, $branch, $function->file_did, $function->class_did);
   $related_topics = api_related_topics($function->did, $branch);
   $class = api_class_section($function, $branch);
 
@@ -661,7 +717,7 @@ function api_page_function($function) {
  * Counts or lists references to a function or file.
  *
  * @param $name
- *   Name of the function/file to check (see $type).
+ *   Name of the function/file to check (see $type), or the object itself.
  * @param $branch
  *   Object representing the branch to check.
  * @param $type
@@ -685,6 +741,13 @@ function api_page_function($function) {
  *   The number of references or an array of references.
  */
 function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0) {
+
+  if (!is_string($name)) {
+    // It should be an object. Derive the name.
+    $obj = $name;
+    $name = ($obj->class_did > 0 && $type == 'calls') ? $obj->namespaced_name : $obj->title;
+  }
+
   $branch_id = $branch->branch_id;
   $base_query = NULL;
   $args = array();
@@ -863,7 +926,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
 function api_build_references($types, $object, $branch) {
   $output = array();
   foreach ($types as $type) {
-    $count = api_find_references($object->title, $branch, $type, TRUE, $object->did);
+    $count = api_find_references($object, $branch, $type, TRUE, $object->did);
     if ($count > 0) {
       $limit = variable_get('api_reference_limit', 5);
       $section = '';
@@ -899,7 +962,7 @@ function api_build_references($types, $object, $branch) {
 function api_page_function_calls($function, $type) {
   $branch = api_get_branch_by_id($function->branch_id);
 
-  $call_count = api_find_references($function->object_name, $branch, $type, TRUE, $function->did);
+  $call_count = api_find_references($function, $branch, $type, TRUE, $function->did);
   $call_title = api_reference_text($type, $call_count, $function);
   api_object_title_and_breadcrumb($branch, $function, $call_title, TRUE);
 
@@ -919,7 +982,7 @@ function api_page_function_calls($function, $type) {
  *   (optional) Limit list to a few references.
  */
 function api_list_references($object, $branch, $type, $limit = 0) {
-  $call_functions = api_find_references($object->object_name, $branch, $type, FALSE, $object->did, $limit);
+  $call_functions = api_find_references($object, $branch, $type, FALSE, $object->did, $limit);
 
   $note = '';
   if ($type == 'implementations') {
@@ -969,13 +1032,13 @@ function api_page_simple_item($item, $type) {
 
   api_object_title_and_breadcrumb($branch, $item);
 
-  $documentation = api_link_documentation($item->documentation, $branch, $item->class_did);
-  $code = api_link_code($item->code, $branch, $item->class_did);
+  $documentation = api_link_documentation($item->documentation, $branch, $item->file_did, $item->class_did);
+  $code = api_link_code($item->code, $branch, $item->file_did, $item->class_did);
   $related_topics = api_related_topics($item->did, $branch);
-  $see = api_link_documentation($item->see, $branch, $item->class_did, TRUE, TRUE);
+  $see = api_link_documentation($item->see, $branch, $item->file_did, $item->class_did, TRUE, TRUE);
   $var = '';
   if ($type == 'property') {
-    $var = api_link_name($item->var, $branch, '', '', $item->class_did);
+    $var = api_link_name($item->var, $branch, '', '', $item->file_did, $item->class_did);
   }
 
   $class = api_class_section($item, $branch);
@@ -1007,23 +1070,19 @@ function api_page_class($class) {
 
   api_object_title_and_breadcrumb($branch, $class);
 
-  $documentation = api_link_documentation($class->documentation, $branch, $class->did);
+  $documentation = api_link_documentation($class->documentation, $branch, $class->file_did, $class->did);
   $related_topics = api_related_topics($class->did, $branch);
-  $code = api_link_code($class->code, $branch, $class->did);
-  $see = api_link_documentation($class->see, $branch, $class->did, TRUE, TRUE);
+  $code = api_link_code($class->code, $branch, $class->file_did, $class->did);
+  $see = api_link_documentation($class->see, $branch, $class->file_did, $class->did, TRUE, TRUE);
 
   // Figure out the class hierarchy, and what classes implement if this is
   // an interface.
-  // @todo Use namespaces to make sure we are using the right interface, if
-  // there are multiples with the same name. Currently we are just matching on
-  // the name in the class declaration "class A implements B" and assuming if
-  // the of name B matches $class->object_name, this class uses this interface.
   $hierarchy = api_class_hierarchy($class);
   $implements = array();
   if ($class->object_type === 'interface') {
     // Make a list of all interfaces that extend this one, in this branch only.
-    $to_check = array($class->object_name);
-    $extend_list = array($class->object_name);
+    $to_check = array($class->namespaced_name);
+    $extend_list = array($class->namespaced_name);
     while (count($to_check) > 0) {
       $this_name = array_shift($to_check);
       $query = db_select('api_reference_storage', 'ars')
@@ -1032,11 +1091,14 @@ function api_page_class($class) {
         ->condition('ars.branch_id', $branch->branch_id);
       $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
       $result = $query
-        ->fields('ad', array('object_name'))
+        ->fields('ad', array('namespaced_name'))
         ->execute()
         ->fetchCol();
       foreach ($result as $new_name) {
-        $to_check[] = $new_name;
+        if (!in_array($new_name, $extend_list)) {
+          // Avoid loops!
+          $to_check[] = $new_name;
+        }
         $extend_list[] = $new_name;
       }
     }
@@ -1060,6 +1122,7 @@ function api_page_class($class) {
   }
 
   // Find and render all the class members.
+  // @todo This could use Views if the members issue could be worked out.
   $query = db_select('api_members', 'am');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
   $query->fields($ad, array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did'));
@@ -1094,7 +1157,7 @@ function api_page_group($group) {
   api_object_title_and_breadcrumb($branch, $group);
 
   $documentation = api_link_documentation($group->documentation, $branch);
-  $see = api_link_documentation($group->see, $branch, NULL, TRUE, TRUE);
+  $see = api_link_documentation($group->see, $branch, NULL, NULL, TRUE, TRUE);
 
   $query = db_select('api_reference_storage', 'r');
   $d = $query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
@@ -1279,7 +1342,6 @@ function api_class_hierarchy($class, $type = 'ancestors') {
 
   // Find the direct-line extends ancestors of this class, only in the same
   // branch.
-  // @todo use namespaces?
   $parent = $class;
   $current = $class;
 
@@ -1287,14 +1349,10 @@ function api_class_hierarchy($class, $type = 'ancestors') {
     $processed[] = $parent->did;
 
     // Query to find the next ancestor.
-    // @todo Use namespaces. Currently we are just assuming that if the
-    // class declaration says "class A extends B", then either the name B is
-    // unique, or we make a link to search for all classes named B for the
-    // hierarchy.
     $query = db_select('api_reference_storage', 'ars');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.object_name = ars.object_name AND ad.branch_id = ars.branch_id');
+    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.namespaced_name = ars.object_name AND ad.branch_id = ars.branch_id');
     $query
-      ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
+      ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
       ->condition('ars.from_did', $parent->did)
       ->condition('ars.object_type', 'class')
       ->condition('ad.object_type', array('class', 'interface'));
@@ -1374,15 +1432,12 @@ function api_class_hierarchy($class, $type = 'ancestors') {
  *   of api_class_hierarchy_line().
  */
 function api_class_children($class, $current_did = 0) {
-  // @todo Use namespaces. Currently we are just matching on the class name,
-  // so if any class is declared as class A extends B, and B matches this
-  // class's name, we're assuming that it's the same B.
   $children = array();
   $query = db_select('api_reference_storage', 'ars');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
   $query
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
-    ->condition('ars.object_name', $class->object_name)
+    ->condition('ars.object_name', $class->namespaced_name)
     ->condition('ars.branch_id', $class->branch_id)
     ->condition('ad.object_type', array('class', 'interface'))
     ->condition('ars.object_type', 'class')
@@ -1418,7 +1473,7 @@ function api_class_hierarchy_line($class, $current_did = 0) {
   $interfaces = array();
   $query = db_select('api_reference_storage', 'ars');
   $ref_name = $query->addField('ars', 'object_name', 'ref_name');
-  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.object_name = ars.object_name AND ad.branch_id = ars.branch_id AND ad.object_type = ars.object_type');
+  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.namespaced_name = ars.object_name AND ad.branch_id = ars.branch_id AND ad.object_type = ars.object_type');
   $obj_name = $query->addField($ad, 'object_name', 'object_name');
   $query
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
@@ -1448,7 +1503,7 @@ function api_class_hierarchy_line($class, $current_did = 0) {
   // See if this class extends another class that isn't defined in our DB.
   $extends = '';
   $query = db_select('api_reference_storage', 'ars');
-  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.object_name = ars.object_name AND ad.branch_id = ars.branch_id');
+  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.namespaced_name = ars.object_name AND ad.branch_id = ars.branch_id');
   $query
     ->fields($ad, array('did'))
     ->fields('ars', array('object_name'))

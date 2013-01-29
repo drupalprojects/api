@@ -14,7 +14,9 @@ function api_preprocess_api_defined(&$variables) {
   $object = $variables['object'];
   $branch = $variables['branch'];
   $variables['file_link'] = api_file_link($object);
-  $file_info = api_filename_load($object->file_name, $branch->project, $branch->branch_name);
+  $file_info = api_object_load((int) $object->file_did, $branch, 'file');
+
+  $variables['file_summary'] = '';
   if (isset($file_info)) {
     $variables['file_summary'] = $file_info->summary;
   }
@@ -42,10 +44,19 @@ function api_preprocess_api_object_page(&$variables) {
     $variables['defined'] = theme('api_defined', array('branch' => $variables['branch'], 'object' => $variables['object']));
   }
 
-  // Find alternative versions in different files and branches.
   $object = $variables['object'];
+
+  // Find the namespace.
+  if (isset($object->namespace) && strlen($object->namespace)) {
+    $variables['namespace'] = l($object->namespace, api_namespace_url($object->branch_id, $object->namespace));
+  }
+  else {
+    $variables['namespace'] = '';
+  }
+
+  // Find alternative versions in different files and branches.
   $branches = api_get_branches();
-  $branch = api_get_branch_by_id($variables['object']->branch_id);
+  $branch = api_get_branch_by_id($object->branch_id);
   $alternatives = array(
     '#prefix' => '<ol id="api-alternatives">',
     '#suffix' => '</ol>',

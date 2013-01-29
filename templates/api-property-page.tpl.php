@@ -10,6 +10,7 @@
  * - $var: The data type of the property.
  * - $documentation: Documentation from the comment header of the property.
  * - $see: See also documentation.
+ * - $namespace: Name of the namespace for this function, if any.
  * - $defined: HTML reference to file that defines this property.
  * - $class: The text for the class section.
  * - $code: HTML-formatted declaration of this property.
@@ -49,6 +50,11 @@
 <?php } ?>
 
 <?php print $override; ?>
+
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
+<?php endif; ?>
 
 <?php if (!empty($see)) { ?>
 <h3><?php print t('See also') ?></h3>

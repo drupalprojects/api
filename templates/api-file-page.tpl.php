@@ -8,6 +8,7 @@
  * - $alternatives: List of alternate versions (branches) of this file.
  * - $documentation: Documentation from the comment header of the file.
  * - $see: See also documentation.
+ * - $namespace: Name of the namespace for this function, if any.
  * - $objects: List of functions, classes, etc. defined in the file.
  * - $call_links: Links to calling functions (for theme templates).
  * - $code: Source code for the file.
@@ -40,6 +41,11 @@
 <?php print $alternatives; ?>
 
 <?php print $documentation ?>
+
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
+<?php endif; ?>
 
 <?php if (!empty($see)) { ?>
   <h3><?php print t('See also') ?></h3>

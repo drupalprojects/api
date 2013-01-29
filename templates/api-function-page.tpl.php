@@ -16,6 +16,7 @@
  * - $related_topics: Related topics documentation.
  * - $call_links: Links to calling functions, hook implementations, etc.
  * - $defined: HTML reference to file that defines this function.
+ * - $namespace: Name of the namespace for this function, if any.
  * - $code: HTML-formatted declaration and code of this function.
  * - $branch: Object with information about the branch.
  * - $object: Object with information about the function.
@@ -100,6 +101,11 @@ foreach ($call_links as $link) {
 
 <h3><?php print t('File'); ?></h3>
  <?php print $defined; ?>
+
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
+<?php endif; ?>
 
 <?php if ($class) : ?>
   <h3><?php print t('Class'); ?></h3>

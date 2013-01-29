@@ -37,6 +37,7 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
     'source' => str_replace(array("\r\n", "\r"), array("\n", "\n"), file_get_contents($file_path)),
     'content' => '',
     'class' => '',
+    'namespaced_name' => '',
   );
 
   $callback($docblock);
@@ -145,6 +146,7 @@ function api_parse_php_file($docblock) {
     'references' => array(),
     'see' => '',
     'start_line' => 0,
+    'namespaced_name' => '',
   );
 
   $found_references = api_documentation_loop($statements, $default_block, $docblocks);
@@ -152,10 +154,20 @@ function api_parse_php_file($docblock) {
   // For the file, save only the references not found in parsing the
   // statements within the file. This will only save references to function
   // calls in the global area of the file, excluding those found in
-  // functions declared in the file.
+  // functions declared in the file. This doesn't apply to namespace and use
+  // references though -- these are found only in api_documentation_loop().
+
   foreach ($found_references as $type => $list) {
-    foreach ($list as $name => $info) {
-      unset($references[$type][$name]);
+    // For namespaces and use aliases, merge these into the main references.
+    if ($type == 'namespace' || $type == 'use_alias') {
+      $refs = array($type => $list);
+      $references = _api_merge_references($references, $refs);
+    }
+    else {
+      // For other references, remove them.
+      foreach ($list as $name => $info) {
+        unset($references[$type][$name]);
+      }
     }
   }
   $docblocks[0]['references'] = $references;
@@ -210,6 +222,20 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
 
     // Common processing.
     switch ($type) {
+      case T_NAMESPACE:
+        // $statement->name has the name of the namespace for the file.
+        $namespace = $statement->name->toString();
+        if (!empty($namespace)) {
+          $references = array('namespace' => $namespace);
+          $all_references = _api_merge_references($all_references, $references);
+        }
+        break;
+
+      case T_USE:
+        $references = array('use_alias' => $statement->aliasesToArray());
+        $all_references = _api_merge_references($all_references, $references);
+        break;
+
       case T_ASSIGNMENT: // Class property
         if (empty($default_block['class'])) {
           break;
@@ -240,7 +266,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         if ($statement->type == T_FUNCTION) {
           $docblock['signature'] = $editor->functionGetSignature($statement);
           $docblock['references'] = $references;
-          $all_references = array_merge_recursive($all_references, $references);
+          $all_references = _api_merge_references($all_references, $references);
         }
         elseif ($statement->type == T_CLASS || $statement->type == T_INTERFACE) {
           $docblock['extends'] = is_object($statement->extends) ? explode(', ', $statement->extends->toString()) : array();
@@ -262,7 +288,8 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
       case T_INTERFACE:
       case T_CLASS:
         if (!empty($statement->body)) {
-          $all_references = array_merge_recursive($all_references, api_documentation_loop($statement->body, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks));
+          $references = api_documentation_loop($statement->body, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
+          $all_references = _api_merge_references($all_references, $references);
         }
         break;
     }
@@ -270,6 +297,40 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
   }
 
   return $all_references;
+}
+
+/**
+ * Merges references, with warnings for duplicate namespaces.
+ *
+ * @param array $master
+ *   Master list of references.
+ * @param array $new
+ *   New references to merge in.
+ *
+ * @return array
+ *   Merged references. References in $new are appended to references in
+ *   $master, and if there are duplicate namespace or use references, the
+ *   $master list is used and a warning is generated.
+ */
+function _api_merge_references($master, $new) {
+
+  // We're supporting only one namespace declaration per file.
+  if (isset($master['namespace']) && isset($new['namespace']) && $master['namespace'] != $new['namespace']) {
+    watchdog('api', 'Multiple namespace declarations found in file. Only first is used.', array(), WATCHDOG_WARNING);
+    unset($new['namespace']);
+  }
+
+  // We're supporting only non-conflicting use declarations.
+  if (isset($new['use_alias']) && isset($master['use_alias'])) {
+    foreach ($new['use_alias'] as $alias => $class) {
+      if (isset($master['use_alias'][$alias]) && $master['use_alias'][$alias] != $class) {
+        watchdog('api', 'Conflicting use declarations for %name found in file. Only first is used.', array('%name' => $usealias), WATCHDOG_WARNING);
+        unset($new['use_alias'][$alias]);
+      }
+    }
+  }
+
+  return array_merge_recursive($master, $new);
 }
 
 /**
@@ -282,6 +343,8 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
  */
 function api_save_documentation($docblocks) {
   $nested_groups = array();
+  $namespace = '';
+  $use_aliases = array();
 
   // Make a list of the documentation IDs that were contained in this file
   // the last time through. We'll remove any items that are not in this file
@@ -325,6 +388,18 @@ function api_save_documentation($docblocks) {
   }
 
   foreach ($docblocks as $docblock) {
+    // Keep track of the namespace and add it to all docblocks for this file.
+    if (isset($docblock['references']['namespace']) && !empty($docblock['references']['namespace'])) {
+      $namespace = $docblock['references']['namespace'];
+    }
+    $docblock['namespace'] = $namespace;
+
+    // Keep track of the use aliases so we can put the right classes into the
+    // extends/implements references for classes we encounter.
+    if (isset($docblock['references']['use_alias'])) {
+      $use_aliases = array_merge($docblock['references']['use_alias'], $use_aliases);
+    }
+
     if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $docblock['content'])) {
       preg_match('/' . API_RE_TAG_START . 'mainpage (.*?)\n/', $docblock['content'], $mainpage_matches);
       $docblock['title'] = $mainpage_matches[1];
@@ -465,6 +540,9 @@ function api_save_documentation($docblocks) {
       $docblock['class_did'] = $class_dids[$docblock['class']];
     }
 
+    // Figure out the namespaced name.
+    $docblock['namespaced_name'] = api_full_classname($docblock['object_name'], $namespace, $use_aliases);
+
     // See if this docblock already existed, and get its ID.
     $docblock['did'] = db_select('api_documentation', 'd')
       ->fields('d', array('did'))
@@ -518,14 +596,14 @@ function api_save_documentation($docblocks) {
             'parameters' => $docblock['parameters'],
             'return_value' => $docblock['return_value'],
           ));
-        api_replace_references($docblocks[0]['branch'], $docblock['did'], $docblock['object_name'], $docblock['references']);
+        api_replace_references($docblocks[0]['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
         break;
 
       case 'file':
         // Note that this will set the 'queued' field back to zero, since
         // $docblock['queued'] is set to 0 up at the top of api_parse_file().
         drupal_write_record('api_file', $docblock, 'did');
-        api_replace_references($docblock['branch'], $docblock['did'], $docblock['object_name'], $docblock['references']);
+        api_replace_references($docblock['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], TRUE, $namespace, $use_aliases);
         break;
 
       case 'interface':
@@ -536,10 +614,12 @@ function api_save_documentation($docblocks) {
           ->condition('from_did', $docblock['did'])
           ->execute();
         foreach ($docblock['extends'] as $extend) {
-          api_reference($docblocks[0]['branch'], 'class', $extend, $docblock['did']);
+          $refname = api_full_classname($extend, $namespace, $use_aliases);
+          api_reference($docblocks[0]['branch'], 'class', $refname, $docblock['did']);
         }
         foreach ($docblock['implements'] as $implement) {
-          api_reference($docblocks[0]['branch'], 'interface', $implement, $docblock['did']);
+          $refname = api_full_classname($implement, $namespace, $use_aliases);
+          api_reference($docblocks[0]['branch'], 'interface', $refname, $docblock['did']);
         }
         break;
     }
@@ -643,8 +723,14 @@ function api_new_php_doc_id() {
  *   Name of the item making the calls.
  * @param $references
  *   Array of references set up by api_format_php().
+ * @param $do_namespaces
+ *   TRUE to save namespace references. FALSE (default) to ignore them.
+ * @param $namespace
+ *   Namespace for the file these references are from.
+ * @param $use_aliases
+ *   Use aliases for the file these references are from.
  */
-function api_replace_references($branch, $did, $name, $references) {
+function api_replace_references($branch, $did, $name, $references, $do_namespaces = FALSE, $namespace, $use_aliases) {
   // Find the name without class prefix, if any.
   $shortname = $name;
   if (($pos = strpos($name, '::')) !== FALSE && $pos > 1) {
@@ -652,23 +738,74 @@ function api_replace_references($branch, $did, $name, $references) {
   }
 
   // Remove any existing references.
+  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'member-parent', 'member-self', 'member', 'member-class');
+
   db_delete('api_reference_storage')
     ->condition('branch_id', $branch->branch_id)
-    ->condition('object_type', array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'member-parent', 'member-self', 'member', 'member-class'))
+    ->condition('object_type', $types_to_remove)
     ->condition('from_did', $did)
     ->execute();
 
+  if ($do_namespaces) {
+    $types_to_remove = array('namespace', 'use_alias');
+    db_delete('api_namespace')
+      ->condition('did', $did)
+      ->condition('object_type', $types_to_remove)
+      ->execute();
+  }
+
   // Add the new references.
   foreach ($references as $type => $list) {
-    // Don't save a reference to the item itself.
-    if ($type == 'function' || $type == 'potential callback' || $type == 'member-self') {
-      unset($list[$shortname]);
-    }
-    foreach ($list as $call) {
-      api_reference($branch, $type, $call, $did, TRUE);
+    switch ($type) {
+      case 'namespace':
+        if ($do_namespaces) {
+          // In this case, $list is actually a string containing the namespace
+          // for a file, not a list.
+          api_namespace($did, $type, '', $list, TRUE);
+        }
+        break;
+
+      case 'use_alias':
+        if ($do_namespaces) {
+          // Save all of the use aliases.
+          foreach ($list as $alias => $class) {
+            api_namespace($did, $type, $alias, $class, TRUE);
+          }
+        }
+        break;
+
+      case 'member-class':
+        // Don't save a reference to the item itself.
+        unset($list[$shortname]);
+        foreach ($list as $call) {
+          // These are references to ClassName::method(). Make sure
+          // they are fully namespaced.
+          $call = api_full_classname($call, $namespace, $use_aliases);
+          api_reference($branch, $type, $call, $did, TRUE);
+        }
+
+        break;
+
+      case 'function':
+      case 'potential callback':
+      case 'member-self':
+        // Don't save a reference to the item itself.
+        unset($list[$shortname]);
+
+        // Intentional fallthrough here!
+
+      default:
+        foreach ($list as $call) {
+          api_reference($branch, $type, $call, $did, TRUE);
+        }
     }
   }
+
+  // Cause all the queued references to get saved.
   api_reference(TRUE);
+  if ($do_namespaces) {
+    api_namespace(TRUE);
+  }
 }
 
 /**
@@ -992,6 +1129,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
   // - How many PHP start/end tags we found (will remove at end if there is
   //   only one set).
   // - Class members: $foo->bar or Foo::bar.
+  // - Are we building up a namespaced class name?
 
   // Double-quoted strings.
   $in_string = FALSE;
@@ -1011,6 +1149,10 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
   $in_member = FALSE;
   $member_of = '';
 
+  // Namespaces.
+  $in_namespace = FALSE;
+  $full_namespaced_name = '';
+
   // Split the code into tokens.
   $tokens = token_get_all($code);
   foreach ($tokens as $array_index => $token) {
@@ -1020,6 +1162,8 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
     if ($in_string) {
       $in_member = FALSE;
       $member_of = '';
+      $in_namespace = FALSE;
+      $full_namespaced_name = '';
       if ($token == '"') {
         $output .= '"</span>';
         $in_string = FALSE;
@@ -1034,6 +1178,8 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
       $in_string = TRUE;
       $in_member = FALSE;
       $member_of = '';
+      $in_namespace = FALSE;
+      $full_namespaced_name = '';
       continue;
     }
 
@@ -1045,6 +1191,8 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_OPEN_TAG:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $to_add = '<span class="php-boundry">' . $value . '</span>';
           $open_count++;
           if (strlen($output) == 0) {
@@ -1059,6 +1207,8 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_CLOSE_TAG:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $to_add = '<span class="php-boundry">' . $value . '</span>';
           $close_count++;
           // Save the size of the closing tag here. If we didn't encounter
@@ -1073,18 +1223,24 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_DOC_COMMENT:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $output .= '<span class="php-comment">' . $value . '</span>';
           break;
 
         case T_VARIABLE:
           $in_member = FALSE;
           $member_of = $value;
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $output .= '<span class="php-variable">' . $value . '</span>';
           break;
 
         case T_CONSTANT_ENCAPSED_STRING:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           // This is a string like 'foo'. If we're in a call of some sort,
           // then this is a potential function, hook, etc. name.
           $class = 'php-string';
@@ -1106,11 +1262,31 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_INLINE_HTML:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $output .= '<span class="php-string">' . $value . '</span>';
           break;
 
         case T_STRING:
           // This is a function, constant, etc. being declared or used.
+
+          // See if the next token is a backslash. In which case, add to the
+          // name so far and continue on.
+          if (isset($tokens[$array_index + 1]) && is_array($tokens[$array_index + 1]) && $tokens[$array_index + 1][0] == T_NS_SEPARATOR) {
+            $in_namespace = TRUE;
+            $full_namespaced_name .= $value;
+            break;
+          }
+          else {
+            // No more namespace tokens are coming. Prepend any namespace
+            // we have already encountered and reset for the next one.
+            if ($in_namespace) {
+              $value = $full_namespaced_name . $value;
+            }
+            $full_namespaced_name = '';
+            $in_namespace = FALSE;
+          }
+
           $class = 'php-function-or-constant';
           $reference_type = 'function';
           $reference = $value;
@@ -1130,7 +1306,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
               $class .= ' member-of-parent';
               $reference_type = 'member-parent';
             }
-            elseif ($member_of == '$this' || $member_of == 'self') {
+            elseif ($member_of == '$this' || $member_of == 'self' || $member_of == 'static') {
               $class .= ' member-of-self';
               $reference_type = 'member-self';
             }
@@ -1185,10 +1361,19 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
           break;
 
+        case T_NS_SEPARATOR:
+          $in_namespace = TRUE;
+          $full_namespaced_name .= $value;
+          $in_member = FALSE;
+          $member_of = '';
+          break;
+
         case T_LNUMBER:
         case T_DNUMBER:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $output .= '<span class="php-constant">' . $value . '</span>';
           break;
 
@@ -1228,6 +1413,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_INT_CAST:
         case T_ISSET:
         case T_LIST:
+        case T_NAMESPACE:
         case T_NEW:
         case T_OBJECT_CAST:
         case T_PRINT:
@@ -1244,6 +1430,8 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_WHILE:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $output .= '<span class="php-keyword">' . $value . '</span>';
           break;
 
@@ -1251,17 +1439,24 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_DOUBLE_COLON:
           $output .= $value;
           $in_member = TRUE;
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           break;
 
         default:
           $in_member = FALSE;
           $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
           $output .= $value;
       }
     }
     else {
+      // Non-array (simple) tokens.
       $in_member = FALSE;
       $member_of = '';
+      $in_namespace = FALSE;
+      $full_namespaced_name = '';
 
       // Keep track of parentheses for whether we are in a hook/theme/alter
       // call.
@@ -1370,6 +1565,57 @@ function api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $w
 }
 
 /**
+ * Adds a reference to the {api_namespace} table.
+ *
+ * @param $file_did
+ *   Documentation ID of the file for this namespace.
+ * @param $type
+ *   Type of reference ('namespace' or 'use_alias').
+ * @param $alias
+ *   Alias for the class, if $type is 'use_alias'.
+ * @param $class
+ *   Full class name for use aliases; namespace name for namespaces.
+ * @param $wait
+ *   TRUE to save the insert until api_namespace(TRUE) is called, or FALSE
+ *   (default) to do the query immediately.
+ */
+function api_namespace($file_did, $type = '', $alias = '', $class = '', $wait = FALSE) {
+  static $query_stored = NULL;
+
+  // Is it time to do all the saved queries?
+  if ($file_did === TRUE) {
+    if (!is_null($query_stored)) {
+      $query_stored->execute();
+      $query_stored = NULL;
+    }
+    return;
+  }
+
+  if ($wait) {
+    if (is_null($query_stored)) {
+      $query_stored = db_insert('api_namespace')
+        ->fields(array('did', 'object_type', 'class_alias', 'class_name'));
+      }
+      $query_stored->values(array(
+          'did' => $file_did,
+          'object_type' => $type,
+          'class_alias' => $alias,
+          'class_name' => $class,
+        ));
+  }
+  else {
+    db_insert('api_namespace')
+      ->fields(array(
+          'did' => $file_did,
+          'object_type' => $type,
+          'class_alias' => $alias,
+          'class_name' => $class,
+        ))
+      ->execute();
+  }
+}
+
+/**
  * Registers a shutdown function for cron, making sure to do it just once.
  *
  * @see api_shutdown()
@@ -1436,7 +1682,7 @@ function api_shutdown() {
 
       // Add parents of this class to the class parent stack, but avoid loops.
       $query = db_select('api_reference_storage', 'ars');
-      $query->innerJoin('api_documentation', 'pd', 'ars.object_name = pd.object_name AND ars.branch_id = pd.branch_id');
+      $query->innerJoin('api_documentation', 'pd', 'ars.object_name = pd.namespaced_name AND ars.branch_id = pd.branch_id');
       $query
         ->condition('ars.object_type', array('class', 'interface'))
         ->condition('pd.object_type', array('class', 'interface'))
@@ -1508,9 +1754,7 @@ function api_shutdown() {
     // they need to be recomputed too. But avoid loops.
     $query = db_select('api_reference_storage', 'ars')
       ->fields('ars', array('from_did'));
-    // @todo Use namespaces here rather than just blindly matching on the
-    // object name.
-    $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.object_name AND ars.object_type = ad.object_type AND ars.branch_id = ad.branch_id');
+    $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.namespaced_name AND ars.object_type = ad.object_type AND ars.branch_id = ad.branch_id');
     $result_children = $query
       ->condition('ad.did', $class_did)
       ->condition('ars.from_did', 0, '<>')
@@ -1537,10 +1781,8 @@ function api_shutdown() {
       $processed_parents[] = $parent;
 
       // Add this class's parents to the list, avoiding loops.
-      // @todo Use namespaces here. Right now we're just matching on the class
-      // name.
       $query = db_select('api_reference_storage', 'ars');
-      $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.object_name AND ars.branch_id = ad.branch_id');
+      $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.namespaced_name AND ars.branch_id = ad.branch_id');
       $result_parents = $query
         ->condition('ars.object_type', array('class', 'interface'))
         ->condition('ad.object_type', array('class', 'interface'))
@@ -1609,9 +1851,9 @@ function api_shutdown() {
     $select = db_select('api_reference_storage', 'r')
       ->condition('r.object_type', 'class')
       ->condition('r.from_did', $todo);
-    $select->innerJoin('api_documentation', 'd', 'd.branch_id = r.branch_id AND d.object_name = r.object_name');
+    $select->innerJoin('api_documentation', 'd', 'd.branch_id = r.branch_id AND d.namespaced_name = r.object_name');
     $select->condition('d.object_type', 'class');
-    $select->leftJoin('api_documentation', 'd2', 'd2.branch_id = r.branch_id AND d2.object_name = r.object_name AND d2.did <> d.did');
+    $select->leftJoin('api_documentation', 'd2', 'd2.branch_id = r.branch_id AND d2.namespaced_name = r.object_name AND d2.did <> d.did');
     $select->isNull('d2.did');
     $select->addField('r', 'from_did', 'did');
     $select->addField('d', 'did', 'parent_did');
@@ -1632,7 +1874,7 @@ function api_shutdown() {
   $m = $select->innerJoin('api_members', 'm', 'd.class_did = m.class_did');
   $dm = $select->innerJoin('api_documentation', 'dm', 'm.did = dm.did AND dm.member_name = r.object_name');
   $select->condition('dm.object_type', 'function');
-  $select->addField($dm, 'object_name', 'object_name');
+  $select->addField($dm, 'namespaced_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
   $select->addField('r', 'from_did', 'from_did');
   // Note: SelectQuery adds expressions to the query at the end of the field
@@ -1646,7 +1888,6 @@ function api_shutdown() {
 
   // Do the same for member-parent references, where ChildClass::foo() calls
   // parent::bar() -- figure out the full name of the parent member.
-  // @todo Use namespaces here instead of just matching parent class names.
 
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'member-parent');
@@ -1656,7 +1897,7 @@ function api_shutdown() {
   $member_d = $select->innerJoin('api_documentation', 'md', 'md.did = pm.did AND md.member_name = r.object_name');
   $select->condition('md.object_type', 'function');
 
-  $select->addField($member_d, 'object_name', 'object_name');
+  $select->addField($member_d, 'namespaced_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
   $select->addField('r', 'from_did', 'from_did');
   // Note: SelectQuery adds expressions to the query at the end of the field
@@ -2076,6 +2317,8 @@ function _api_add_text_defaults(&$record, $table) {
         'see' => '',
         'var' => '',
         'throws' => '',
+        'namespace' => '',
+        'namespaced_name' => '',
       );
       break;
 

@@ -186,12 +186,15 @@ class ApiLinkCodeTest extends ApiTestCase {
       if (!isset($test['class_did'])) {
         $test['class_did'] = NULL;
       }
-      $result = api_link_code($test['data'], $this->getBranch(), $test['class_did']);
+      if (!isset($test['file_did'])) {
+        $test['file_did'] = NULL;
+      }
+      $result = api_link_code($test['data'], $this->getBranch(), $test['file_did'], $test['class_did']);
       // Compare result and expected with slightly liberal matching -- all
       // whitespace is considered equal for HTML.
       $result = preg_replace('|\s+|', ' ', $result);
       $expected = preg_replace('|\s+|', ' ', $test['expected']);
-      $this->assertEqual($result, $expected, $test['message'] . ' Got: <code>' . check_plain($result) . '</code>');
+      $this->assertEqual($result, $expected, $test['message'] . ' Got: <code>' . check_plain($result) . ' and expected ' . check_plain($expected) . '</code>');
     }
   }
 }

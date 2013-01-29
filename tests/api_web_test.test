@@ -529,7 +529,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
 
     // Visit the subclass page and verify the extends info is in the hierarchy.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/SubSample');
-    $this->assertText('extends ClassNotDefinedHere', 'Class hierarchy includes extend off-site');
+    $this->assertText('extends \\ClassNotDefinedHere', 'Class hierarchy includes extend off-site');
     $this->assertLink('SampleInterface', 0, 'Class hierarchy shows implements of parent');
 
     // Visit a class in a subdirectory and verify.

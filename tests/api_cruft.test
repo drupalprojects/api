@@ -65,6 +65,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
       'api_overrides' => 0,
       'api_extends' => 0,
       'api_file' => 0,
+      'api_namespace' => 0,
       'node' => 1,
       'comment' => 0,
     );

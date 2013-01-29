@@ -8,6 +8,7 @@
  * - $alternatives: List of alternate versions (branches) of this constant.
  * - $documentation: Documentation from the comment header of the constant.
  * - $override: If this is an override, the text to show for that.
+ * - $namespace: Name of the namespace for this function, if any.
  * - $see: See also documentation.
  * - $defined: HTML reference to file that defines this constant.
  * - $class: The text for the class section.
@@ -41,6 +42,11 @@
 <?php print $documentation ?>
 
 <?php print $override; ?>
+
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
+<?php endif; ?>
 
 <?php if (!empty($see)) { ?>
   <h3><?php print t('See also') ?></h3>

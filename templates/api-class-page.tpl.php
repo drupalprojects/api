@@ -8,6 +8,7 @@
  * - $alternatives: List of alternate versions (branches) of this class.
  * - $documentation: Documentation from the comment header of the class.
  * - $see: See also documentation.
+ * - $namespace: Name of the namespace for this function, if any.
  * - $implements: List of classes that implements this interface, if any.
  * - $hierarchy: Class hierarchy, if any.
  * - $objects: Listing of member variables, constants, and functions.
@@ -41,6 +42,11 @@
 <?php print $alternatives; ?>
 
 <?php print $documentation ?>
+
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
+<?php endif; ?>
 
 <?php if (!empty($see)) { ?>
   <h3><?php print t('See also') ?></h3>

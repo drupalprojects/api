@@ -20,8 +20,9 @@ define('API_RE_FILENAME', '([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)');
  * Regular expression for matching PHP functions and methods in text.
  *
  * These are patterns like ClassName::methodName(), or just function_name().
+ * Possibly with namespaces.
  */
-define('API_RE_FUNCTION_IN_TEXT', '[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff:]*');
+define('API_RE_FUNCTION_IN_TEXT', '\\\\*[a-zA-Z_\x7f-\xff][\\\\a-zA-Z0-9_\x7f-\xff:]*');
 
 /**
  * Regular expression for matching group/topic names.
@@ -37,13 +38,21 @@ define('API_RE_GROUP_NAME', '[a-zA-Z_0-9\.\-]+');
 define('API_RE_HOOK_NAME', '[a-zA-Z0-9_\x7f-\xff]+');
 
 /**
- * Regular expression for matching class names in text.
+ * Regular expression for aggressively matching class names in text.
  *
  * Although class names can technically be just like function names, we
  * only want to match class names if they include a capital letter, so as
- * not to be too overly aggressive.
+ * not to be too overly aggressive. Possibly can include namespaces.
  */
-define('API_RE_CLASS_NAME_TEXT', '[a-zA-Z0-9_\x7f-\xff]*[A-Z][a-zA-Z0-9_\x7f-\xff]*');
+define('API_RE_CLASS_NAME_TEXT', '\\\\*[\\\\a-zA-Z0-9_\x7f-\xff]*[A-Z][\\\\a-zA-Z0-9_\x7f-\xff]*');
+
+/**
+ * Regular expression for less-aggressively matching class names in text.
+ *
+ * Matches class names that are namespaced, because we know these are not just
+ * plain text words.
+ */
+define('API_RE_DEFINITE_CLASS_NAME_TEXT', '[\\\\a-zA-Z0-9_\x7f-\xff]*[\\\\][\\\\a-zA-Z0-9_\x7f-\xff]*');
 
 /**
  * Regular expression for starting inline \@tags.
@@ -54,6 +63,11 @@ define('API_RE_TAG_START', '(?<!\\\)@');
  * File path separator.
  */
 define('API_FILEPATH_SEPARATOR', '/');
+
+/**
+ * Namespace separator.
+ */
+define('API_NAMESPACE_SEPARATOR', '\\');
 
 /**
  * File path separator replacement.
@@ -658,6 +672,15 @@ function api_menu() {
     'file' => 'api.pages.inc',
   );
 
+  $items['api/%/namespace/%/%'] = array(
+    'title' => 'Namespace',
+    'page callback' => 'api_page_namespace',
+    'page arguments' => array(1, 4, 3), // project, branch, namespace
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+
   foreach ($branches as $branch) {
     $is_default = !is_null($default_branch) && ($branch->branch_name === $projects[$branch->project]['use branch']);
 
@@ -700,6 +723,7 @@ function api_menu() {
     );
 
     // Listings
+
     if ($is_default) {
       $items['api/' . $branch->project . '/functions'] = array(
         'title' => 'Functions',
@@ -718,6 +742,7 @@ function api_menu() {
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
       'file' => 'api.pages.inc',
     );
+
     if ($is_default) {
       $items['api/' . $branch->project . '/constants'] = array(
         'title' => 'Constants',
@@ -736,6 +761,7 @@ function api_menu() {
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
       'file' => 'api.pages.inc',
     );
+
     if ($is_default) {
       $items['api/' . $branch->project . '/globals'] = array(
         'title' => 'Globals',
@@ -754,6 +780,7 @@ function api_menu() {
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
       'file' => 'api.pages.inc',
     );
+
     if ($is_default) {
       $items['api/' . $branch->project . '/files'] = array(
         'title' => 'Files',
@@ -772,6 +799,7 @@ function api_menu() {
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
       'file' => 'api.pages.inc',
     );
+
     if ($is_default) {
       $items['api/' . $branch->project . '/classes'] = array(
         'title' => 'Classes and interfaces',
@@ -790,6 +818,7 @@ function api_menu() {
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
       'file' => 'api.pages.inc',
     );
+
     if ($is_default) {
       $items['api/' . $branch->project . '/groups'] = array(
         'title' => 'Topics',
@@ -808,6 +837,26 @@ function api_menu() {
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
       'file' => 'api.pages.inc',
     );
+
+    if ($is_default) {
+      $items['api/' . $branch->project . '/namespaces'] = array(
+        'title' => 'Namespaces',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'namespace'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/namespaces/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'namespace'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+
   }
 
   // Redirect 1.0 file links.
@@ -1223,25 +1272,33 @@ function api_filename_load($file_name, $project, $branch_name) {
  * Loads a documentation object.
  *
  * @param $object_name_or_did
- *   The string object name or documentation ID to load.
+ *   The string object name or integer documentation ID to load.
  * @param $branch
- *   Branch object.
+ *   Branch object. Ignored if $object_name_or_did is an integer.
  * @param $object_type
  *   A string type, or array of strings: class, interface, function, etc.
+ *   Can be omitted if $object_name_or_did is an integer.
  * @param $file_name
- *   Name of the file the object is in (if needed).
+ *   Name of the file the object is in (if needed). Ignored if
+ *   $object_name_or_did is an integer.
  *
  * @return
  *   Object with information about the matching documentation, or NULL if it
  *   does not exist.
  */
-function api_object_load($object_name_or_did, $branch, $object_type, $file_name = NULL) {
+function api_object_load($object_name_or_did, $branch = NULL, $object_type = '', $file_name = NULL) {
   static $cache;
 
   if (!is_array($object_type)) {
     $object_type = array($object_type);
   }
-  $key = $object_name_or_did . ':' . implode('-', $object_type) . ':' . $branch->branch_id . ':' . $file_name;
+
+  if (is_int($object_name_or_did)) {
+    $key = $object_name_or_did;
+  }
+  else {
+    $key = $object_name_or_did . ':' . implode('-', $object_type) . ':' . $branch->branch_id . ':' . $file_name;
+  }
 
   // See if we have this cached.
   if (isset($cache[$key])) {
@@ -1249,25 +1306,29 @@ function api_object_load($object_name_or_did, $branch, $object_type, $file_name 
   }
 
   // We don't have a cached value. Prepare the query.
+
+  // Set up the basic query.
   $query = db_select('api_documentation', 'ad');
   $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = ad.did');
   $query
     ->fields('ad')
-    ->fields($ao, array('documented_did', 'overrides_did'))
-    ->condition('ad.object_type', $object_type)
-    ->condition('ad.branch_id', $branch->branch_id);
+    ->fields($ao, array('documented_did', 'overrides_did'));
 
   if (is_int($object_name_or_did)) {
+    // Quick query on just the documentation ID.
     $query->condition('ad.did', $object_name_or_did);
   }
   else {
-    $query->condition('ad.object_name', $object_name_or_did);
+    $query
+      ->condition('ad.object_type', $object_type)
+      ->condition('ad.branch_id', $branch->branch_id)
+      ->condition('ad.object_name', $object_name_or_did);
+    if (!is_null($file_name)) {
+      $query->condition('ad.file_name', $file_name);
+    }
   }
 
-  if (!is_null($file_name)) {
-    $query->condition('ad.file_name', $file_name);
-  }
-
+  // Set up extra fields, depending on the object type.
   if (in_array('function', $object_type)) {
     $afunc = $query->leftJoin('api_function', 'afunc', 'afunc.did = ad.did');
     $query->fields($afunc, array('signature', 'parameters', 'return_value'));
@@ -1276,6 +1337,10 @@ function api_object_load($object_name_or_did, $branch, $object_type, $file_name 
     $afile = $query->leftJoin('api_file', 'afile', 'afile.did = ad.did');
     $query->fields($afile, array('modified', 'queued'));
   }
+
+  // Set up field for the file's doc ID.
+  $query->leftJoin('api_documentation', 'adfile', "adfile.file_name = ad.file_name AND adfile.object_type = 'file' AND adfile.branch_id = ad.branch_id");
+  $query->addField('adfile', 'did', 'file_did');
 
   // Execute the query, and store in cache if it's successful.
   $query = $query->range(0, 1);
@@ -1297,6 +1362,110 @@ function api_object_load($object_name_or_did, $branch, $object_type, $file_name 
   }
 
   return NULL;
+}
+
+/**
+ * Loads namespace and use information for a file.
+ *
+ * @param $file_did
+ *   Documentation ID of the file.
+ *
+ * @return
+ *   Associative array with elements:
+ *   - namespace: Name of the namespace for this file (could be '').
+ *   - use_alias: Associative array of use statement class aliases. Keys are
+ *     the alias names, and values are the fully namespaced class names.
+ */
+function api_get_namespace_info($file_did = NULL) {
+  static $cache = array();
+
+  $ret = array('namespace' => '', 'use_alias' => array());
+
+  if (!isset($file_did) || !$file_did) {
+    return $ret;
+  }
+
+  if (isset($cache[$file_did])) {
+    return $cache[$file_did];
+  }
+
+  $values = db_select('api_namespace', 'n')
+    ->condition('did', $file_did)
+    ->condition('class_name', '', '<>')
+    ->fields('n', array('object_type', 'class_alias', 'class_name'))
+    ->execute();
+  foreach ($values as $info) {
+    // Start namespaces with backslash.
+    $name = $info->class_name;
+    if (drupal_substr($name, 0, 1) != '\\') {
+      $name = '\\' . $name;
+    }
+
+    if ($info->object_type == 'namespace') {
+      $ret['namespace'] = $name;
+    }
+    else {
+      $ret['use_alias'][$info->class_alias] = $name;
+    }
+  }
+
+  $cache[$file_did] = $ret;
+
+  return $ret;
+}
+
+/**
+ * Figures out the full class name of a class, with namespaces.
+ *
+ * @param $name
+ *   The name as it appears, which could include a namespace, and might or
+ *   might not start with a backslash if it does.
+ * @param $namespace
+ *   The namespace for the file the name appears in.
+ * @param $use_aliases
+ *   Associative array of alias name to full name for use statements in the
+ *   file the name appears in.
+ *
+ * @return
+ *   Fully-qualified name of the class, starting with a backslash.
+ */
+function api_full_classname($name, $namespace = array(), $use_aliases = array()) {
+
+  // Break off the class name from the rest.
+  $classname = $name;
+  $suffix = '';
+
+  $pos = strpos($name, '::');
+  if ($pos === FALSE) {
+    $pos = strpos($name, '->');
+  }
+  if ($pos !== FALSE) {
+    $classname = substr($name, 0, $pos);
+    $suffix = substr($name, $pos);
+  }
+
+  if (in_array($classname, array('self', 'static', 'parent', 'this'))) {
+    // Skip these keywords.
+    return $name;
+  }
+
+  // See if there is an alias for this class name, or if we should prepend
+  // the file's namespace.
+  if (isset($use_aliases[$classname])) {
+    // This class was aliased.
+    $classname = $use_aliases[$classname];
+  }
+  elseif (strpos($classname, '\\') === FALSE) {
+    // There was no alias, and the classname did not have a namespace in it.
+    $classname = $namespace . '\\' . $classname;
+  }
+
+  // Make sure to start with a backslash, no matter what.
+  if (strpos($classname, '\\') !== 0) {
+    $classname = '\\' . $classname;
+  }
+
+  return $classname . $suffix;
 }
 
 /**
@@ -1638,6 +1807,9 @@ function api_block_view($delta) {
         if ($counts['groups'] > 0) {
           $links[] = l(t('Topics'), 'api/' . $branch->project . '/groups' . $suffix);
         }
+        if ($counts['namespaces'] > 0) {
+          $links[] = l(t('Namespaces'), 'api/' . $branch->project . '/namespaces' . $suffix);
+        }
 
         return array(
           'subject' => t('API Navigation'),
@@ -1676,6 +1848,7 @@ function api_listing_counts($branch) {
     'constants' => 0,
     'globals' => 0,
     'files' => 0,
+    'namespaces' => 0,
   );
 
   // These queries mirror what is done in api_page_listing().
@@ -1685,6 +1858,15 @@ function api_listing_counts($branch) {
     ->groupBy('branch_id');
   $query->addExpression('COUNT(*)', 'num');
   $return['groups'] = $query
+    ->execute()
+    ->fetchField();
+
+  $query = db_select('api_documentation', 'ad')
+    ->condition('branch_id', $branch->branch_id)
+    ->condition('namespace', '', '<>')
+    ->groupBy('namespace');
+  $query->addExpression('COUNT(*)', 'num');
+  $return['namespaces'] = $query
     ->execute()
     ->fetchField();
 
@@ -1773,6 +1955,30 @@ function api_url($object, $file = FALSE) {
     $replaced_string = str_replace(API_FILEPATH_SEPARATOR, API_FILEPATH_SEPARATOR_REPLACEMENT, $object->file_name);
     return 'api/' . $branch->project . '/' . $replaced_string . '/' . $object->object_type . '/' . $object->object_name . '/' . $branch->branch_name;
   }
+}
+
+/**
+ * Constructs a link to an API namespace page.
+ *
+ * Constructs a URL for a namespace, replacing any API_NAMESPACE_SEPARATOR in a
+ * file path with API_FILEPATH_SEPARATOR_REPLACEMENT.
+ *
+ * @param $branch_id
+ *   ID of the branch to make the link in.
+ * @param $namespace
+ *   Namespace to make the link for.
+ *
+ * @return
+ *   A URL string, or an empty string if there was a problem.
+ */
+function api_namespace_url($branch_id, $namespace) {
+  $branch = api_get_branch_by_id($branch_id);
+  if (!$branch) {
+    return '';
+  }
+
+  $replaced_string = str_replace(API_NAMESPACE_SEPARATOR, API_FILEPATH_SEPARATOR_REPLACEMENT, $namespace);
+  return 'api/' . $branch->project . '/namespace/' . $replaced_string . '/' . $branch->branch_name;
 }
 
 /**
@@ -1998,6 +2204,11 @@ function api_get_active_branch() {
     elseif (isset($item['page_arguments'][0]->branch_name)) {
       $branch = $item['page_arguments'][0];
     }
+    elseif ($item['path'] == 'api/%/namespace/%/%') {
+      $project = $item['page_arguments'][0];
+      $branch_name = $item['page_arguments'][1];
+      $branch = api_get_branch_by_name($project, $branch_name);
+    }
     elseif (strpos($item['path'], 'api/search') === 0 && isset($branch_names[$item['page_arguments'][0]])) {
       // This is a search page for a particular branch. Figure out what project
       // it corresponds to, using the default project if possible
@@ -2088,14 +2299,17 @@ function api_cron() {
  *   PHP code to scan for function names.
  * @param $branch
  *   Branch to make the links in.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $class_did
  *   Documentation ID of the class the code is in (if any).
  *
  * @return
  *   Code with function names formatted as links.
  */
-function api_link_code($code, $branch, $class_did = NULL) {
-  return _api_link_documentation($code, $branch, $class_did, array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global'));
+function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL) {
+  return _api_link_documentation($code, $branch, $file_did, $class_did, array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'code class'));
 }
 
 /**
@@ -2105,11 +2319,14 @@ function api_link_code($code, $branch, $class_did = NULL) {
  *   Documentation to scan for function names.
  * @param $branch
  *   Branch to make the links in.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $class_did
  *   Documentation ID of the class the documentation is in (if any).
  * @param $aggressive_classes
  *   Try linking every word with a capital letter to a class or interface, if
- *   TRUE.
+ *   TRUE. Otherwise, just try to link words with backslashes in them.
  * @param $aggressive_topics
  *   For use in @see only, if TRUE try linking every paragraph as a topic name,
  *   if it didn't match as something else first.
@@ -2117,13 +2334,13 @@ function api_link_code($code, $branch, $class_did = NULL) {
  * @return
  *   Documentation with function names formatted as links.
  */
-function api_link_documentation($documentation, $branch, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE) {
+function api_link_documentation($documentation, $branch, $file_did = NULL, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE) {
 
   $filter = new stdClass();
   $filter->callback = '_filter_url';
   $filter->settings = array( 'filter_url_length' => 72);
 
-  return _filter_url(api_filter_documentation($documentation, $branch, $class_did, $aggressive_classes, $aggressive_topics), $filter);
+  return _filter_url(api_filter_documentation($documentation, $branch, $file_did, $class_did, $aggressive_classes, $aggressive_topics), $filter);
 }
 
 /**
@@ -2137,11 +2354,14 @@ function api_link_documentation($documentation, $branch, $class_did = NULL, $agg
  *   Text to filter.
  * @param $branch
  *   Branch object to use for links.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $class_did
  *   Documentation ID of the class the documentation is in (if any).
  * @param $aggressive_classes
  *   Try linking every word with a capital letter to a class or interface, if
- *   TRUE.
+ *   TRUE. Otherwise, just try to link words with backslashes in them.
  * @param $aggressive_topics
  *   For use in @see only, if TRUE try linking every paragraph as a topic name,
  *   if it didn't match as something else first.
@@ -2149,14 +2369,14 @@ function api_link_documentation($documentation, $branch, $class_did = NULL, $agg
  * @return
  *   Text with function names turned into links.
  */
-function api_filter_documentation($text, $branch = NULL, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE) {
+function api_filter_documentation($text, $branch = NULL, $file_did = NULL, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE) {
   if (is_null($branch)) {
     $branch = api_get_active_branch();
   }
 
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
-  $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'tags', 'link', 'function');
+  $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'code class', 'tags', 'link', 'function');
 
   if ($aggressive_topics) {
     // Look for topics before classes, constants, and files.
@@ -2167,9 +2387,12 @@ function api_filter_documentation($text, $branch = NULL, $class_did = NULL, $agg
   if ($aggressive_classes) {
     $stages[] = 'class';
   }
+  else {
+    $stages[] = 'definite class';
+  }
 
   // Remove escaping from \@.
-  return preg_replace('!\\\@!', '@', _api_link_documentation($text, $branch, $class_did, $stages));
+  return preg_replace('!\\\@!', '@', _api_link_documentation($text, $branch, $file_did, $class_did, $stages));
 }
 
 /**
@@ -2179,6 +2402,9 @@ function api_filter_documentation($text, $branch = NULL, $class_did = NULL, $agg
  *   PHP code to scan for function names.
  * @param $branch
  *   Branch to make the links in.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $class_did
  *   Documentation ID of the class the documentation is in (if any).
  * @stages
@@ -2190,7 +2416,7 @@ function api_filter_documentation($text, $branch = NULL, $class_did = NULL, $agg
  * @see api_link_code()
  * @see api_link_name()
  */
-function _api_link_documentation($documentation, $branch, $class_did = NULL, $stages = array()) {
+function _api_link_documentation($documentation, $branch, $file_did = NULL, $class_did = NULL, $stages = array()) {
 
   $stage = array_shift($stages);
 
@@ -2230,6 +2456,14 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
       $prepend = '<span class="php-function-or-constant">';
       $append = '</span>';
       $type = 'function_or_constant';
+      break;
+
+    case 'code class':
+      // Find class names in marked-up code, as constructors.
+      $pattern = '!<span class="php-function-or-constant">(' . API_RE_CLASS_NAME_TEXT . ')</span>!';
+      $prepend = '<span class="php-function-or-constant">';
+      $append = '</span>';
+      $type = 'class';
       break;
 
     case 'code global':
@@ -2310,6 +2544,12 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
       $type = 'class';
       break;
 
+    case 'definite class':
+      // Find definite class names, which have a backslash.
+      $pattern = '/\b(' . API_RE_DEFINITE_CLASS_NAME_TEXT . ')\b/';
+      $type = 'class';
+      break;
+
     case 'topic':
       // Find topic/group names.
       $pattern = '/\b(' . API_RE_GROUP_NAME . ')\b/';
@@ -2327,7 +2567,7 @@ function _api_link_documentation($documentation, $branch, $class_did = NULL, $st
     $callback = NULL;
   }
 
-  return api_split($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $class_did, NULL, NULL, $use_php, $prepend_if_not_found, NULL, $type), $callback, array($branch, $class_did, $stages), $continue_matching);
+  return api_split($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $file_did, $class_did, NULL, NULL, $use_php, $prepend_if_not_found, NULL, $type), $callback, array($branch, $file_did, $class_did, $stages), $continue_matching);
 }
 
 /**
@@ -2398,6 +2638,9 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   Text to prepend on the link.
  * @param $append
  *   Text to append on the link.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $class_did
  *   (unused) Documentation ID of the class this is part of (if any).
  * @param $text
@@ -2426,48 +2669,15 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  * @return
  *   The text as a link to the object page.
  */
-function api_link_name($name, $branch, $prepend = '', $append = '', $class_did = NULL, $text = NULL, $is_link = FALSE, $use_php = TRUE, $prepend_if_not_found = NULL, $append_if_not_found = NULL, $type = '') {
+function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL, $text = NULL, $is_link = FALSE, $use_php = TRUE, $prepend_if_not_found = NULL, $append_if_not_found = NULL, $type = '') {
 
   if (is_null($text)) {
     $text = $name;
   }
-
-  if ($is_link) {
-    // See if this is a link to a group/topic.
-    $query = db_select('api_documentation', 'ad')
-      ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'))
-      ->condition('ad.branch_id', $branch->branch_id)
-      ->condition('ad.object_name', $name)
-      ->condition('ad.object_type', 'group');
-    $result = $query->execute();
-    foreach ($result as $object) {
-      // MySQL is not case-sensitive, so check the match for exact string.
-      if ($object->object_name == $name) {
-        // Note: Use html = TRUE here because the @link stuff was check_plained
-        // during parsing. If we run it through check_plain() again, we get
-        // double encoding of entities.
-        return $prepend . l($text, api_url($object), array('attributes' => array('title' => api_entity_decode($object->summary), 'class' => array('local')), 'html' => TRUE)) . $append;
-      }
-    }
-
-    // See if it could be a file name being linked.
-    $query = db_select('api_documentation', 'ad')
-      ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name', 'object_name'));
-    $af = $query->innerJoin('api_file', 'af', 'ad.did = af.did');
-    $basename = $query->addField($af, 'basename', 'match_name');
-    $query->condition('ad.branch_id', $branch->branch_id)
-      ->condition('af.basename', $name)
-      ->condition('ad.object_type', 'file');
-    $result = $query->execute();
-    foreach ($result as $object) {
-      if ($object->$basename == $name) {
-        return $prepend . l($text, api_url($object), array('attributes' => array('title' => api_entity_decode($object->summary), 'class' => array('local')), 'html' => TRUE)) . $append;
-      }
-    }
-  }
+  $name = trim($name);
 
   // If we get here, we're looking to match some kind of documentation object.
-  $link = _api_make_match_link($name, $text, $type, $branch);
+  $link = _api_make_match_link($name, $text, $type, $is_link, $branch, $file_did);
   if ($link) {
     return $prepend . $link . $append;
   }
@@ -2498,12 +2708,12 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
   // others with the same core compatibility.
   $core_branch = api_find_core_branch($branch);
   if ($core_branch && $core_branch->branch_id != $branch->branch_id) {
-    $link = _api_make_match_link($name, $text, $type, $core_branch);
+    $link = _api_make_match_link($name, $text, $type, $is_link, $core_branch, $file_did);
     if ($link) {
       return $prepend . $link . $append;
     }
 
-    $link = _api_make_match_link($name, $text, $type, NULL, $branch->core_compatibility);
+    $link = _api_make_match_link($name, $text, $type, $is_link, NULL, $file_did, $branch->core_compatibility);
     if ($link) {
       return $prepend . $link . $append;
     }
@@ -2529,18 +2739,38 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $class_did =
  *   Text to put in the link.
  * @param $type
  *   Type of object to match (see api_link_name() for options).
+ * @param $try_link
+ *   If TRUE, try making links as if this is to a topic or file first.
  * @param $branch
  *   Object representing the branch to search. If NULL, use core compatibility
  *   instead.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant. Ignored if $branch is not set.
  * @param $core_compatibility
  *   If $branch is NULL, search all branches with this core compatibility.
  *
  * @return
  *   Link to either a single matching object or a search if multiple matches
  *   exist; if there are no matches, FALSE.
- */
-function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compatibility = '') {
+o */
+function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = NULL, $file_did = NULL, $core_compatibility = '') {
 
+  if ($try_link) {
+    // Before trying standard matches, see if this is a link to a group/topic.
+    $link = _api_make_match_link($name, $text, 'group', FALSE, $branch);
+    if ($link) {
+      return $link;
+    }
+
+    // See if it could be a file name being linked.
+    $link = _api_make_match_link($name, $text, 'file', FALSE, $branch);
+    if ($link) {
+      return $link;
+    }
+  }
+
+  // Now do the standard linking tries.
   // Build a query to find the matches.
   $query = db_select('api_documentation', 'ad')
     ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'));
@@ -2553,8 +2783,20 @@ function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compati
     $query->condition('ad.branch_id', $branch->branch_id);
   }
 
-  $match_name = $query->addField('ad', 'object_name', 'match_name');
-  $match_name_field = 'ad.object_name';
+  // Deal with namespaces.
+  if (in_array($type, array('function', 'function_or_constant', 'class'))) {
+    $nameinfo = api_get_namespace_info($file_did);
+    $name = api_full_classname($name, $nameinfo['namespace'], $nameinfo['use_alias']);
+    $match_name = $query->addField('ad', 'namespaced_name', 'match_name');
+    $match_name_field = 'ad.namespaced_name';
+    $search_name = $query->addField('ad', 'object_name', 'search_name');
+    $search_name_field = 'ad.object_name';
+  }
+  else {
+    $match_name = $query->addField('ad', 'object_name', 'match_name');
+    $match_name_field = 'ad.object_name';
+    $search_name_field = NULL;
+  }
 
   // Figure out what potential names we should match on.
   $potential_names = array($name);
@@ -2684,16 +2926,30 @@ function _api_make_match_link($name, $text, $type, $branch = NULL, $core_compati
         'class' => array('local'),
       ),
     );
-    if ($type == 'group') {
+    if ($type == 'group' && $text == $name) {
+      // Override with the group name if no link text was provided.
       $text = $best[0]->title;
     }
+    elseif ($type == 'group') {
+      // If this is a topic link and someone provided text, then it was
+      // check_plained at parse time. Don't double-encode it!
+      $options['html'] = TRUE;
+    }
+
     return l($text, $url, $options);
   }
 
   // @todo If we found multiple matches in the case of a multi-branch
   // search, we should probably go to a multi-branch search page, but this
   // does not exist yet. So just go to the first found branch.
-  $url = 'api/' . $best[0]->project . '/' . $best[0]->branch_name . '/search/' . $best[0]->match_name;
+  if (isset($search_name_field)) {
+    $search_name = $best[0]->search_name;
+  }
+  else {
+    $search_name = $best[0]->match_name;
+  }
+
+  $url = 'api/' . $best[0]->project . '/' . $best[0]->branch_name . '/search/' . $search_name;
   $options = array(
     'attributes' => array(
       'title' => t('Multiple implementations exist.'),
@@ -2790,10 +3046,13 @@ function api_find_core_branch($branch) {
  *   Unused.
  * @param $append
  *   Unused.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $class_did
  *   Documentation ID of the class this is part of (if any).
  */
-function api_link_member_name($text, $branch, $prepend = '', $append = '', $class_did = NULL) {
+function api_link_member_name($text, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL) {
 
   // The pattern matched to get here contains the entire span with all of its
   // classes. Parse it out.
@@ -2807,7 +3066,7 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
   $append = '</span>';
 
   // Try matching in this branch.
-  $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, $branch);
+  $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, $file_did, $branch);
   if ($link) {
     return $prepend . $link . $append;
   }
@@ -2816,12 +3075,12 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
   // in other branches with the same core compatibility.
   $core_branch = api_find_core_branch($branch);
   if ($core_branch && $core_branch->branch_id != $branch->branch_id) {
-    $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, $branch);
+    $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, $file_did, $core_branch);
     if ($link) {
       return $prepend . $link . $append;
     }
 
-    $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, NULL, $branch->core_compatibility);
+    $link = _api_make_match_link_class_member($name, $member_type, $object_type, $class_did, $file_did, NULL, $branch->core_compatibility);
     if ($link) {
       return $prepend . $link . $append;
     }
@@ -2843,6 +3102,9 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
  *   'function' if this is a member function.
  * @param $class_did
  *   Documentation ID of the class this is part of (if any).
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $branch
  *   Object representing the branch to search. If NULL, use core compatibility
  *   instead.
@@ -2853,13 +3115,12 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $clas
  *   Link to either a single matching object or a search if multiple matches
  *   exist; if there are no matches, FALSE.
  */
-function _api_make_match_link_class_member($name, $member_type, $object_type, $class_did = NULL, $branch = NULL, $core_compatibility = '') {
+function _api_make_match_link_class_member($name, $member_type, $object_type, $class_did = NULL, $file_did = NULL, $branch = NULL, $core_compatibility = '') {
 
   // If $member_type is parent, see if the parent class exists in this branch.
-  // @todo Eventually use namespaces here?
   if ($member_type == 'parent') {
     $query = db_select('api_reference_storage', 'ars');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.object_name = ars.object_name');
+    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.namespaced_name = ars.object_name');
     $query
       ->fields($ad, array('did'))
       ->condition('ars.from_did', $class_did)
@@ -2885,13 +3146,15 @@ function _api_make_match_link_class_member($name, $member_type, $object_type, $c
   }
 
   // If we're looking for a specific class, see if it exists in this branch.
-  // @todo Eventually use namespaces here?
   if (strpos($member_type, 'class-') === 0) {
     $class_name = substr($member_type, 6);
+    // Put on the correct namespace.
+    $ns_info = api_get_namespace_info($file_did);
+    $full_class_name = api_full_classname($class_name, $ns_info['namespace'], $ns_info['use_alias']);
     $query = db_select('api_documentation', 'ad');
     $query->fields('ad', array('did'))
       ->condition('object_type', 'class')
-      ->condition('object_name', $class_name);
+      ->condition('namespaced_name', $full_class_name);
     if (is_null($branch)) {
       $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
       $query->condition('b.core_compatibility', $core_compatibility);
@@ -3034,16 +3297,19 @@ function api_entity_decode($text) {
  *   Text to prepend on the link.
  * @param $append
  *   Text to append on the link.
+ * @param $file_did
+ *   Documentation ID of the file the code is in (for namespace information).
+ *   Can omit if namespaces are not relevant.
  * @param $class_did
  *   Documentation ID of the class the link is in (if any).
  *
  * @return
  *   The text as a link.
  */
-function api_link_link($name, $branch, $prepend = '', $append = '', $class_did = NULL) {
-  $words = preg_split('/\s+/', $name);
+function api_link_link($name, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL) {
+  $words = preg_split('/\s+/', trim($name));
   $name = array_shift($words);
-  return api_link_name($name, $branch, $prepend, $append, $class_did, implode(' ', $words), TRUE);
+  return api_link_name($name, $branch, $prepend, $append, $file_did, $class_did, implode(' ', $words), TRUE);
 }
 
 /**
@@ -3355,6 +3621,9 @@ function api_delete_items($dids, $interactive = TRUE) {
       )
       ->execute();
     db_delete('api_file')
+      ->condition('did', $this_batch)
+      ->execute();
+    db_delete('api_namespace')
       ->condition('did', $this_batch)
       ->execute();
     db_delete('api_function')

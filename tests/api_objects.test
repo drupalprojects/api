@@ -149,8 +149,8 @@ class ApiBranchCreation extends ApiTestCase {
 
     // Check inheritance.
     $subclass = api_object_load('SubSample', $branch, 'class', 'classes.php');
-    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $class->did, ':object_name' => $interface->object_name, ':object_type' => 'interface'))->fetchField(), 1, 'Sample implements SampleInterface.');
-    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $subclass->did, ':object_name' => $class->object_name, ':object_type' => 'class'))->fetchField(), 1, 'SubSample extends Sample.');
+    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $class->did, ':object_name' => $interface->namespaced_name, ':object_type' => 'interface'))->fetchField(), 1, 'Sample implements SampleInterface.');
+    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $subclass->did, ':object_name' => $class->namespaced_name, ':object_type' => 'class'))->fetchField(), 1, 'SubSample extends Sample.');
 
     // Check overrides.
     $subSample_bar = api_object_load('SubSample::bar', $branch, 'function', 'classes.php');
