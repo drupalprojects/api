@@ -129,16 +129,22 @@ function api_suggest($project, $branch) {
  */
 function api_page_function_dump($branch_name) {
   $query = db_select('api_documentation', 'd')
-    ->fields('d', array('title', 'summary'));
+    ->fields('d', array('summary'))
+    ->orderBy('d.title');
   $f = $query->innerJoin('api_function', 'f', 'd.did = f.did');
   $query->fields('f', array('signature'));
-  $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
-  $query->condition($b . '.branch_name', $branch_name)
+  $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
+  $query->condition('b.branch_name', $branch_name)
+    ->condition('d.class_did', 0)
     ->condition('d.object_type', 'function');
   $result = $query->execute();
   foreach ($result as $object) {
     print($object->signature);
-    print(' ### ' . $object->summary . "\n");
+    // Make sure the summary is free of HTML tags and newlines.
+    $summary = $object->summary;
+    $summary = strip_tags($summary);
+    $summary = preg_replace('|\s+|', ' ', $summary);
+    print(' ### ' . $summary . "\n");
   }
 }
 

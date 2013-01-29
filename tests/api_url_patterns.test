@@ -15,8 +15,6 @@ module_load_include('php', 'api', 'tests/api_test_case');
  * up to API 6-x-1.2. In 6.x-1.6, the file name component of URLs changed to
  * use ! as a directory separator instead of --, so that files with -- in the
  * name could be supported.
- *
- * @todo Need test for api/function_dump/%
  */
 class ApiURLPatternsTest extends ApiTestCase {
 
