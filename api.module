@@ -2830,16 +2830,19 @@ function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = 
   // Figure out what potential names we should match on.
   $potential_names = array($name);
   $prefer_shorter = FALSE;
+  $prefer_earlier = FALSE;
   $search_term = NULL;
 
   if ($type == 'hook') {
     $potential_names = array(
       'hook_' . $name,
+      'hook_entity_' . $name,
       'hook_field_' . $name,
       'field_default_' . $name,
       'hook_user_' . $name,
-      'hook_entity_' . $name,
+      'hook_node_' . $name,
     );
+    $prefer_earlier = TRUE;
     $query->condition('ad.object_type', 'function');
     $search_term = '_' . $name;
   }
@@ -2929,7 +2932,7 @@ function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = 
     }
 
     // See if this matched name takes precedence over the previous one.
-    $priority = _api_match_priority($matched, $name_matched, $prefer_shorter);
+    $priority = _api_match_priority($matched, $name_matched, $prefer_shorter, $potential_names, $prefer_earlier);
     if ($priority == 0 && ($preferred_matched == $object->preferred)) {
       // Same priority: add to array.
       $best[] = $object;
@@ -3000,12 +3003,16 @@ function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = 
  *   Previous matched string.
  * @param $prefer_shorter
  *   TRUE to prefer shorter names.
+ * @param $potential_names
+ *   Array of the potential names we were matching on.
+ * @param $prefer_earlier
+ *   TRUE to prefer earlier matches in list of potential names.
  *
  * @return
  *   1 if previous is empty or current has higher priority. 0 if they have
  *   the same priority. -1 if current has lower priority.
  */
-function _api_match_priority($current, $previous, $prefer_shorter = TRUE) {
+function _api_match_priority($current, $previous, $prefer_shorter = TRUE, $potential_names, $prefer_earlier) {
   if (strlen($previous) == 0) {
     return 1;
   }
@@ -3032,6 +3039,25 @@ function _api_match_priority($current, $previous, $prefer_shorter = TRUE) {
   if ($prefer_shorter && (strlen($previous) < strlen($current))) {
     return -1;
   }
+
+  // Prefer the earlier item.
+  if ($prefer_earlier) {
+    $current_index = array_search($current, $potential_names);
+    $previous_index = array_search($previous, $potential_names);
+    if ($current_index === FALSE) {
+      return -1;
+    }
+    if ($previous_index === FALSE) {
+      return 1;
+    }
+    if ($current_index < $previous_index) {
+      return 1;
+    }
+    if ($current_index > $previous_index) {
+      return -1;
+    }
+  }
+
   // All things being equal...
   return 0;
 }

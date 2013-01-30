@@ -1348,6 +1348,9 @@ function api_update_7120() {
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
 
+// @todo: Add another reparse everything update function before next release!
+// Due to http://drupal.org/node/1895024
+
 /**
  * Remove variables and other data on uninstall.
  */

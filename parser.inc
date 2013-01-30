@@ -1350,11 +1350,11 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
             $invoke_type = 'theme';
             $target_paren_count = $paren_count + 1;
           }
-          elseif (in_array($value, array('module_invoke', 'module_invoke_all', 'module_implements', 'module_hook', '_field_invoke', '_field_invoke_multiple', '_field_invoke_default', '_field_invoke_multiple_default', 'node_invoke', 'user_module_invoke', 'bootstrap_invoke_all', 'invokeHook'))) {
+          elseif (in_array($value, array('module_invoke', 'module_invoke_all', 'module_implements', 'module_hook', '_field_invoke', '_field_invoke_multiple', '_field_invoke_default', '_field_invoke_multiple_default', 'node_invoke', 'user_module_invoke', 'bootstrap_invoke_all', 'invokeHook', 'invokeAll', 'implementsHook', 'getImplementations'))) {
             $invoke_type = 'hook';
             $target_paren_count = $paren_count + 1;
           }
-          elseif ($value == 'drupal_alter') {
+          elseif (in_array($value, array('drupal_alter', 'alter'))) {
             $invoke_type = 'alter';
             $target_paren_count = $paren_count + 1;
           }
