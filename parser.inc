@@ -315,8 +315,10 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
 function _api_merge_references($master, $new) {
 
   // We're supporting only one namespace declaration per file.
-  if (isset($master['namespace']) && isset($new['namespace']) && $master['namespace'] != $new['namespace']) {
-    watchdog('api', 'Multiple namespace declarations found in file. Only first is used.', array(), WATCHDOG_WARNING);
+  if (isset($master['namespace']) && isset($new['namespace'])) {
+    if ($master['namespace'] != $new['namespace']) {
+      watchdog('api', 'Multiple namespace declarations found in file. Only first is used.', array(), WATCHDOG_WARNING);
+    }
     unset($new['namespace']);
   }
 
