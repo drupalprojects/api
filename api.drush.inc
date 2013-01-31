@@ -12,21 +12,27 @@ function api_drush_command() {
   return array(
     'api-reparse' => array(
       'description' => 'Mark API files to reparse',
+      'aliases' => array('apirp'),
       'arguments' => array(
         'branch_or_file' => 'Optional branch ID number or file path relative to the common directory of its branch; omitted means mark everything',
       ),
     ),
     'api-list-branches' => array(
+      'aliases' => array('apilb'),
       'description' => 'List API branches',
     ),
     'api-reset-queue' => array(
+      'aliases' => array('apirq'),
       'description' => 'Reset the API parsing queue',
     ),
     'api-count-queues' => array(
-      'description' => 'Count API queues',
+      'aliases' => array('apicq'),
+      'description' => 'Count contents of API queues',
     ),
     'api-ensure-branch' => array(
+      'aliases' => array('apieb'),
       'description' => 'Add or update an API branch and project',
+      'required-arguments' => TRUE,
       'arguments' => array(
         'project' => 'Project name',
         'project_title' => 'Project title',
@@ -34,6 +40,8 @@ function api_drush_command() {
         'branch' => 'Branch name',
         'branch_title' => 'Branch title',
         'directory' => 'File directory',
+        'core_compatibility' => 'Core compatibility',
+        'update_frequency' => 'Minimum update frequency, in seconds',
       ),
     ),
   );
@@ -104,7 +112,7 @@ function drush_api_list_branches() {
 /**
  * Adds or updates an API branch, and project if it doesn't already exist.
  */
-function drush_api_ensure_branch($project, $project_title, $project_type, $branch_name, $branch_title, $directory) {
+function drush_api_ensure_branch($project, $project_title, $project_type, $branch_name, $branch_title, $directory, $core_compatibility, $update_frequency) {
 
   // Update the project.
   api_save_project((object) array('project_name' => $project, 'project_title' => $project_title, 'project_type' => $project_type));
@@ -118,9 +126,6 @@ function drush_api_ensure_branch($project, $project_title, $project_type, $branc
     else {
       $branch->data = array();
     }
-    // This is an update.
-    $branch->title = $branch_title;
-    $branch->data['directories'] = $directory;
   }
   else {
     // This is a new branch.
@@ -128,9 +133,13 @@ function drush_api_ensure_branch($project, $project_title, $project_type, $branc
     $branch->branch_id = 0;
     $branch->project = $project;
     $branch->branch_name = $branch_name;
-    $branch->title = $branch_title;
-    $branch->data['directories'] = $directory;
   }
+
+  // Update with the provided information.
+  $branch->title = $branch_title;
+  $branch->data['directories'] = $directory;
+  $branch->core_compatibility = $core_compatibility;
+  $branch->update_frequency = $update_frequency;
 
   api_save_branch($branch);
   drush_log(dt('Saved branch and project.'), 'ok');
