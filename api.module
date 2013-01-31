@@ -3851,6 +3851,9 @@ function api_display_view($view_name, $display_name, $args = array()) {
   $view = views_get_view($view_name);
 
   if ($view) {
+    // Override the URL so that exposed filters will work on blocks even without
+    // AJAX.
+    $view->override_url = current_path();
     $output = $view->preview($display_name, $args);
   }
 
