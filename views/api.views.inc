@@ -56,6 +56,32 @@ function api_views_data() {
       ),
     ),
 
+    'member_did' => array(
+      'title' => t('Member dummy field'),
+      'relationship' => array(
+        'base' => 'api_members',
+        'base field' => 'class_did',
+        'field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('All members of this class'),
+        'title' => t('All members of this class'),
+        'help' => t('All methods, properties, and constants in this class. This will create duplicate records, unless you filter.'),
+      ),
+    ),
+
+    'override_did' => array(
+      'title' => t('Override dummy field'),
+      'relationship' => array(
+        'base' => 'api_overrides',
+        'base field' => 'did',
+        'field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Overrides information'),
+        'title' => t('Overrides information'),
+        'help' => t('Information about whether this class member overrides or implements a parent member'),
+      ),
+    ),
+
     'branch_id' => array(
       'title' => t('Branch'),
       'help' => t('Numeric ID of the branch on documentation item'),
@@ -515,6 +541,106 @@ function api_views_data() {
       ),
     ),
 
+  );
+
+  $data['api_members'] = array(
+    'table' => array(
+      'group' => t('API documentation'),
+      'base' => array(
+        'field' => 'class_did',
+        'title' => t('API class members'),
+        'help' => t('Member functions, constants, and variables of classes'),
+        'weight' => 50,
+      ),
+    ),
+
+    'class_did' => array(
+      'title' => t('Documentation ID of class for members'),
+      'help' => t('Numeric ID of the class'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'base field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Documentation object of class'),
+        'title' => t('Documentation object of class'),
+        'help' => t('Documentation information of the class'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
+    'did' => array(
+      'title' => t('Documentation ID of member'),
+      'help' => t('Numeric ID of the member item'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'base field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Documentation object of member item'),
+        'title' => t('Documentation object of member item'),
+        'help' => t('Documentation information of member item'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+  );
+
+  $data['api_overrides'] = array(
+    'table' => array(
+      'group' => t('API documentation'),
+      'base' => array(
+        'field' => 'did',
+        'title' => t('API member overrides'),
+        'help' => t('Class member overrides'),
+        'weight' => 60,
+      ),
+    ),
+
+    'did' => array(
+      'title' => t('Documentation ID of member for overrides'),
+      'help' => t('Numeric ID of the member for overrides'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'base field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Documentation object of member for overrides'),
+        'title' => t('Documentation object of member for overrides'),
+        'help' => t('Documentation information of the member'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
+    'overrides_did' => array(
+      'title' => t('Documentation ID of overridden member'),
+      'help' => t('Numeric ID of the member item being overridden'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'base field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Documentation object of member being overridden'),
+        'title' => t('Documentation object of member being overridden'),
+        'help' => t('Documentation information of member being overridden'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
   );
 
   return $data;

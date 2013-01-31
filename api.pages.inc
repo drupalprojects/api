@@ -182,6 +182,7 @@ function api_search_listing($branch) {
   );
   api_set_html_page_title(implode(' | ', $page_title));
 
+  // @todo Could this use Views?
   $query = db_select('api_documentation', 'ad');
   $query
     ->fields('ad')
@@ -1128,16 +1129,17 @@ function api_page_class($class) {
   }
 
   // Find and render all the class members.
-  // @todo This could use Views if the members issue could be worked out.
-  $query = db_select('api_members', 'am');
-  $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
-  $query->fields($ad, array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did'));
-  $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = am.did');
-  $query
-    ->fields($ao, array('overrides_did'))
-    ->condition('am.class_did', $class->did)
-    ->orderBy('ad.title');
-  $objects = api_render_listing($query->execute());
+  $objects = array();
+  $out = api_display_view('api_members', 'block_member_list', array($class->did));
+  // Only display if there was something there.
+  if ($out) {
+    $objects['members'] = array(
+      '#type' => 'markup',
+      '#markup' => '<h3>' . t('Members') . '</h3>' . $out,
+    );
+  }
+
+  $objects = drupal_render($objects);
 
   // Put it all together.
   $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see));
@@ -1165,6 +1167,8 @@ function api_page_group($group) {
   $documentation = api_link_documentation($group->documentation, $branch);
   $see = api_link_documentation($group->see, $branch, NULL, NULL, TRUE, TRUE);
 
+  // Find and render all items in this group.
+  // @todo This could use Views if the reference issue could be worked out.
   $query = db_select('api_reference_storage', 'r');
   $d = $query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
   $query->fields($d, array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type', 'did'))
@@ -1593,6 +1597,7 @@ function api_related_topics($did, $branch) {
     t('Description'),
   );
 
+  // @todo This could use Views if the reference issue could be worked out.
   $query = db_select('api_reference_storage', 'r');
   $d = $query->innerJoin('api_documentation', 'd', "r.object_name = d.object_name AND r.branch_id = d.branch_id AND d.object_type = 'group'");
   $query

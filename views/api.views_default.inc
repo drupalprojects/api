@@ -873,7 +873,7 @@ function api_views_default_views() {
 
   $view = new view();
   $view->name = 'api_namespaces';
-  $view->description = '';
+  $view->description = 'Blocks for listing API namespaces. Used directly by the API module. Do not delete or disable.';
   $view->tag = 'default';
   $view->base_table = 'api_documentation';
   $view->human_name = 'API Namespaces';
@@ -1031,6 +1031,181 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type_1']['value'] = 'interface';
   $handler->display->display_options['filters']['object_type_1']['group'] = 1;
   $handler->display->display_options['block_description'] = 'API namespace item list';
+
+  $views[$view->name] = $view;
+
+  // API Members view.
+  $view = new view();
+  $view->name = 'api_members';
+  $view->description = 'Blocks for listing API class members. Used directly by the API module. Do not delete or disable.';
+  $view->tag = 'default';
+  $view->base_table = 'api_members';
+  $view->human_name = 'API Members';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['title'] = 'API Members';
+  $handler->display->display_options['use_ajax'] = TRUE;
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'none';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'none';
+  $handler->display->display_options['style_plugin'] = 'table';
+  $handler->display->display_options['style_options']['columns'] = array(
+    'title' => 'title',
+    'object_type' => 'object_type',
+    'summary' => 'summary',
+    'title_1' => 'summary',
+  );
+  $handler->display->display_options['style_options']['default'] = 'title';
+  $handler->display->display_options['style_options']['info'] = array(
+    'title' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'object_type' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'summary' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => ' ',
+      'empty_column' => 0,
+    ),
+    'title_1' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+  );
+  /* Relationship: API documentation: Documentation object of member item */
+  $handler->display->display_options['relationships']['did']['id'] = 'did';
+  $handler->display->display_options['relationships']['did']['table'] = 'api_members';
+  $handler->display->display_options['relationships']['did']['field'] = 'did';
+  $handler->display->display_options['relationships']['did']['label'] = 'Item';
+  $handler->display->display_options['relationships']['did']['required'] = TRUE;
+  /* Relationship: API documentation: Overrides information */
+  $handler->display->display_options['relationships']['override_did']['id'] = 'override_did';
+  $handler->display->display_options['relationships']['override_did']['table'] = 'api_documentation';
+  $handler->display->display_options['relationships']['override_did']['field'] = 'override_did';
+  $handler->display->display_options['relationships']['override_did']['relationship'] = 'did';
+  $handler->display->display_options['relationships']['override_did']['label'] = 'Overrides';
+  /* Relationship: API documentation: Documentation object of member being overridden */
+  $handler->display->display_options['relationships']['overrides_did']['id'] = 'overrides_did';
+  $handler->display->display_options['relationships']['overrides_did']['table'] = 'api_overrides';
+  $handler->display->display_options['relationships']['overrides_did']['field'] = 'overrides_did';
+  $handler->display->display_options['relationships']['overrides_did']['relationship'] = 'override_did';
+  $handler->display->display_options['relationships']['overrides_did']['label'] = 'Overridden item';
+  /* Field: API documentation: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['relationship'] = 'did';
+  $handler->display->display_options['fields']['title']['label'] = 'Name';
+  $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Object type */
+  $handler->display->display_options['fields']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['fields']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['fields']['object_type']['relationship'] = 'did';
+  $handler->display->display_options['fields']['object_type']['label'] = 'Type';
+  /* Field: API documentation: Summary */
+  $handler->display->display_options['fields']['summary']['id'] = 'summary';
+  $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['summary']['field'] = 'summary';
+  $handler->display->display_options['fields']['summary']['relationship'] = 'did';
+  $handler->display->display_options['fields']['summary']['label'] = 'Description';
+  /* Field: API documentation: Title */
+  $handler->display->display_options['fields']['title_1']['id'] = 'title_1';
+  $handler->display->display_options['fields']['title_1']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['title_1']['field'] = 'title';
+  $handler->display->display_options['fields']['title_1']['relationship'] = 'overrides_did';
+  $handler->display->display_options['fields']['title_1']['label'] = '';
+  $handler->display->display_options['fields']['title_1']['element_type'] = '0';
+  $handler->display->display_options['fields']['title_1']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['title_1']['element_default_classes'] = FALSE;
+  $handler->display->display_options['fields']['title_1']['link_to_docs'] = 'object';
+  $handler->display->display_options['fields']['title_1']['prefix'] = '<em class="api-inheritance-source">Overrides ';
+  $handler->display->display_options['fields']['title_1']['suffix'] = '</em>';
+  /* Contextual filter: API documentation: Documentation ID of class for members */
+  $handler->display->display_options['arguments']['class_did']['id'] = 'class_did';
+  $handler->display->display_options['arguments']['class_did']['table'] = 'api_members';
+  $handler->display->display_options['arguments']['class_did']['field'] = 'class_did';
+  $handler->display->display_options['arguments']['class_did']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['class_did']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['class_did']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['class_did']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['class_did']['summary_options']['items_per_page'] = '25';
+  /* Filter criterion: API documentation: Title */
+  $handler->display->display_options['filters']['title']['id'] = 'title';
+  $handler->display->display_options['filters']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['title']['field'] = 'title';
+  $handler->display->display_options['filters']['title']['relationship'] = 'did';
+  $handler->display->display_options['filters']['title']['operator'] = 'contains';
+  $handler->display->display_options['filters']['title']['group'] = 1;
+  $handler->display->display_options['filters']['title']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['title']['expose']['operator_id'] = 'title_op';
+  $handler->display->display_options['filters']['title']['expose']['label'] = 'Name contains';
+  $handler->display->display_options['filters']['title']['expose']['description'] = 'Contains filters are case sensitive';
+  $handler->display->display_options['filters']['title']['expose']['operator'] = 'title_op';
+  $handler->display->display_options['filters']['title']['expose']['identifier'] = 'title';
+  $handler->display->display_options['filters']['title']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
+  /* Filter criterion: API documentation: Title */
+  $handler->display->display_options['filters']['title_1']['id'] = 'title_1';
+  $handler->display->display_options['filters']['title_1']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['title_1']['field'] = 'title';
+  $handler->display->display_options['filters']['title_1']['relationship'] = 'did';
+  $handler->display->display_options['filters']['title_1']['operator'] = 'not';
+  $handler->display->display_options['filters']['title_1']['group'] = 1;
+  $handler->display->display_options['filters']['title_1']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['title_1']['expose']['operator_id'] = 'title_1_op';
+  $handler->display->display_options['filters']['title_1']['expose']['label'] = 'Name does not contain';
+  $handler->display->display_options['filters']['title_1']['expose']['operator'] = 'title_1_op';
+  $handler->display->display_options['filters']['title_1']['expose']['identifier'] = 'title_1';
+  $handler->display->display_options['filters']['title_1']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
+  /* Filter criterion: API documentation: Object type */
+  $handler->display->display_options['filters']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['relationship'] = 'did';
+  $handler->display->display_options['filters']['object_type']['group'] = 1;
+  $handler->display->display_options['filters']['object_type']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['object_type']['expose']['operator_id'] = 'object_type_op';
+  $handler->display->display_options['filters']['object_type']['expose']['label'] = 'Type';
+  $handler->display->display_options['filters']['object_type']['expose']['operator'] = 'object_type_op';
+  $handler->display->display_options['filters']['object_type']['expose']['identifier'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
+
+  /* Display: Member listing */
+  $handler = $view->new_display('block', 'Member listing', 'block_member_list');
+  $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
 
   $views[$view->name] = $view;
 

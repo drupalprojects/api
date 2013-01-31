@@ -36,6 +36,12 @@ class api_views_handler_field_api_linkable extends views_handler_field {
     $options['link_to_docs'] = array(
       'default' => 'none',
     );
+    $options['prefix'] = array(
+      'default' => '',
+    );
+    $options['suffix'] = array(
+      'default' => '',
+    );
     return $options;
   }
 
@@ -55,6 +61,20 @@ class api_views_handler_field_api_linkable extends views_handler_field {
       '#default_value' => empty($this->options['link_to_docs']) ? 'none' : $this->options['link_to_docs'],
     );
 
+    $form['prefix'] = array(
+      '#title' => t('Prefix'),
+      '#description' => t('If making a link, HTML/text to output before the link'),
+      '#type' => 'textfield',
+      '#default_value' => empty($this->options['prefix']) ? '' : $this->options['prefix'],
+    );
+
+    $form['suffix'] = array(
+      '#title' => t('Suffix'),
+      '#description' => t('If making a link, HTML/text to output after the link'),
+      '#type' => 'textfield',
+      '#default_value' => empty($this->options['suffix']) ? '' : $this->options['suffix'],
+    );
+
     parent::options_form($form, $form_state);
   }
 
@@ -65,6 +85,11 @@ class api_views_handler_field_api_linkable extends views_handler_field {
    */
   function render_link($data, $values) {
     if (!empty($this->options['link_to_docs']) && $this->options['link_to_docs'] != 'none' && !empty($this->additional_fields['object_name']) && !empty($this->additional_fields['object_type']) && !empty($this->additional_fields['file_name']) && !empty($this->additional_fields['branch_id'])) {
+      $prefix = (isset($this->options['prefix']) ? $this->options['prefix'] : '');
+      $suffix = (isset($this->options['suffix']) ? $this->options['suffix'] : '');
+      $this->options['alter']['prefix'] = $prefix;
+      $this->options['alter']['suffix'] = $suffix;
+
       if ($data !== NULL && $data !== '') {
         $obj = (object) array();
         $obj->object_name = $this->get_value($values, 'object_name');
@@ -83,7 +108,7 @@ class api_views_handler_field_api_linkable extends views_handler_field {
             break;
 
           case 'file_base':
-            return str_replace('/', '/<wbr>', dirname($obj->file_name)) . '/<wbr>' . l(basename($obj->file_name), api_url($obj, TRUE));
+            return $prefix . str_replace('/', '/<wbr>', dirname($obj->file_name)) . '/<wbr>' . l(basename($obj->file_name), api_url($obj, TRUE)) . $suffix;
         }
       }
       else {
