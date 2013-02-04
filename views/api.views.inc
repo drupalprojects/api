@@ -115,7 +115,7 @@ function api_views_data() {
         'handler' => 'views_handler_filter_string',
       ),
       'argument' => array(
-        'handler' => 'views_handler_argument_string',
+        'handler' => 'api_views_handler_argument_partial_match',
       ),
     ),
 
@@ -133,7 +133,7 @@ function api_views_data() {
         'handler' => 'views_handler_filter_string',
       ),
       'argument' => array(
-        'handler' => 'views_handler_argument_string',
+        'handler' => 'api_views_handler_argument_partial_match',
       ),
     ),
 
@@ -185,7 +185,7 @@ function api_views_data() {
         'handler' => 'views_handler_filter_string',
       ),
       'argument' => array(
-        'handler' => 'views_handler_argument_string',
+        'handler' => 'api_views_handler_argument_partial_match',
       ),
     ),
 

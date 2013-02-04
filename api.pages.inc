@@ -163,9 +163,26 @@ function api_page_function_dump($branch_name) {
  * @see api_menu()
  */
 function api_search_listing($branch) {
+  // Read the search text from the ... part of the arguments.
   $search_text = func_get_args();
   array_shift($search_text);
   $search_text = implode('/', $search_text);
+
+  // If there is exactly one exact match, go directly to that page.
+  $query = db_select('api_documentation', 'ad');
+  $query
+    ->fields('ad')
+    ->condition('branch_id', $branch->branch_id)
+    ->condition('title', $search_text);
+
+  $count = $query->countQuery()->execute()->fetchField();
+  if ($count == 1) {
+    // There is one exact match.
+    $item = $query->execute()->fetchObject();
+    drupal_goto(api_url($item));
+  }
+
+  // If we get here, there were multiple or zero matches.
   $title = t('Search for !search', array('!search' => $search_text));
   drupal_set_title($title);
   $breadcrumb = array(
@@ -182,33 +199,9 @@ function api_search_listing($branch) {
   );
   api_set_html_page_title(implode(' | ', $page_title));
 
-  // @todo Could this use Views?
-  $query = db_select('api_documentation', 'ad');
-  $query
-    ->fields('ad')
-    ->condition('branch_id', $branch->branch_id)
-    ->condition('title', $search_text);
+  $output = api_display_view('api_search', 'block_search_results', array($branch->branch_id, $search_text));
 
-  $count = $query->countQuery()->execute()->fetchField();
-  if ($count == 1) {
-    // There is one exact match.
-    $item = $query->execute()->fetchObject();
-    drupal_goto(api_url($item));
-  }
-  else {
-    // Wildcard search.
-    $query = db_select('api_documentation', 'ad');
-    $query
-      ->fields('ad')
-      ->condition('branch_id', $branch->branch_id)
-      ->condition('title', '%' . str_replace(array('_', '%'), array('\_', '\%'), $search_text) . '%', 'LIKE')
-      ->orderBy('title', 'ASC')
-      ->extend('PagerDefault')
-      ->limit(50);
-
-    $result = $query->execute();
-    return api_search_links($branch, $search_text) . api_render_listing($result, t('No search results found.'), TRUE, TRUE) . theme('pager');
-  }
+  return api_search_links($branch, $search_text) . $output;
 }
 
 /**
@@ -1169,6 +1162,8 @@ function api_page_group($group) {
 
   // Find and render all items in this group.
   // @todo This could use Views if the reference issue could be worked out.
+  // @todo And when that happens, this is the last use of api_render_listing,
+  //   so that function can be removed.
   $query = db_select('api_reference_storage', 'r');
   $d = $query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
   $query->fields($d, array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type', 'did'))

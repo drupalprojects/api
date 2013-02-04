@@ -1209,5 +1209,118 @@ function api_views_default_views() {
 
   $views[$view->name] = $view;
 
+  // API Search view.
+
+  $view = new view();
+  $view->name = 'api_search';
+  $view->description = 'Blocks for searching API documentation. Used directly by the API module. Do not delete or disable.';
+  $view->tag = 'default';
+  $view->base_table = 'api_documentation';
+  $view->human_name = 'API Search';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['use_ajax'] = TRUE;
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['access']['perm'] = 'access API reference';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'full';
+  $handler->display->display_options['pager']['options']['items_per_page'] = '50';
+  $handler->display->display_options['pager']['options']['offset'] = '0';
+  $handler->display->display_options['pager']['options']['id'] = '0';
+  $handler->display->display_options['pager']['options']['quantity'] = '9';
+  $handler->display->display_options['style_plugin'] = 'table';
+  $handler->display->display_options['style_options']['columns'] = array(
+    'title' => 'title',
+    'file_name' => 'file_name',
+    'summary' => 'summary',
+  );
+  $handler->display->display_options['style_options']['default'] = 'title';
+  $handler->display->display_options['style_options']['info'] = array(
+    'title' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'file_name' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'summary' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+  );
+  /* No results behavior: Global: Text area */
+  $handler->display->display_options['empty']['area']['id'] = 'area';
+  $handler->display->display_options['empty']['area']['table'] = 'views';
+  $handler->display->display_options['empty']['area']['field'] = 'area';
+  $handler->display->display_options['empty']['area']['empty'] = TRUE;
+  $handler->display->display_options['empty']['area']['content'] = 'No search results found.';
+  $handler->display->display_options['empty']['area']['format'] = 'filtered_html';
+  /* Field: API documentation: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['label'] = 'Name';
+  $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: File name */
+  $handler->display->display_options['fields']['file_name']['id'] = 'file_name';
+  $handler->display->display_options['fields']['file_name']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['file_name']['field'] = 'file_name';
+  $handler->display->display_options['fields']['file_name']['label'] = 'Location';
+  $handler->display->display_options['fields']['file_name']['link_to_docs'] = 'file_base';
+  /* Field: API documentation: Summary */
+  $handler->display->display_options['fields']['summary']['id'] = 'summary';
+  $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['summary']['field'] = 'summary';
+  $handler->display->display_options['fields']['summary']['label'] = 'Description';
+  /* Sort criterion: API documentation: Object name */
+  $handler->display->display_options['sorts']['object_name']['id'] = 'object_name';
+  $handler->display->display_options['sorts']['object_name']['table'] = 'api_documentation';
+  $handler->display->display_options['sorts']['object_name']['field'] = 'object_name';
+  /* Contextual filter: API documentation: Branch */
+  $handler->display->display_options['arguments']['branch_id']['id'] = 'branch_id';
+  $handler->display->display_options['arguments']['branch_id']['table'] = 'api_documentation';
+  $handler->display->display_options['arguments']['branch_id']['field'] = 'branch_id';
+  $handler->display->display_options['arguments']['branch_id']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['branch_id']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['branch_id']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['branch_id']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['branch_id']['summary_options']['items_per_page'] = '25';
+  /* Contextual filter: API documentation: Title */
+  $handler->display->display_options['arguments']['title']['id'] = 'title';
+  $handler->display->display_options['arguments']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['arguments']['title']['field'] = 'title';
+  $handler->display->display_options['arguments']['title']['default_action'] = 'default';
+  $handler->display->display_options['arguments']['title']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['title']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['title']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['title']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['title']['limit'] = '0';
+  $handler->display->display_options['arguments']['title']['partial_match'] = TRUE;
+
+  /* Display: Search Block */
+  $handler = $view->new_display('block', 'Search Block', 'block_search_results');
+  $handler->display->display_options['display_description'] = 'Block for search results';
+  $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
+  $handler->display->display_options['block_description'] = 'API search results';
+
+  $views[$view->name] = $view;
+
   return $views;
 }
