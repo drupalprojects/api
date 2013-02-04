@@ -18,7 +18,7 @@
  * Here's a sub-section.
  *
  * @section sec_two Section 2
- * This is the content of the section section. This is a link to the
+ * This is the content of the second section. This is a link to the
  * sub-section @ref sub_a right here in the text.
  *
  * @{
