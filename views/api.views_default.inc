@@ -1322,5 +1322,207 @@ function api_views_default_views() {
 
   $views[$view->name] = $view;
 
+  // References view.
+
+  $view = new view();
+  $view->name = 'api_references';
+  $view->description = 'Blocks for listing references in the API module. Used directly by the API module. Do not delete or disable.';
+  $view->tag = 'default';
+  $view->base_table = 'api_reference_storage';
+  $view->human_name = 'API References';
+  $view->core = 7;
+  $view->api_version = '3.0';
+  $view->disabled = FALSE; /* Edit this to true to make a default view disabled initially */
+
+  /* Display: Master */
+  $handler = $view->new_display('default', 'Master', 'default');
+  $handler->display->display_options['title'] = 'Items in Group Listing block';
+  $handler->display->display_options['use_ajax'] = TRUE;
+  $handler->display->display_options['use_more_always'] = FALSE;
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['access']['perm'] = 'access API reference';
+  $handler->display->display_options['cache']['type'] = 'none';
+  $handler->display->display_options['query']['type'] = 'views_query';
+  $handler->display->display_options['exposed_form']['type'] = 'basic';
+  $handler->display->display_options['pager']['type'] = 'none';
+  $handler->display->display_options['style_plugin'] = 'table';
+  $handler->display->display_options['style_options']['columns'] = array(
+    'title' => 'title',
+    'file_name' => 'file_name',
+    'summary' => 'summary',
+  );
+  $handler->display->display_options['style_options']['default'] = 'title';
+  $handler->display->display_options['style_options']['info'] = array(
+    'title' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'file_name' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'summary' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+  );
+  /* Relationship: API references: Documentation object where reference was found */
+  $handler->display->display_options['relationships']['from_did']['id'] = 'from_did';
+  $handler->display->display_options['relationships']['from_did']['table'] = 'api_reference_storage';
+  $handler->display->display_options['relationships']['from_did']['field'] = 'from_did';
+  $handler->display->display_options['relationships']['from_did']['label'] = 'Referencing object';
+  $handler->display->display_options['relationships']['from_did']['required'] = TRUE;
+  /* Field: API documentation: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['relationship'] = 'from_did';
+  $handler->display->display_options['fields']['title']['label'] = 'Name';
+  $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: File name */
+  $handler->display->display_options['fields']['file_name']['id'] = 'file_name';
+  $handler->display->display_options['fields']['file_name']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['file_name']['field'] = 'file_name';
+  $handler->display->display_options['fields']['file_name']['relationship'] = 'from_did';
+  $handler->display->display_options['fields']['file_name']['label'] = 'Location';
+  $handler->display->display_options['fields']['file_name']['link_to_docs'] = 'file_base';
+  /* Field: API documentation: Summary */
+  $handler->display->display_options['fields']['summary']['id'] = 'summary';
+  $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['summary']['field'] = 'summary';
+  $handler->display->display_options['fields']['summary']['relationship'] = 'from_did';
+  $handler->display->display_options['fields']['summary']['label'] = 'Description';
+  /* Contextual filter: API references: Branch on reference */
+  $handler->display->display_options['arguments']['branch_id']['id'] = 'branch_id';
+  $handler->display->display_options['arguments']['branch_id']['table'] = 'api_reference_storage';
+  $handler->display->display_options['arguments']['branch_id']['field'] = 'branch_id';
+  $handler->display->display_options['arguments']['branch_id']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['branch_id']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['branch_id']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['branch_id']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['branch_id']['summary_options']['items_per_page'] = '25';
+  /* Contextual filter: API references: Reference name */
+  $handler->display->display_options['arguments']['object_name']['id'] = 'object_name';
+  $handler->display->display_options['arguments']['object_name']['table'] = 'api_reference_storage';
+  $handler->display->display_options['arguments']['object_name']['field'] = 'object_name';
+  $handler->display->display_options['arguments']['object_name']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['object_name']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['object_name']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['object_name']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['object_name']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['object_name']['limit'] = '0';
+  /* Contextual filter: API documentation: Object type */
+  $handler->display->display_options['arguments']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['arguments']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['arguments']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['arguments']['object_type']['relationship'] = 'from_did';
+  $handler->display->display_options['arguments']['object_type']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['object_type']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['object_type']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['object_type']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['object_type']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['arguments']['object_type']['limit'] = '0';
+  /* Filter criterion: API references: Reference type */
+  $handler->display->display_options['filters']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['table'] = 'api_reference_storage';
+  $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['value'] = 'group';
+
+  /* Display: Items in Group Listing */
+  $handler = $view->new_display('block', 'Items in Group Listing', 'block_items_in_group');
+  $handler->display->display_options['display_description'] = 'All items in a particular group/topic';
+  $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
+  $handler->display->display_options['block_description'] = 'Items in Group Listing';
+
+  /* Display: Related Topics */
+  $handler = $view->new_display('block', 'Related Topics', 'block_related_topics');
+  $handler->display->display_options['defaults']['title'] = FALSE;
+  $handler->display->display_options['title'] = 'Related Topics';
+  $handler->display->display_options['display_description'] = 'Topics (groups) related to a documentation item';
+  $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
+  $handler->display->display_options['defaults']['style_plugin'] = FALSE;
+  $handler->display->display_options['style_plugin'] = 'api_dl_list';
+  $handler->display->display_options['style_options']['default_row_class'] = FALSE;
+  $handler->display->display_options['style_options']['row_class_special'] = FALSE;
+  $handler->display->display_options['style_options']['class'] = 'api-related-topics';
+  $handler->display->display_options['style_options']['wrapper_class'] = '';
+  $handler->display->display_options['defaults']['style_options'] = FALSE;
+  $handler->display->display_options['defaults']['row_plugin'] = FALSE;
+  $handler->display->display_options['row_plugin'] = 'fields';
+  $handler->display->display_options['defaults']['row_options'] = FALSE;
+  $handler->display->display_options['defaults']['relationships'] = FALSE;
+  /* Relationship: API references: Related topic object */
+  $handler->display->display_options['relationships']['related_topic']['id'] = 'related_topic';
+  $handler->display->display_options['relationships']['related_topic']['table'] = 'api_reference_storage';
+  $handler->display->display_options['relationships']['related_topic']['field'] = 'related_topic';
+  $handler->display->display_options['relationships']['related_topic']['required'] = TRUE;
+  $handler->display->display_options['defaults']['fields'] = FALSE;
+  /* Field: API documentation: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['relationship'] = 'related_topic';
+  $handler->display->display_options['fields']['title']['label'] = '';
+  $handler->display->display_options['fields']['title']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['title']['alter']['text'] = '<dt>[title]</dt>';
+  $handler->display->display_options['fields']['title']['element_type'] = '0';
+  $handler->display->display_options['fields']['title']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['title']['element_wrapper_type'] = '0';
+  $handler->display->display_options['fields']['title']['element_default_classes'] = FALSE;
+  $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Summary */
+  $handler->display->display_options['fields']['summary']['id'] = 'summary';
+  $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['summary']['field'] = 'summary';
+  $handler->display->display_options['fields']['summary']['relationship'] = 'related_topic';
+  $handler->display->display_options['fields']['summary']['label'] = '';
+  $handler->display->display_options['fields']['summary']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['summary']['alter']['text'] = '<dd>[summary]</dd>';
+  $handler->display->display_options['fields']['summary']['element_type'] = '0';
+  $handler->display->display_options['fields']['summary']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['summary']['element_wrapper_type'] = '0';
+  $handler->display->display_options['fields']['summary']['element_default_classes'] = FALSE;
+  /* Field: DT/DL element */
+  $handler->display->display_options['fields']['nothing']['id'] = 'nothing';
+  $handler->display->display_options['fields']['nothing']['table'] = 'views';
+  $handler->display->display_options['fields']['nothing']['field'] = 'nothing';
+  $handler->display->display_options['fields']['nothing']['ui_name'] = 'DT/DL element';
+  $handler->display->display_options['fields']['nothing']['label'] = '';
+  $handler->display->display_options['fields']['nothing']['alter']['text'] = '<dt>[title]</dt>
+<dd>[summary]</dd>
+';
+  $handler->display->display_options['fields']['nothing']['element_type'] = '0';
+  $handler->display->display_options['fields']['nothing']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['nothing']['element_wrapper_type'] = '0';
+  $handler->display->display_options['fields']['nothing']['element_default_classes'] = FALSE;
+  $handler->display->display_options['defaults']['sorts'] = FALSE;
+  /* Sort criterion: API documentation: Title */
+  $handler->display->display_options['sorts']['title']['id'] = 'title';
+  $handler->display->display_options['sorts']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['sorts']['title']['field'] = 'title';
+  $handler->display->display_options['sorts']['title']['relationship'] = 'related_topic';
+  $handler->display->display_options['defaults']['arguments'] = FALSE;
+  /* Contextual filter: API references: Documentation ID of item where reference was found */
+  $handler->display->display_options['arguments']['from_did']['id'] = 'from_did';
+  $handler->display->display_options['arguments']['from_did']['table'] = 'api_reference_storage';
+  $handler->display->display_options['arguments']['from_did']['field'] = 'from_did';
+  $handler->display->display_options['arguments']['from_did']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['from_did']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['from_did']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['from_did']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['from_did']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['block_description'] = 'API Related Topics';
+
+  $views[$view->name] = $view;
+
   return $views;
 }

@@ -308,7 +308,7 @@ function api_page_file($file) {
 
   $documentation = api_link_documentation($file->documentation, $branch, $file->did);
   $see = api_link_documentation($file->see, $branch, $file->did, NULL, TRUE, TRUE);
-  $related_topics = api_related_topics($file->did, $branch);
+  $related_topics = api_display_view('api_references', 'block_related_topics', array($file->did));
   $code = api_link_code($file->code, $branch, $file->did);
   $defined = $file->file_name;
 
@@ -701,7 +701,7 @@ function api_page_function($function) {
   $see = api_link_documentation($function->see, $branch, $function->file_did, $function->class_did, TRUE, TRUE);
   $throws = api_link_documentation($function->throws, $branch, $function->file_did, $function->class_did, TRUE);
   $code = api_link_code($function->code, $branch, $function->file_did, $function->class_did);
-  $related_topics = api_related_topics($function->did, $branch);
+  $related_topics = api_display_view('api_references', 'block_related_topics', array($function->did));
   $class = api_class_section($function, $branch);
 
   // Build reference links.
@@ -1034,7 +1034,7 @@ function api_page_simple_item($item, $type) {
 
   $documentation = api_link_documentation($item->documentation, $branch, $item->file_did, $item->class_did);
   $code = api_link_code($item->code, $branch, $item->file_did, $item->class_did);
-  $related_topics = api_related_topics($item->did, $branch);
+  $related_topics = api_display_view('api_references', 'block_related_topics', array($item->did));
   $see = api_link_documentation($item->see, $branch, $item->file_did, $item->class_did, TRUE, TRUE);
   $var = '';
   if ($type == 'property') {
@@ -1071,7 +1071,7 @@ function api_page_class($class) {
   api_object_title_and_breadcrumb($branch, $class);
 
   $documentation = api_link_documentation($class->documentation, $branch, $class->file_did, $class->did);
-  $related_topics = api_related_topics($class->did, $branch);
+  $related_topics = api_display_view('api_references', 'block_related_topics', array($class->did));
   $code = api_link_code($class->code, $branch, $class->file_did, $class->did);
   $see = api_link_documentation($class->see, $branch, $class->file_did, $class->did, TRUE, TRUE);
 
@@ -1161,100 +1161,31 @@ function api_page_group($group) {
   $see = api_link_documentation($group->see, $branch, NULL, NULL, TRUE, TRUE);
 
   // Find and render all items in this group.
-  // @todo This could use Views if the reference issue could be worked out.
-  // @todo And when that happens, this is the last use of api_render_listing,
-  //   so that function can be removed.
-  $query = db_select('api_reference_storage', 'r');
-  $d = $query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
-  $query->fields($d, array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type', 'did'))
-    ->condition('r.object_type', 'group')
-    ->condition('r.object_name', $group->object_name)
-    ->condition('r.branch_id', $group->branch_id)
-    ->orderBy('d.object_name');
-  $objects = api_render_listing($query->execute(), NULL, TRUE, TRUE);
+  $types = array(
+    'function' => t('Functions'),
+    'constant' => t('Constants'),
+    'global' => t('Globals'),
+    'class' => t('Classes'),
+    'interface' => t('Interfaces'),
+  );
+
+  $objects = array();
+  foreach ($types as $type => $label) {
+    // Render the view of this type of object in this group.
+    $out = api_display_view('api_references', 'block_items_in_group', array($branch->branch_id, $group->object_name, $type));
+    // Only display if there was something there.
+    if ($out) {
+      $objects[$type] = array(
+        '#type' => 'markup',
+        '#markup' => '<h3>' . $label . '</h3>' . $out,
+      );
+    }
+  }
+
+  $objects = drupal_render($objects);
 
   $output = theme('api_group_page', array('branch' => $branch, 'object' => $group, 'documentation' => $documentation, 'objects' => $objects, 'see' => $see));
   $output .= _api_add_comments($group);
-  return $output;
-}
-
-
-/**
- * Renders an overview of documentation objects in a table.
- *
- * @param $result
- *   A database query result object.
- * @param $empty_message
- *   An optional string to display instead of an empty table.
- * @param $show_headings
- *   If you expect only one object type, you might not want the provided
- *   heading.
- * @param $link_file
- *   Boolean : toggles the display of the file link column.
- *
- * @return
- *   Rendered HTML for the listing.
- */
-function api_render_listing($result, $empty_message = NULL, $show_headings = TRUE, $link_file = FALSE) {
-  // Group query result by object type.
-  $list = array();
-  foreach ($result as $object) {
-    $list[$object->object_type][$object->did] = $object;
-  }
-
-  if (count($list) === 0) {
-    return is_null($empty_message) ? '' : '<p><em>' . $empty_message . '</em></p>';
-  }
-
-  $branches = api_get_branches();
-  $header = array(t('Name'));
-  if ($link_file) {
-    $header[] = t('Location');
-  }
-  $header[] = t('Description');
-
-  $tables = array();
-  foreach ($list as $type => $objects) {
-    $rows = array();
-    foreach ($objects as $object) {
-      $title = $object->title;
-      if ($type == 'file') {
-        $title = $object->object_name;
-      }
-      $row = array(l($title, api_url($object)));
-      if ($link_file) {
-        $row[] = '<small>' . api_file_link($object) . '</small>';
-      }
-      $summary = api_link_documentation($object->summary, $branches[$object->branch_id]);
-      if (!empty($object->overrides_did)) {
-        $overrides = api_object_load((int) $object->overrides_did, $branches[$object->branch_id], array('function', 'property', 'constant'));
-        if (isset($overrides)) {
-          $summary .= ' <em class="api-inheritance-source">' . t('Overrides !link', array('!link' => l($overrides->title, api_url($overrides)))) . '</em>';
-        }
-      }
-      $row[] = $summary;
-      $rows[] = $row;
-    }
-    $tables[$type] = theme('table', array('header' => $header, 'rows' => $rows));
-  }
-
-  $headings = array(
-    'function' => t('Functions & methods'),
-    'property' => t('Properties'),
-    'group' => t('Groups'),
-    'global' => t('Globals'),
-    'constant' => t('Constants'),
-    'file' => t('Files'),
-    'interface' => t('Interfaces'),
-    'class' => t('Classes'),
-  );
-  $output = '';
-  foreach ($tables as $key => $table) {
-    if ($show_headings) {
-      $output .= '<h3>' . $headings[$key] . '</h3>';
-    }
-    $output .= $table;
-  }
   return $output;
 }
 
@@ -1572,42 +1503,6 @@ function _api_add_comments($documentation_object) {
   }
 
   return $output;
-}
-
-
-/**
- * Lists the topics (groups) that contain the documentation object.
- *
- * @param $did
- *   ID of the documentation object to find topics for.
- * @param $branch
- *   Branch object to find topics in.
- *
- * @return
- *   List of related topics, rendered as HTML.
- */
-function api_related_topics($did, $branch) {
-  $header = array(
-    t('Name'),
-    t('Description'),
-  );
-
-  // @todo This could use Views if the reference issue could be worked out.
-  $query = db_select('api_reference_storage', 'r');
-  $d = $query->innerJoin('api_documentation', 'd', "r.object_name = d.object_name AND r.branch_id = d.branch_id AND d.object_type = 'group'");
-  $query
-    ->fields($d, array('branch_id', 'object_name', 'file_name', 'object_type', 'title', 'summary'))
-    ->condition('r.from_did', $did);
-  $result = $query->execute();
-
-  $topics = array();
-  foreach ($result as $group) {
-    $topics[l($group->title, api_url($group))] = api_link_documentation($group->summary, $branch);
-  }
-  if (count($topics) > 0) {
-    return theme('api_related_topics', array('topics' => $topics));
-  }
-  return '';
 }
 
 /**

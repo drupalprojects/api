@@ -3,8 +3,6 @@
  * Views integration for the API module.
  */
 
-// @todo: Filters for the various types of references would be killer.
-
 /**
  * Implements hook_views_data().
  *
@@ -79,6 +77,19 @@ function api_views_data() {
         'label' => t('Overrides information'),
         'title' => t('Overrides information'),
         'help' => t('Information about whether this class member overrides or implements a parent member'),
+      ),
+    ),
+
+    'references_did' => array(
+      'title' => t('References dummy field'),
+      'relationship' => array(
+        'base' => 'api_reference_storage',
+        'base field' => 'from_did',
+        'field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('All references to this item'),
+        'title' => t('All references to this item'),
+        'help' => t('All references to this item. This will create duplicate records, unless you filter.'),
       ),
     ),
 
@@ -643,6 +654,110 @@ function api_views_data() {
     ),
   );
 
+  $data['api_reference_storage'] = array(
+    'table' => array(
+      'group' => t('API references'),
+      'base' => array(
+        'field' => 'from_did',
+        'title' => t('API references'),
+        'help' => t('References in API documentation items to various things'),
+        'weight' => 60,
+      ),
+    ),
+
+    'from_did' => array(
+      'title' => t('Documentation ID of item where reference was found'),
+      'help' => t('Numeric ID of the documentation item'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'base field' => 'did',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Documentation object where reference was found'),
+        'title' => t('Documentation object where reference was found'),
+        'help' => t('Documentation information of the item where reference was found'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
+    'branch_id' => array(
+      'title' => t('Branch on reference'),
+      'help' => t('Numeric ID of the branch on reference'),
+      'relationship' => array(
+        'base' => 'api_branch',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Branch on reference'),
+        'title' => t('Branch on reference'),
+        'help' => t('The branch this reference is in'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
+    'object_name' => array(
+      'title' => t('Reference name'),
+      'help' => t('Function name, text found, etc. for a reference'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+        'click sortable' => TRUE,
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'api_views_handler_argument_partial_match',
+      ),
+    ),
+
+    'related_topic' => array(
+      'title' => t('Related topic dummy field'),
+      'relationship' => array(
+        'base' => 'api_documentation',
+        'base field' => 'object_name',
+        'field' => 'object_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'object_type', 'value' => 'group'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('Related topic object'),
+        'title' => t('Related topic object'),
+        'help' => t('If this reference is of type "group", the documentation object for the group/topic.'),
+      ),
+    ),
+
+    'object_type' => array(
+      'title' => t('Reference type'),
+      'help' => t('Reference type: function, group, potential hook, etc.'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
+  );
+
   return $data;
 }
 
@@ -671,6 +786,29 @@ function api_views_data_alter(&$data) {
     'left_field' => 'did',
     'field' => 'nid',
   );
+}
+
+/**
+ * Implements hook_views_plugins().
+ */
+function api_views_plugins() {
+  $plugins = array();
+  $plugins['style']['api_dl_list'] = array(
+    'title' => t('HTML DL list'),
+    'help' => t('Displays rows as an HTML definition list.'),
+    'handler' => 'api_views_plugin_style_dl_list',
+    'theme' => 'api_views_view_dl_list',
+    'theme path' => drupal_get_path('module', 'api') . '/templates',
+    'theme file' => 'api.theme.inc',
+    'register theme' => FALSE,
+    'uses row plugin' => TRUE,
+    'uses row class' => TRUE,
+    'uses options' => TRUE,
+    'type' => 'normal',
+    'path' => drupal_get_path('module', 'api') . '/views',
+  );
+
+  return $plugins;
 }
 
 /**

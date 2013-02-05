@@ -38,3 +38,4 @@ files[] = views/handlers/api_views_handler_field_api_project_ops.inc
 files[] = views/handlers/api_views_handler_field_api_branch_ops.inc
 files[] = views/handlers/api_views_handler_field_api_docs.inc
 files[] = views/handlers/api_views_handler_filter_project_name.inc
+files[] = views/plugins/api_views_plugin_style_dl_list.inc

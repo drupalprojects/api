@@ -1526,13 +1526,6 @@ function api_theme() {
       'file' => 'api.theme.inc',
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_defined'),
     ),
-    'api_related_topics' => array(
-      'variables' => array(
-        'topics' => array(),
-      ),
-      'path' => drupal_get_path('module', 'api') . '/templates',
-      'template' => 'api-related-topics',
-    ),
     'api_functions' => array(
       'variables' => array(
         'functions' => array(),
@@ -1677,6 +1670,14 @@ function api_theme() {
       'template' => 'api-class-section',
       'file' => 'api.theme.inc',
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_class_section'),
+    ),
+    'api_views_view_dl_list' => array(
+      'variables' => array(
+      ),
+      'template' => 'api-views-view-dl-list',
+      'path' => drupal_get_path('module', 'api') . '/templates',
+      'file' => 'api.theme.inc',
+      'preprocess functions' => array('template_preprocess', 'api_preprocess_views_view_dl_list'),
     ),
   );
 }

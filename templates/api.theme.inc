@@ -164,3 +164,29 @@ function theme_api_function_reference_link($variables) {
 
   return l($link_title, $link_path);
 }
+
+/**
+ * Preprocesses variables for api-views-view-dl-list.tpl.php.
+ */
+function api_preprocess_views_view_dl_list(&$variables) {
+  module_load_include('views', 'theme/theme', 'inc');
+
+  $handler  = $variables['view']->style_plugin;
+
+  $class = explode(' ', $handler->options['class']);
+  $class = array_map('views_clean_css_identifier', $class);
+
+  $wrapper_class = explode(' ', $handler->options['wrapper_class']);
+  $wrapper_class = array_map('views_clean_css_identifier', $wrapper_class);
+
+  $variables['list_class'] = implode(' ', $class);
+  $variables['wrapper_class'] = implode(' ', $wrapper_class);
+  $variables['wrapper_prefix'] = '';
+  $variables['wrapper_suffix'] = '';
+  if ($variables['wrapper_class']) {
+    $variables['wrapper_prefix'] = '<div class="' . $variables['wrapper_class'] . '">';
+    $variables['wrapper_suffix'] = '</div>';
+  }
+
+  template_preprocess_views_view_unformatted($variables);
+}
