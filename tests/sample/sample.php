@@ -28,7 +28,11 @@
  * A sample global.
  *
  * This should not link to SAMPLE_FUNCTION(). And this should not link to
- * sample_constant.
+ * sample_constant. And this text should not link to either, because they match
+ * but are not separate words: SAMPLE_CONSTANT/sample_function(). The see below
+ * should not link to the defgroup above either.
+ *
+ * @see http://example.com/samp_GRP-6.x
  */
 global $sample_global;
 

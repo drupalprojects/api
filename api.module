@@ -60,6 +60,16 @@ define('API_RE_DEFINITE_CLASS_NAME_TEXT', '[\\\\a-zA-Z0-9_\x7f-\xff]*[\\\\][\\\\
 define('API_RE_TAG_START', '(?<!\\\)@');
 
 /**
+ * Regular expression for word boundary start for API linking.
+ */
+define('API_RE_WORD_BOUNDARY_START', '(?<=\s|^|\()');
+
+/**
+ * Regular expression for word boundary end for API linking.
+ */
+define('API_RE_WORD_BOUNDARY_END', '(?=$|[\s.,:;?!)])');
+
+/**
  * File path separator.
  */
 define('API_FILEPATH_SEPARATOR', '/');
@@ -2476,7 +2486,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       // Find function names, which are preceded by white space and followed by
       // '('.
       $append = '(';
-      $pattern = '!(?<=^|\s)(' . API_RE_FUNCTION_IN_TEXT . ')\(!';
+      $pattern = '!' . API_RE_WORD_BOUNDARY_START . '(' . API_RE_FUNCTION_IN_TEXT . ')\(!';
       $type = 'function';
       break;
 
@@ -2558,31 +2568,31 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
     case 'file':
       // Find file names, which are an arbitrary number of strings joined with
       // '.'
-      $pattern = '%(?<=^|\s|\()' . API_RE_FILENAME . '(?=$|\s|[.,:;?!\)])%';
+      $pattern = '%' . API_RE_WORD_BOUNDARY_START . API_RE_FILENAME . API_RE_WORD_BOUNDARY_END . '%';
       $type = 'file';
       break;
 
     case 'constant':
       // Find constants, UPPERCASE_LETTERS_WITH_UNDERSCORES.
-      $pattern = '/\b([A-Z_]+)\b/';
+      $pattern = '/' . API_RE_WORD_BOUNDARY_START . '([A-Z_]+)' . API_RE_WORD_BOUNDARY_END . '/';
       $type = 'constant';
       break;
 
     case 'class':
       // Find class names, which have a capital letter.
-      $pattern = '/\b(' . API_RE_CLASS_NAME_TEXT . ')\b/';
+      $pattern = '/' . API_RE_WORD_BOUNDARY_START . '(' . API_RE_CLASS_NAME_TEXT . ')' . API_RE_WORD_BOUNDARY_END . '/';
       $type = 'class';
       break;
 
     case 'definite class':
       // Find definite class names, which have a backslash.
-      $pattern = '/\b(' . API_RE_DEFINITE_CLASS_NAME_TEXT . ')\b/';
+      $pattern = '/' . API_RE_WORD_BOUNDARY_START . '(' . API_RE_DEFINITE_CLASS_NAME_TEXT . ')' . API_RE_WORD_BOUNDARY_END . '/';
       $type = 'class';
       break;
 
     case 'topic':
       // Find topic/group names.
-      $pattern = '/\b(' . API_RE_GROUP_NAME . ')\b/';
+      $pattern = '/' . API_RE_WORD_BOUNDARY_START . '(' . API_RE_GROUP_NAME . ')' . API_RE_WORD_BOUNDARY_END . '/';
       $type = 'group';
       // Patterns that match topics might also match other objects.
       // keep looking for matches after running the linker.
@@ -2893,6 +2903,7 @@ function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = 
   elseif ($type == 'file') {
     // Because this needs to match files, change the query to match on
     // basename field in {api_files}.
+    // @todo - would this work just matching on api_documentation.title?
     $query = db_select('api_documentation', 'ad')
       ->fields('ad', array('did', 'branch_id', 'object_name', 'title', 'object_type', 'summary', 'file_name'))
       ->condition('ad.object_type', 'file');

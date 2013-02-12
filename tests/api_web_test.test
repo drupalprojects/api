@@ -403,6 +403,11 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertNoLink('SAMPLE_FUNCTION', 'Wrong-case function did not turn into a link');
     $this->assertNoLink('sample_constant', 'Wrong-case constant did not turn into a link');
 
+    // Verify that the correct-case text embedded in other stuff didn't link.
+    $this->assertNoLink('sample_function', 'Function name embedded in other text did not turn into a link');
+    $this->assertNoLink('SAMPLE_CONSTANT', 'Constant name embedded in other text did not turn into a link');
+    $this->assertRaw('http://example.com/samp_GRP-6.x', 'Link including topic identifier did not get broken up');
+
     // Click the links on the page and verify.
     $this->assertLinkURLSubstring('sample.php', $this->branch_info['project'] . '/sample.php', 'sample.php link exists', 'sample.php link went to the right place');
     $this->assertLinkURLSubstring('Samples', $this->branch_info['project'] . '/sample.php/group/samp_GRP-6.x', 'Samples link exists', 'Samples link went to the right place');
