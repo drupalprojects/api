@@ -95,4 +95,13 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->assertRaw('SecondClass', 'Second class link exists');
     $this->assertRaw('ThirdClass', 'Third class link exists');
   }
+
+  /**
+   * Tests Twig files.
+   */
+  function testTwig() {
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
+    $this->assertText('Sample Twig template file, taken from', 'File description is there');
+    $this->assertNoText('Available variables', 'Extra information after first line is not shown');
+  }
 }

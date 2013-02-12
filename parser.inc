@@ -53,7 +53,23 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
  *   about the file, branch, etc.
  */
 function api_parse_text_file($docblock) {
-  $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE);
+  // See if the file contains an @file block, and use that for the
+  // documentation if so; otherwise, just use the file as a whole. This is
+  // probably only present for Twig files.
+  $matches = array();
+  if (preg_match('|/\*\*[\s\*]+@file.+\*/|Us', $docblock['source'], $matches)) {
+    // Let Grammar parser and api_save_documentation() parse out this
+    // documentation.
+    if (!api_libraries_loaded()) {
+      return;
+    }
+    $editor = PGPEditor::getInstance();
+    $docblock['content'] = $editor->commentToString(array('value' => $matches[0]));
+  }
+  else {
+    $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE);
+  }
+
   // We don't actually want to keep track of references for text files.
   $references = array();
   $docblock['code'] = api_format_php($docblock['source'], $references, TRUE, FALSE);
