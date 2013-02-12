@@ -1227,12 +1227,20 @@ function api_views_default_views() {
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'title' => 'title',
+    'object_type' => 'object_type',
     'file_name' => 'file_name',
     'summary' => 'summary',
   );
   $handler->display->display_options['style_options']['default'] = 'title';
   $handler->display->display_options['style_options']['info'] = array(
     'title' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'object_type' => array(
       'sortable' => 1,
       'default_sort_order' => 'asc',
       'align' => '',
@@ -1267,6 +1275,11 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title']['field'] = 'title';
   $handler->display->display_options['fields']['title']['label'] = 'Name';
   $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Object type */
+  $handler->display->display_options['fields']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['fields']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['fields']['object_type']['label'] = 'Type';
   /* Field: API documentation: File name */
   $handler->display->display_options['fields']['file_name']['id'] = 'file_name';
   $handler->display->display_options['fields']['file_name']['table'] = 'api_documentation';
@@ -1302,6 +1315,20 @@ function api_views_default_views() {
   $handler->display->display_options['arguments']['title']['summary_options']['items_per_page'] = '25';
   $handler->display->display_options['arguments']['title']['limit'] = '0';
   $handler->display->display_options['arguments']['title']['partial_match'] = TRUE;
+  /* Filter criterion: API documentation: Object type */
+  $handler->display->display_options['filters']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['object_type']['expose']['operator_id'] = 'object_type_op';
+  $handler->display->display_options['filters']['object_type']['expose']['label'] = 'Type';
+  $handler->display->display_options['filters']['object_type']['expose']['operator'] = 'object_type_op';
+  $handler->display->display_options['filters']['object_type']['expose']['identifier'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
 
   /* Display: Search Block */
   $handler = $view->new_display('block', 'Search Block', 'block_search_results');
