@@ -7,15 +7,13 @@
 /**
  * Implements hook_views_default_views().
  *
- * Defines the following views:
- * - api_listings: Generates the API listing pages.
- * - api_projects: Generates the Projects page.
- * - api_branches: Generates the Branch admin page.
+ * Defines views used in the API module for admin pages and user-facing pages.
  */
 function api_views_default_views() {
   $views = array();
 
   // API Listings view.
+
   $view = new view();
   $view->name = 'api_listings';
   $view->description = 'Blocks for listing API documentation items. Used directly by the API module. Do not delete or disable.';
@@ -111,8 +109,8 @@ function api_views_default_views() {
   $handler->display->display_options['arguments']['branch_id']['summary']['format'] = 'default_summary';
   $handler->display->display_options['arguments']['branch_id']['summary_options']['items_per_page'] = '25';
 
-  /* Display: Default Listing Block */
-  $handler = $view->new_display('block', 'Default Listing Block', 'block_listing');
+  /* Display: Default List Block */
+  $handler = $view->new_display('block', 'Default List Block', 'block_listing');
   $handler->display->display_options['display_description'] = 'Block for listing functions, constants, etc.';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['filter_groups'] = FALSE;
@@ -153,10 +151,9 @@ function api_views_default_views() {
     1 => 0,
     3 => 0,
   );
-  $handler->display->display_options['block_description'] = 'API documentation item listing';
 
-  /* Display: File Listing Block */
-  $handler = $view->new_display('block', 'File Listing Block', 'block_files');
+  /* Display: File List Block */
+  $handler = $view->new_display('block', 'File List Block', 'block_files');
   $handler->display->display_options['display_description'] = 'Block for listing files';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
@@ -290,10 +287,9 @@ function api_views_default_views() {
     1 => 0,
     3 => 0,
   );
-  $handler->display->display_options['block_description'] = 'API documentation file listing';
 
-  /* Display: Class Listing Block */
-  $handler = $view->new_display('block', 'Class Listing Block', 'block_class');
+  /* Display: Class List Block */
+  $handler = $view->new_display('block', 'Class List Block', 'block_class');
   $handler->display->display_options['display_description'] = 'Block for listing classes and interfaces';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
@@ -444,10 +440,9 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type_1']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type_1']['value'] = 'interface';
   $handler->display->display_options['filters']['object_type_1']['group'] = 2;
-  $handler->display->display_options['block_description'] = 'API documentation class listing';
 
-  /* Display: Topic Listing Block */
-  $handler = $view->new_display('block', 'Topic Listing Block', 'block_groups');
+  /* Display: Topic List Block */
+  $handler = $view->new_display('block', 'Topic List Block', 'block_groups');
   $handler->display->display_options['display_description'] = 'Block for listing groups/topics';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
@@ -541,10 +536,9 @@ function api_views_default_views() {
     1 => 0,
     3 => 0,
   );
-  $handler->display->display_options['block_description'] = 'API documentation topic listing';
 
-  /* Display: Items in file block */
-  $handler = $view->new_display('block', 'Items in file block', 'block_items_file');
+  /* Display: Items in File List Block */
+  $handler = $view->new_display('block', 'Items in File List Block', 'block_items_file');
   $handler->display->display_options['display_description'] = 'Block for listing functions, constants, etc. in a particular file';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['pager'] = FALSE;
@@ -599,12 +593,11 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['class_did']['table'] = 'api_documentation';
   $handler->display->display_options['filters']['class_did']['field'] = 'class_did';
   $handler->display->display_options['filters']['class_did']['value']['value'] = '0';
-  $handler->display->display_options['block_description'] = 'API documentation items in file listing';
 
   $views[$view->name] = $view;
 
-
   // API Projects view.
+
   $view = new view();
   $view->name = 'api_projects';
   $view->description = 'Blocks for listing projects in the API module. Used directly by the API module. Do not delete or disable.';
@@ -617,7 +610,6 @@ function api_views_default_views() {
 
   /* Display: Master */
   $handler = $view->new_display('default', 'Master', 'default');
-  $handler->display->display_options['title'] = 'API Projects';
   $handler->display->display_options['use_ajax'] = TRUE;
   $handler->display->display_options['use_more_always'] = FALSE;
   $handler->display->display_options['access']['type'] = 'perm';
@@ -641,8 +633,8 @@ function api_views_default_views() {
   $handler->display->display_options['sorts']['project_title']['table'] = 'api_project';
   $handler->display->display_options['sorts']['project_title']['field'] = 'project_title';
 
-  /* Display: Project list */
-  $handler = $view->new_display('block', 'Project list', 'block_project_list');
+  /* Display: Project List Block */
+  $handler = $view->new_display('block', 'Project List Block', 'block_project_list');
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
   $handler->display->display_options['style_plugin'] = 'list';
@@ -652,13 +644,13 @@ function api_views_default_views() {
   $handler->display->display_options['row_plugin'] = 'fields';
   $handler->display->display_options['defaults']['row_options'] = FALSE;
 
-  /* Display: Project admin */
-  $handler = $view->new_display('block', 'Project admin', 'block_project_admin');
+  /* Display: Project Admin Block */
+  $handler = $view->new_display('block', 'Project Admin Block', 'block_project_admin');
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
-  $handler->display->display_options['defaults']['style_plugin'] = FALSE;
   $handler->display->display_options['defaults']['access'] = FALSE;
   $handler->display->display_options['access']['type'] = 'perm';
   $handler->display->display_options['access']['perm'] = 'administer API reference';
+  $handler->display->display_options['defaults']['style_plugin'] = FALSE;
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'project_name' => 'project_name',
@@ -769,7 +761,6 @@ function api_views_default_views() {
 
   /* Display: Master */
   $handler = $view->new_display('default', 'Master', 'default');
-  $handler->display->display_options['title'] = 'API Branches';
   $handler->display->display_options['use_ajax'] = TRUE;
   $handler->display->display_options['use_more_always'] = FALSE;
   $handler->display->display_options['access']['type'] = 'perm';
@@ -862,14 +853,13 @@ function api_views_default_views() {
     3 => 0,
   );
 
-  /* Display: Block */
-  $handler = $view->new_display('block', 'Block', 'block_branch_admin');
+  /* Display: Branch Admin Block */
+  $handler = $view->new_display('block', 'Branch Admin Block', 'block_branch_admin');
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
-
 
   $views[$view->name] = $view;
 
-  // Namespaces view.
+  // API Namespaces view.
 
   $view = new view();
   $view->name = 'api_namespaces';
@@ -883,10 +873,10 @@ function api_views_default_views() {
 
   /* Display: Master */
   $handler = $view->new_display('default', 'Master', 'default');
-  $handler->display->display_options['title'] = 'API Namespaces';
   $handler->display->display_options['use_ajax'] = TRUE;
   $handler->display->display_options['use_more_always'] = FALSE;
-  $handler->display->display_options['access']['type'] = 'none';
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['access']['perm'] = 'access API reference';
   $handler->display->display_options['cache']['type'] = 'none';
   $handler->display->display_options['query']['type'] = 'views_query';
   $handler->display->display_options['query']['options']['distinct'] = TRUE;
@@ -960,13 +950,12 @@ function api_views_default_views() {
     3 => 0,
   );
 
-  /* Display: Namespace list */
-  $handler = $view->new_display('block', 'Namespace list', 'block_namespace_list');
+  /* Display: Namespace List Block */
+  $handler = $view->new_display('block', 'Namespace List Block', 'block_namespace_list');
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
-  $handler->display->display_options['block_description'] = 'API namespace list';
 
-  /* Display: Namespace list of items */
-  $handler = $view->new_display('block', 'Namespace list of items', 'block_items_namespace');
+  /* Display: Items in Namespace List Block */
+  $handler = $view->new_display('block', 'Items in Namespace List Block', 'block_items_namespace');
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['pager'] = FALSE;
   $handler->display->display_options['pager']['type'] = 'none';
@@ -1030,11 +1019,11 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type_1']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type_1']['value'] = 'interface';
   $handler->display->display_options['filters']['object_type_1']['group'] = 1;
-  $handler->display->display_options['block_description'] = 'API namespace item list';
 
   $views[$view->name] = $view;
 
   // API Members view.
+
   $view = new view();
   $view->name = 'api_members';
   $view->description = 'Blocks for listing API class members. Used directly by the API module. Do not delete or disable.';
@@ -1047,10 +1036,10 @@ function api_views_default_views() {
 
   /* Display: Master */
   $handler = $view->new_display('default', 'Master', 'default');
-  $handler->display->display_options['title'] = 'API Members';
   $handler->display->display_options['use_ajax'] = TRUE;
   $handler->display->display_options['use_more_always'] = FALSE;
-  $handler->display->display_options['access']['type'] = 'none';
+  $handler->display->display_options['access']['type'] = 'perm';
+  $handler->display->display_options['access']['perm'] = 'access API reference';
   $handler->display->display_options['cache']['type'] = 'none';
   $handler->display->display_options['query']['type'] = 'views_query';
   $handler->display->display_options['exposed_form']['type'] = 'basic';
@@ -1203,8 +1192,8 @@ function api_views_default_views() {
     3 => 0,
   );
 
-  /* Display: Member listing */
-  $handler = $view->new_display('block', 'Member listing', 'block_member_list');
+  /* Display: Member List Block */
+  $handler = $view->new_display('block', 'Member List Block', 'block_member_list');
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
 
   $views[$view->name] = $view;
@@ -1318,11 +1307,10 @@ function api_views_default_views() {
   $handler = $view->new_display('block', 'Search Block', 'block_search_results');
   $handler->display->display_options['display_description'] = 'Block for search results';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
-  $handler->display->display_options['block_description'] = 'API search results';
 
   $views[$view->name] = $view;
 
-  // References view.
+  // API References view.
 
   $view = new view();
   $view->name = 'api_references';
@@ -1336,7 +1324,6 @@ function api_views_default_views() {
 
   /* Display: Master */
   $handler = $view->new_display('default', 'Master', 'default');
-  $handler->display->display_options['title'] = 'Items in Group Listing block';
   $handler->display->display_options['use_ajax'] = TRUE;
   $handler->display->display_options['use_more_always'] = FALSE;
   $handler->display->display_options['access']['type'] = 'perm';
@@ -1437,16 +1424,14 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type']['value'] = 'group';
 
-  /* Display: Items in Group Listing */
-  $handler = $view->new_display('block', 'Items in Group Listing', 'block_items_in_group');
+  /* Display: Items in Topic List Block */
+  $handler = $view->new_display('block', 'Items in Topic List Block', 'block_items_in_group');
   $handler->display->display_options['display_description'] = 'All items in a particular group/topic';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
-  $handler->display->display_options['block_description'] = 'Items in Group Listing';
 
-  /* Display: Related Topics */
-  $handler = $view->new_display('block', 'Related Topics', 'block_related_topics');
+  /* Display: Related Topics Block */
+  $handler = $view->new_display('block', 'Related Topics Block', 'block_related_topics');
   $handler->display->display_options['defaults']['title'] = FALSE;
-  $handler->display->display_options['title'] = 'Related Topics';
   $handler->display->display_options['display_description'] = 'Topics (groups) related to a documentation item';
   $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
   $handler->display->display_options['defaults']['style_plugin'] = FALSE;
@@ -1520,7 +1505,6 @@ function api_views_default_views() {
   $handler->display->display_options['arguments']['from_did']['summary']['number_of_records'] = '0';
   $handler->display->display_options['arguments']['from_did']['summary']['format'] = 'default_summary';
   $handler->display->display_options['arguments']['from_did']['summary_options']['items_per_page'] = '25';
-  $handler->display->display_options['block_description'] = 'API Related Topics';
 
   $views[$view->name] = $view;
 
