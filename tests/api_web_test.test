@@ -194,6 +194,7 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('For testing duplicate constant linking.', 'Description is present on constant page');
     $this->assertText("define('DUPLICATE_CONSTANT'", 'Code is present on constant page');
     $this->assertNoText('Class', 'Class section is not on constant page');
+    $this->assertText('constant DUPLICATE_CONSTANT', 'H1 page title is there');
 
     // Verify link destinations.
     $this->assertLinkURLSubstring($this->branch_info['branch_name'] . ' duplicates.php', $this->branch_info['project'] . '/duplicates.php/constant/DUPLICATE_CONSTANT', 'Other version link exists', 'Other version link went to the right place');
@@ -226,6 +227,7 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('duplicate_function', 0, 'Second link to other version is present on function page');
     $this->assertRaw('1 call to duplicate_function()', 'Text for calling functions is present');
     $this->assertNoText('Class', 'Class section is not on function page');
+    $this->assertText('function duplicate_function', 'H1 page title text is on page');
 
     // Test the links made with @link on this function.
     $this->assertLinkURLSubstring('Subscribers', $this->branch_info['project'] . '/sample.php/group/samp_GRP-6.x', 'Subscribers link exists', 'Subscribers link went to the right place');
@@ -398,6 +400,7 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('sample.php', 0, 'Link to file is present on global page');
     $this->assertLink('Samples', 0, 'Topic link appears on the global page');
     $this->assertText('A sample group.', 'Topic description appears on the global page');
+    $this->assertText('global $sample_global', 'H1 page title text is present');
 
     // Verify that the wrong-case text did not turn into links.
     $this->assertNoLink('SAMPLE_FUNCTION', 'Wrong-case function did not turn into a link');
@@ -465,9 +468,12 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('Only implemented in children.', 'Method description appears on class page');
     $this->assertLink('Sample::foo', 0, 'Link to second method appears on class page');
     $this->assertText('Metasyntatic member function.', 'Second method description appears on class page');
+    $this->assertText('public', 'Modifier for function is there');
     $this->assertLink('Sample::constant', 0, 'Link to constant appears on class page');
     $this->assertText('A class constant.', 'Constant description appears on class page');
     $this->assertText('* Only implemented in children.', 'Source code appears on class page');
+    $this->assertText('class Sample', 'H1 title text is there');
+
     // Plugin annotation section.
     $this->assertText(t('Plugin annotation'), 'Plugin annotation header is there');
     $this->assertText('A great plugin title', 'Plugin title is there');
@@ -489,6 +495,8 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     // While we're here, check some text...
     $this->assertLink('Sample', 0, 'Link to sample class appears on interface page');
     $this->assertLink('Sample2', 0, 'Link to sample2 class appears on interface page');
+    $this->assertText('interface SampleInterface', 'H1 title text is there');
+
     // Click through to method and verify overrides link.
     $this->clickLink('SampleInterface::foo');
     $this->assertRaw('2 methods override SampleInterface::foo()', 'Overrides text is there');
@@ -507,6 +515,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('Just a bit more text and it is done.', 'More after-var text appears');
     $this->assertLink('Sample', 0, 'Link to class is there');
     $this->assertText('Sample class.', 'Class description is there');
+    $this->assertText('private property Sample::$property', 'h1 page title text is there');
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->clickLink('Sample::baz');
@@ -518,6 +527,8 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertRaw('2 calls to Sample::baz()', 'Calling functions text is there');
     $this->assertLink('Sample', 0, 'Link to class is there');
     $this->assertText('Sample class.', 'Class description is there');
+    $this->assertText('public function Sample::baz', 'H1 title text is there');
+
     // And check the calling functions links.
     $this->assertLink('Sample::foo', 0, 'Calling function 1 is there');
     $this->assertLink('SubSample::bar', 0, 'Calling function 2 link is there');
@@ -531,6 +542,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('A class constant', 'Description appears on constant page');
     $this->assertLink('Sample', 0, 'Link to class is there');
     $this->assertText('Sample class.', 'Class description is there');
+    $this->assertText('constant Sample::constant', 'H1 title text is there');
 
     // Visit the subclass page and verify the extends info is in the hierarchy.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/SubSample');

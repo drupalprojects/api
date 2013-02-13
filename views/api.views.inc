@@ -275,6 +275,24 @@ function api_views_data() {
       ),
     ),
 
+    'modifiers' => array(
+      'title' => t('Modifiers'),
+      'help' => t('Modifiers such as abstract, static, etc.'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
+
   );
 
   $data['api_branch'] = array(

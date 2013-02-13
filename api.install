@@ -301,6 +301,13 @@ function api_schema() {
         'not null' => TRUE,
         'default' => '',
       ),
+      'modifiers' => array(
+        'description' => 'Modifiers such as static, abstract, etc.',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
     ),
     'primary key' => array('did'),
     'indexes' => array(
@@ -1348,8 +1355,22 @@ function api_update_7120() {
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
 
+/**
+ * Add modifiers field to {api_documentation} table.
+ */
+function api_update_7121() {
+  db_add_field('api_documentation', 'modifiers', array(
+    'description' => 'Modifiers such as static, abstract, etc.',
+    'type' => 'varchar',
+    'length' => '255',
+    'not null' => TRUE,
+    'default' => '',
+    ));
+}
+
 // @todo: Add another reparse everything update function before next release!
-// Due to http://drupal.org/node/1895024
+// Due to http://drupal.org/node/1895024, http://drupal.org/node/1915244,
+// http://drupal.org/node/1901544
 
 /**
  * Remove variables and other data on uninstall.

@@ -38,6 +38,7 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
     'content' => '',
     'class' => '',
     'namespaced_name' => '',
+    'modifiers' => '',
   );
 
   $callback($docblock);
@@ -163,6 +164,7 @@ function api_parse_php_file($docblock) {
     'see' => '',
     'start_line' => 0,
     'namespaced_name' => '',
+    'modifiers' => '',
   );
 
   $found_references = api_documentation_loop($statements, $default_block, $docblocks);
@@ -279,6 +281,11 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         $statement->comment = '';
         $references = array();
         $docblock['code'] = api_format_php("<?php\n" . $statement->toString() . "\n?" . ">", $references, FALSE, ($statement->type == T_FUNCTION));
+
+        if (isset($statement->modifiers) && !$statement->modifiers->isEmpty()) {
+          $docblock['modifiers'] = $statement->modifiers->toString();
+        }
+
         if ($statement->type == T_FUNCTION) {
           $docblock['signature'] = $editor->functionGetSignature($statement);
           $docblock['references'] = $references;
@@ -2337,6 +2344,7 @@ function _api_add_text_defaults(&$record, $table) {
         'throws' => '',
         'namespace' => '',
         'namespaced_name' => '',
+        'modifiers' => '',
       );
       break;
 

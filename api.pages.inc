@@ -1206,8 +1206,18 @@ function api_object_title_and_breadcrumb($branch, $object, $title = NULL, $objec
   // Allow the title to be overridden.
   if (empty($title)) {
     $title = check_plain($object->title);
+    if ($object->object_type == 'group' || $object->object_type == 'file') {
+      $h1title = $title;
+    }
+    else {
+      $h1title = (empty($object->modifiers)) ? '' : check_plain($object->modifiers) . ' ';
+      $h1title .= check_plain($object->object_type) . ' ' . $title;
+    }
   }
-  drupal_set_title($title, PASS_THROUGH);
+  else {
+    $h1title = $title;
+  }
+  drupal_set_title($h1title, PASS_THROUGH);
 
   $breadcrumb = array(
     l(t('Home'), '<front>'),

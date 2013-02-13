@@ -296,6 +296,8 @@ function api_views_default_views() {
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'object_name' => 'object_name',
+    'modifiers' => 'modifiers',
+    'object_type' => 'object_type',
     'namespace' => 'namespace',
     'file_name' => 'file_name',
     'summary' => 'summary',
@@ -303,6 +305,20 @@ function api_views_default_views() {
   $handler->display->display_options['style_options']['default'] = 'object_name';
   $handler->display->display_options['style_options']['info'] = array(
     'object_name' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'modifiers' => array(
+      'sortable' => 0,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
+    'object_type' => array(
       'sortable' => 1,
       'default_sort_order' => 'asc',
       'align' => '',
@@ -342,6 +358,21 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['object_name']['field'] = 'object_name';
   $handler->display->display_options['fields']['object_name']['label'] = 'Name';
   $handler->display->display_options['fields']['object_name']['link_to_docs'] = 'object';
+  /* Field: API documentation: Modifiers */
+  $handler->display->display_options['fields']['modifiers']['id'] = 'modifiers';
+  $handler->display->display_options['fields']['modifiers']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['modifiers']['field'] = 'modifiers';
+  $handler->display->display_options['fields']['modifiers']['label'] = '';
+  $handler->display->display_options['fields']['modifiers']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['modifiers']['element_label_colon'] = FALSE;
+  /* Field: API documentation: Object type */
+  $handler->display->display_options['fields']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['fields']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['fields']['object_type']['label'] = 'Type';
+  $handler->display->display_options['fields']['object_type']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['object_type']['alter']['text'] = '[modifiers] [object_type]';
+  $handler->display->display_options['fields']['object_type']['hide_alter_empty'] = FALSE;
   /* Field: API documentation: Namespace */
   $handler->display->display_options['fields']['namespace']['id'] = 'namespace';
   $handler->display->display_options['fields']['namespace']['table'] = 'api_documentation';
@@ -1046,6 +1077,7 @@ function api_views_default_views() {
   $handler->display->display_options['pager']['type'] = 'none';
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
+    'modifiers' => 'modifiers',
     'title' => 'title',
     'object_type' => 'object_type',
     'summary' => 'summary',
@@ -1053,6 +1085,13 @@ function api_views_default_views() {
   );
   $handler->display->display_options['style_options']['default'] = 'title';
   $handler->display->display_options['style_options']['info'] = array(
+    'modifiers' => array(
+      'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => '',
+      'empty_column' => 0,
+    ),
     'title' => array(
       'sortable' => 1,
       'default_sort_order' => 'asc',
@@ -1107,6 +1146,11 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title']['relationship'] = 'did';
   $handler->display->display_options['fields']['title']['label'] = 'Name';
   $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Modifiers */
+  $handler->display->display_options['fields']['modifiers']['id'] = 'modifiers';
+  $handler->display->display_options['fields']['modifiers']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['modifiers']['field'] = 'modifiers';
+  $handler->display->display_options['fields']['modifiers']['relationship'] = 'did';
   /* Field: API documentation: Object type */
   $handler->display->display_options['fields']['object_type']['id'] = 'object_type';
   $handler->display->display_options['fields']['object_type']['table'] = 'api_documentation';
