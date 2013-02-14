@@ -2349,7 +2349,7 @@ function api_cron() {
  *   Code with function names formatted as links.
  */
 function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL) {
-  return _api_link_documentation($code, $branch, $file_did, $class_did, array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'code class'));
+  return _api_link_documentation($code, $branch, $file_did, $class_did, array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml reference', 'code global', 'code class'));
 }
 
 /**
@@ -2525,6 +2525,19 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $prepend_if_not_found = '<span class="php-string">\'';
       $use_php = FALSE;
       $type = 'function';
+      break;
+
+    case 'yaml reference':
+      // Find potential function names (callback strings) in marked-up YAML
+      // code. These are all strings that are legal function names, possibly
+      // with namespaces and class names, possibly in quotes.
+      $pattern = '!<span class="yaml-reference">(' . API_RE_FUNCTION_IN_TEXT . ')</span>!';
+      $prepend = '<span class="php-function-or-constant">';
+      $append = '</span>';
+      $prepend_if_not_found = '';
+      $append_if_not_found = '';
+      $use_php = FALSE;
+      $type = 'yaml_reference';
       break;
 
     case 'code hook name':
@@ -2705,6 +2718,8 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   - 'function_or_constant': $name is either a function, constant, or class.
  *   - 'group': $name is a group/topic identifier.
  *   - 'global': $name is a global variable.
+ *   - 'yaml_reference': $name is the possibly namespaced name of a function or
+ *     method, possibly in single or double quotes (in a YAML file).
  *
  * @return
  *   The text as a link to the object page.
@@ -2715,6 +2730,12 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = 
     $text = $name;
   }
   $name = trim($name);
+
+  if ($type == 'yaml_reference') {
+    // Trim off quotes and match as a function name.
+    $name = trim($name, '"\'');
+    $type = 'function';
+  }
 
   // If we get here, we're looking to match some kind of documentation object.
   $link = _api_make_match_link($name, $text, $type, $is_link, $branch, $file_did);
@@ -2793,7 +2814,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = 
  * @return
  *   Link to either a single matching object or a search if multiple matches
  *   exist; if there are no matches, FALSE.
-o */
+ */
 function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = NULL, $file_did = NULL, $core_compatibility = '') {
 
   if ($try_link) {

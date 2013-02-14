@@ -14,3 +14,9 @@ class ClassQ {
   function bMethod() {
   }
 }
+
+/**
+ * And a function name.
+ */
+function another_function() {
+}

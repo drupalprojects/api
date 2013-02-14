@@ -746,6 +746,9 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // It should be an object. Derive the name.
     $obj = $name;
     $name = ($obj->class_did > 0 && $type == 'calls') ? $obj->namespaced_name : $obj->title;
+    // In a few cases, we want to look for either the base name or the
+    // namespaced name.
+    $altname = $obj->namespaced_name;
   }
 
   $branch_id = $branch->branch_id;
@@ -775,8 +778,13 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     $d = $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
     $base_query->condition($d . '.branch_id', $branch_id)
       ->condition($d . '.did', $exclude_did, '<>')
-      ->condition('r.object_type', 'potential callback')
-      ->condition('r.object_name', $name);
+      ->condition('r.object_type', 'potential callback');
+    if (isset($altname)) {
+      $base_query->condition('r.object_name', array($name, $altname));
+    }
+    else {
+      $base_query->condition('r.object_name', $name);
+    }
   }
   elseif ($type == 'implementations') {
     // Use pattern matching to find functions that look like implementations of

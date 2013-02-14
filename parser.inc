@@ -205,6 +205,81 @@ function api_parse_php_file($docblock) {
 }
 
 /**
+ * Saves contents of a YAML file.
+ *
+ * Callback for api_parse_file().
+ *
+ * @param $docblock
+ *   Array from api_parse_file() containing the file contents and information
+ *   about the file, branch, etc.
+ */
+function api_parse_yaml_file($docblock) {
+  // Just use the file name as the documentation, since the file contents
+  // are not good documentation.
+  $docblock['documentation'] = $docblock['file_name'];
+
+  // Parse the YAML in the file.
+  module_load_include('php', 'api', 'yaml/ExceptionInterface');
+  module_load_include('php', 'api', 'yaml/RuntimeException');
+  module_load_include('php', 'api', 'yaml/ParseException');
+  module_load_include('php', 'api', 'yaml/DumpException');
+  module_load_include('php', 'api', 'yaml/Unescaper');
+  module_load_include('php', 'api', 'yaml/Inline');
+  module_load_include('php', 'api', 'yaml/Parser');
+  $parser = new \Symfony\Component\Yaml\Parser();
+  try {
+    $parsed = $parser->parse($docblock['source']);
+  }
+  catch (Exception $e) {
+    $parsed = array();
+    watchdog('api', 'YAML parsing failed for %filename with message %msg', array('%filename' => $docblock['file_name'], '%msg' => $e->getMessage()), WATCHDOG_WARNING);
+  }
+
+  // Find potential references, which are array values that look like they
+  // could be callback function names.
+  $references = _api_find_yaml_references($parsed);
+  $docblock['references'] = array('potential callback' => $references);
+
+  // Format the source, putting spans around the found reference strings.
+  $dummy = array();
+  $code = api_format_php($docblock['source'], $dummy, TRUE, FALSE);
+  foreach ($references as $string) {
+    $code = str_replace($string, '<span class="yaml-reference">' . $string . '</span>', $code);
+  }
+  $docblock['code'] = $code;
+
+  api_save_documentation(array($docblock));
+}
+
+/**
+ * Recursively finds potential references in a parsed YAML array.
+ */
+function _api_find_yaml_references($yaml) {
+  if (empty($yaml)) {
+    return array();
+  }
+
+  $yaml = (array) $yaml;
+  $references = array();
+  foreach ($yaml as $value) {
+    if (is_string($value)) {
+      $matches = array();
+      if (preg_match("|^['\"]*(" . API_RE_FUNCTION_IN_TEXT . ")['\"]*$|", $value, $matches)) {
+        // Special case the commonly-found TRUE and FALSE.
+        if ($matches[1] != 'TRUE' && $matches[1] != 'FALSE') {
+          $references[] = $matches[1];
+        }
+      }
+    }
+    elseif (is_array($value) || is_object($value)) {
+      $references = array_merge($references, _api_find_yaml_references($value));
+    }
+  }
+
+  return array_unique($references);
+}
+
+/**
  * Builds a list of documentation items.
  *
  * @param PGPBody $statements
@@ -2102,11 +2177,12 @@ function api_parse_functions() {
     'profile' => 'api_parse_php_file',
     'test' => 'api_parse_php_file',
 
+    'yml' => 'api_parse_yaml_file',
+
     'txt' => 'api_parse_text_file',
     'info' => 'api_parse_text_file',
     'css' => 'api_parse_text_file',
     'sh' => 'api_parse_text_file',
-    'yml' => 'api_parse_text_file',
     'twig' => 'api_parse_text_file',
 
     'htm' => 'api_parse_html_file',

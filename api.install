@@ -1368,9 +1368,13 @@ function api_update_7121() {
     ));
 }
 
-// @todo: Add another reparse everything update function before next release!
-// Due to http://drupal.org/node/1895024, http://drupal.org/node/1915244,
-// http://drupal.org/node/1901544
+/**
+ * Mark all files for reparse, due to some updates to the parsing code.
+ */
+function api_update_7122() {
+  $count = api_update_mark_for_reparse();
+  return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
 
 /**
  * Remove variables and other data on uninstall.

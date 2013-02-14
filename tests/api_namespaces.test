@@ -8,13 +8,13 @@
 module_load_include('php', 'api', 'tests/api_test_case');
 
 /**
- * Tests that namespace functionality works.
+ * Tests that namespace and YAML functionality works.
  */
 class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
   public static function getInfo() {
     return array(
       'name' => 'Namespaces',
-      'description' => 'Tests that namespaces work properly.',
+      'description' => 'Tests that namespaces and YAML work properly.',
       'group' => 'API module',
     );
   }
@@ -79,6 +79,37 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertNoText('Namespace', 'Namespace header is not on non-namespaced class page');
     $this->assertNoLink('api\\test1', 'Namespace link is not on non-namespaced class page');
     $this->assertNoLink('api\\test2', 'Namespace link is not on non-namespaced class page');
+  }
+
+  /**
+   * Tests that YAML works properly for linking and references.
+   */
+  function testYaml() {
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.yml');
+
+    // Verify that the page name is correct.
+    $this->assertTitleContains('sample.yml', 'Page title is correct');
+
+    // Verify the links to referenced functions and methods.
+    $this->assertLinkURLSubstring('\api\test1\ClassA::cMethod', $this->branch_info['project'] . '/ClassA.php/function/ClassA', 'cMethod link exists', 'cMethod link went to the right place');
+    $this->assertLinkURLSubstring('\api\test1\ClassA::dMethod', $this->branch_info['project'] . '/ClassA.php/function/ClassA', 'dMethod link exists', 'dMethod link went to the right place');
+    $this->assertLinkURLSubstring('another_function', $this->branch_info['project'] . '/no_namespace.php/function/another_function', 'another_function link exists', 'another_function link went to the right place');
+
+    // Verify the references on the linked functions.
+    $this->clickLink('another_function');
+    $this->assertText("1 string reference to 'another_function'", 'Reference text is there');
+    $this->assertLink('sample.yml', 0, 'Referenced file is linked');
+    $this->clickLink('sample.yml');
+
+    $this->clickLink('\api\test1\ClassA::cMethod');
+    $this->assertText("1 string reference to 'ClassA::cMethod'", 'Reference text is there');
+    $this->assertLink('sample.yml', 0, 'Referenced file is linked');
+    $this->clickLink('sample.yml');
+
+    $this->clickLink('\api\test1\ClassA::dMethod');
+    $this->assertText("1 string reference to 'ClassA::dMethod'", 'Reference text is there');
+    $this->assertLink('sample.yml', 0, 'Referenced file is linked');
+    $this->clickLink('sample.yml');
   }
 }
 
@@ -157,19 +188,19 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
     // Run the branch update function and verify counts. There should be
     // records for each file.
     $this->updateBranches();
-    $counts['node'] = 8;
-    $counts['api_documentation'] = 7;
-    $counts['api_file'] = 7;
-    $this->verifyCounts($counts, 7, 'Add and update branch');
+    $counts['node'] = 9;
+    $counts['api_documentation'] = 8;
+    $counts['api_file'] = 8;
+    $this->verifyCounts($counts, 8, 'Add and update branch');
 
     // Parse everything and verify counts.
     $this->checkAndClearLog();
     $this->updateBranches();
     $this->processApiParseQueue();
-    $counts['node'] = 25;
-    $counts['api_documentation'] = 24;
-    $counts['api_function'] = 10;
-    $counts['api_file'] = 7;
+    $counts['node'] = 27;
+    $counts['api_documentation'] = 26;
+    $counts['api_function'] = 11;
+    $counts['api_file'] = 8;
     $counts['api_members'] = 11;
     $counts['api_overrides'] = 10;
     $counts['api_extends'] = 1;
