@@ -2293,6 +2293,7 @@ function api_search_form($form, $form_state, $branch) {
 
   $form['search'] = array(
     '#title' => t('Function, file, or topic'),
+    '#description' => t('Partial match search is supported'),
     '#type' => 'textfield',
     '#default_value' => '',
     '#required' => TRUE,
