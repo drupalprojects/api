@@ -27,10 +27,11 @@ class ApiURLPatternsTest extends ApiTestCase {
   }
 
   /**
-   * Ensures that valid URL patterns are successful.
+   * Ensures that valid and invalid URL patterns are successful.
    *
    * Loads an example of each valid URL pattern. Verifies that it loads
    * successfully by checking for a 200 response code and expected text.
+   * Some 404 patterns are also checked.
    */
   function testApiUrlPaths() {
 
@@ -271,6 +272,11 @@ class ApiURLPatternsTest extends ApiTestCase {
       array(
         'url' => 'api/' . $project_name . '/not_real_file_name/' . $branch_name,
         'response' => '404',
+      ),
+      // This one should be redirected from legacy URL.
+      array(
+        'url' => 'api/function/sample_function/' . $branch_name . '/references',
+        'text' => array('sample-related purposes'),
       ),
     );
 
