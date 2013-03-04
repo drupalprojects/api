@@ -134,3 +134,102 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
     $this->assertNoRaw(t('Save'), 'Comment form is not there');
   }
 }
+
+/**
+ * Tests the API text format in comments.
+ */
+class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
+  // Branch info for Drupal branch.
+  public $branch_info_core;
+  // Branch info for PHP brancn.
+  public $branch_info_php;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'API text format',
+      'description' => 'Tests API text format functionality in comments.',
+      'group' => 'API module',
+    );
+  }
+
+  function setUp() {
+    $this->baseSetUp();
+
+    // Set up a new super-user.
+    $this->super_user = $this->drupalCreateUser(array(
+      'access API reference',
+      'administer API reference',
+      'access content',
+      'access administration pages',
+      'administer blocks',
+      'administer nodes',
+      'access site reports',
+      'access comments',
+      'post comments',
+      'skip comment approval',
+      'administer filters',
+    ));
+
+    $this->drupalLogin($this->super_user);
+
+    // Set up comment settings so comments are allowed.
+    $this->drupalPost('admin/config/development/api/comments', array(
+        'comment' => 2,
+      ), t('Save comment settings'));
+
+    // Remove the PHP branch.
+    $this->removePHPBranch();
+
+    // Create a "php" branch with the sample PHP function list, from the admin
+    // interface.
+    $this->php_branch_info = $this->createPHPBranchUI();
+
+    // Leave the PHP branch, as we need it. Set up a branch for the Drupal
+    // core files.
+    $this->branch_info_core = $this->setUpBranchUI('', TRUE, array(
+      'project' => 'drupal',
+      'project_title' => 'Drupal',
+      'project_type' => 'core',
+      'branch_name' => '7.x',
+      'title' => 'Drupal 7.x',
+      'core_compatibility' => '7.x',
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample_drupal',
+      'excluded' => '',
+    ));
+
+    // Set up a files branch for the namespaces files.
+    $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+
+    // Set up the Filtered HTML text format to have the API format as part of
+    // it.
+    $this->drupalPost('admin/config/content/formats/filtered_html', array(
+        'filters[api_filter][status]' => 1,
+      ), t('Save configuration'));
+
+    // Parse the code.
+    $this->resetBranchesAndCache();
+    $this->updateBranches();
+    $this->processApiParseQueue();
+  }
+
+  /**
+   * Tests the API text format in comments
+   */
+  function testApiTextFormat() {
+
+    // Go to a namespaced class and make a comment. Verify that links are
+    // created and go to the right places.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassA.php/class/ClassA');
+    $this->drupalPost(NULL, array(
+      'subject' => 'test',
+      'comment_body[und][0][value]' => 'This is a test of links to things like MyClassB::bMethod(), another_function(), InterfaceD::dMethod(), foo_function(), and drupal_alter().',
+      ), t('Save'));
+
+    $this->assertLinkURLSubstring('MyClassB::bMethod', 'ClassB.php/function/ClassB', 'Link to aliased class method is created', 'Link to aliased class method goes to right place');
+    $this->assertLinkURLSubstring('another_function', 'no_namespace.php/function/another_function', 'Link to function is created', 'Link to function goes to right place');
+    $this->assertLinkURLSubstring('InterfaceD::dMethod', 'InterfaceD.php/function/InterfaceD', 'Link to interface method is created', 'Link to interface method goes to right namespace');
+    $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
+    $this->assertLinkURLSubstring('drupal_alter', 'drupal.php/function/drupal_alter', 'Link to core function is created', 'Link to core function goes to right place');
+
+  }
+}

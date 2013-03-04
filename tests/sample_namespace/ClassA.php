@@ -11,6 +11,9 @@ use api\test2\InterfaceC;
 
 /**
  * Sample class in a namespace.
+ *
+ * This documentation should make links to another_function() as well
+ * as MyClassB::bMethod() and InterfaceD::dMethod().
  */
 class ClassA extends MyClassB implements InterfaceC, InterfaceD {
 

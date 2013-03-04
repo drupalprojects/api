@@ -53,6 +53,11 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('ClassA');
     $this->assertText('Namespace', 'Namespace header is on class page');
     $this->assertLink('api\\test1', 0, 'Namespace link is on class page');
+    // Test linking in docs to some functions etc.
+    $this->assertLink('MyClassB::bMethod', 0, 'Link to aliased class method is made');
+    $this->assertLink('another_function', 0, 'Link to non namespaced function is made');
+    $this->assertLink('InterfaceD::dMethod', 0, 'Link to interface method in same namespace is made');
+
     $this->clickLink('api\\test1');
     $this->assertLink('InterfaceD', 0, 'Link went back to namespace page');
 

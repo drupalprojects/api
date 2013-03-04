@@ -1953,7 +1953,8 @@ function api_filter_info() {
     'api_filter' => array(
       'title' => t('API filter'),
       'description' => t('Add links to API objects, like theme() or theme.inc.'),
-      'process callback' => 'api_filter_documentation'
+      'process callback' => 'api_filter_documentation_process',
+      'tips callback' => 'api_filter_documentation_tips',
     ),
   );
 }
@@ -2388,17 +2389,57 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
 
   $filter = new stdClass();
   $filter->callback = '_filter_url';
-  $filter->settings = array( 'filter_url_length' => 72);
+  $filter->settings = array('filter_url_length' => 72);
 
   return _filter_url(api_filter_documentation($documentation, $branch, $file_did, $class_did, $aggressive_classes, $aggressive_topics), $filter);
 }
 
 /**
- * Turns function names into links for a text filter.
+ * Returns filter help ("tips") for the API filter.
+ */
+function api_filter_documentation_tips($filter, $format, $long) {
+  return t('Function names (and classes, constants, etc.) turn into links.');
+}
+
+/**
+ * Filters text: turns documentation into links.
  *
- * This is the process callback for the API filter supplied by api_filter().
- * It turns function names into links on output, using the currently active
- * branch.
+ * This is the process callback for the API documentation filter. It turns
+ * function names into links on output, using the currently active branch.
+ * Other parameters are passed to this function, but they are not actually used.
+ *
+ * @param $text
+ *   Text to be filtered.
+ */
+function api_filter_documentation_process($text) {
+
+  // Try to get the current branch.
+  $branch = api_get_active_branch();
+
+  // Load the current menu router item and see if we can extract an API
+  // class and file ID from it.
+  $class_did = 0;
+  $file_did = 0;
+  $item = menu_get_item();
+  if (isset($item['load_functions'])) {
+    foreach ($item['load_functions'] as $index => $function) {
+      if ($function == 'api_item_load' && isset($item['map'][$index]) && is_object($item['map'][$index])) {
+        $obj = $item['map'][$index];
+        $class_did = $obj->class_did;
+        $file_did = $obj->file_did;
+        if (!$class_did && ($obj->object_type == 'class' || $obj->object_type == 'interface')) {
+          $class_did = $obj->did;
+        }
+        break;
+      }
+    }
+  }
+
+  return api_link_documentation($text, $branch, $file_did, $class_did, FALSE, FALSE);
+}
+
+/**
+ * Turns function names into links.
  *
  * @param $text
  *   Text to filter.
@@ -2856,6 +2897,7 @@ function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = 
 
   // Deal with namespaces.
   if (in_array($type, array('function', 'function_or_constant', 'class'))) {
+    $original_name = $name;
     $nameinfo = api_get_namespace_info($file_did);
     $name = api_full_classname($name, $nameinfo['namespace'], $nameinfo['use_alias']);
     $match_name = $query->addField('ad', 'namespaced_name', 'match_name');
@@ -2988,8 +3030,14 @@ function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = 
     }
   }
 
-  // See whether to return a direct link, a search, or FALSE.
   if (!count($best) || ($type == 'group' && count($best) != 1)) {
+    // If we didn't find anything, and we were trying to match within a
+    // namespace, try to match without the namespace.
+    if (in_array($type, array('function', 'function_or_constant', 'class')) &&
+      !empty($nameinfo['namespace'])) {
+      return _api_make_match_link($original_name, $text, $type, FALSE, $branch, NULL, $core_compatibility);
+    }
+
     return FALSE;
   }
 
