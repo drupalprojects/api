@@ -929,13 +929,12 @@ function api_format_documentation($documentation, $auto_p = TRUE) {
     return '';
   }
 
-  // Check for Unicode, which screws everything up.
-  // @todo Maybe there is something more sensible that can be done, but for
-  // now, two-byte characters cause PDO database crashes, and also display
-  // problems, so just punt.
-  if (strlen($documentation) != drupal_strlen($documentation)) {
+  // Check for invalid Unicode, which screws everything up.
+  if (!mb_check_encoding($documentation, 'UTF-8')) {
     return t('Non-displayable characters.');
   }
+  // Replace 4-byte characters not supported by MySQL's utf8 encoding
+  $documentation = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '�', $documentation);
 
   $documentation = check_plain($documentation);
 
@@ -1191,13 +1190,12 @@ function api_documentation_summary($documentation) {
  */
 function api_format_php($code, &$references, $number = FALSE, $track_references = TRUE) {
 
-  // Check for Unicode, which screws everything up.
-  // @todo Maybe there is something more sensible that can be done, but for
-  // now, two-byte characters cause PDO database crashes, and also display
-  // problems, so just punt.
-  if (strlen($code) != drupal_strlen($code)) {
+  // Check for invalid Unicode, which screws everything up.
+  if (!mb_check_encoding($code, 'UTF-8')) {
     return t('Non-displayable characters.');
   }
+  // Replace 4-byte characters not supported by MySQL's utf8 encoding
+  $code = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '�', $code);
 
   $output = '';
 

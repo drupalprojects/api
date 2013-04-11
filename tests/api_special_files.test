@@ -42,12 +42,14 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
     $this->assertLink('AllUnicodeChars.txt', 0, 'Unicode text file is there');
     $this->assertLink('ClassWithUnicode.php', 0, 'Unicode class file is there');
-    $this->assertText(t('Non-displayable characters.'), 'Non-displayable message is there');
     $this->assertText('Tests that Unicode characters can be dealt with.', 'Class file description is there');
 
     // Verify the text file page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/AllUnicodeChars.txt');
-    $this->assertText(t('Non-displayable characters.'), 'Non-displayable message is there');
+    $this->assertText('abcdefghij', 'ASCII characters are there');
+    $this->assertText('àáâãä', 'Accented characters are there');
+    $this->assertText('ਙਚਛਜ', 'Some other Unicode characters are there');
+    $this->assertText('ゾタダ', 'Some CJK characters are there');
     $this->assertText('AllUnicodeChars.txt', 'File name is there');
 
     // Verify the class is listed on the classes page.
