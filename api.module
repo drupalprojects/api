@@ -1775,9 +1775,23 @@ function api_init() {
 /**
  * Implements hook_query_TAG_alter() for node_access queries.
  *
- * Excludes nodes of type 'api' from node queries.
+ * Excludes nodes of type 'api' from queries tagged 'node_access', unless the
+ * 'api_ignore_node_access' tag is also present. Also skips this if we are on
+ * the comment admin page.
  */
 function api_query_node_access_alter($query) {
+  // Skip this processing if the 'api_ignore_node_access' query tag has been
+  // set. This allows building things like comment forms in Views.
+  if ($query->hasTag('api_ignore_node_access')) {
+    return;
+  }
+
+  // Skip this processing on the comment admin page.
+  $arg = arg();
+  if (count($arg) >= 3 && $arg[0] == 'admin' && $arg[1] == 'content' && $arg[2] == 'comment') {
+    return;
+  }
+
   // Find all instances of the 'node' table, and make sure they exclude API
   // nodes.
   $tables = $query->getTables();

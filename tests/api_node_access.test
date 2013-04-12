@@ -32,11 +32,13 @@ class ApiNodeAccessTestCase extends ApiWebPagesBaseTest {
     // Create a couple of nodes. There should already be plenty of API nodes.
     $page = $this->drupalCreateNode();
     $article = $this->drupalCreateNode(array('type' => 'article'));
+    $branch = $this->getBranch();
+    $object = api_object_load('sample_function', $branch, 'function', 'sample.php');
 
     // Verify that a node query without the node_access tag returns both API
     // and non-API nodes.
     $results = db_query('SELECT * FROM {node}');
-    $this->verifyQueryResults($results, 'All nodes, no tag', array($page->nid, $article->nid), array('page', 'article', 'api'));
+    $this->verifyQueryResults($results, 'All nodes, no tag', array($page->nid, $article->nid, $object->did), array('page', 'article', 'api'));
 
     // Verify that a node query with the node_access tag returns only non-API
     // nodes.
@@ -45,6 +47,15 @@ class ApiNodeAccessTestCase extends ApiWebPagesBaseTest {
       ->addTag('node_access')
       ->execute();
     $this->verifyQueryResults($results, 'Simple nodes, with access tag', array($page->nid, $article->nid), array('page', 'article'), array('api'));
+
+    // Verify that a node query with both the node_access tag and the
+    // api_ignore_node_access tag returns both API and non-API nodes.
+    $results = db_select('node', 'n')
+      ->fields('n', array('nid', 'type'))
+      ->addTag('node_access')
+      ->addTag('api_ignore_node_access')
+      ->execute();
+    $this->verifyQueryResults($results, 'All nodes, both tags', array($page->nid, $article->nid, $object->did), array('page', 'article', 'api'));
 
     // Try a more complicated query with the node_access tag.
     $query = db_select('node_revision', 'r');
