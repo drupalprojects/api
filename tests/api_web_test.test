@@ -587,7 +587,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!classes-subdir.php/class/SubInSubDirSample');
     $this->assertLink('SampleInSubDir::baz', 0, 'Non-overridden function link is there');
     $this->assertLink('SubInSubDirSample::bar', 0, 'Overridden function link is there');
-    $this->assertText('A public method', 'Override method without doc inherits doc from parent');
+    $this->assertText('A public method', 'Override method with inheritdoc inherits doc from parent');
     $this->assertText('Overrides parent function', 'Override method with doc overrides parent doc');
     $this->assertLink('SubInSubDirSample::foo', 0, 'Link to override method is there');
     $this->assertLink('SampleInSubDir::foo', 0, 'Link to overridden method is there');

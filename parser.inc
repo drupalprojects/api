@@ -575,7 +575,10 @@ function api_save_documentation($docblocks) {
       continue;
     }
 
-    if (!empty($docblock['content'])) {
+    // Treat {@inheritdoc} as a blank doc block, meaning inherit from parent.
+    $docblock['content'] = str_replace('{@inheritdoc}', '', $docblock['content']);
+
+    if ($docblock['content'] && trim($docblock['content'])) {
       // Find parameter definitions.
       $offset = 0;
       $params = '';

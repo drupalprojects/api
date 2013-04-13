@@ -72,7 +72,9 @@ interface SampleInSubDirInterface {
  * Subclass in a subdirectory, which tests overrides of parent class.
  */
 class SubInSubDirSample extends SampleInSubDir implements SampleInterfaceTwo {
-  // Not documented.
+  /**
+   * {@inheritdoc}
+   */
   public function bar() {
   }
 
