@@ -15,6 +15,7 @@
  * - $defined: HTML reference to file that defines this class.
  * - $code: HTML-formatted declaration and code for this class.
  * - $related_topics: List of related groups/topics.
+ * - $call_links: Links to uses of this class, etc.
  * - $branch: Object with information about the branch.
  * - $object: Object with information about the class.
  *
@@ -74,3 +75,8 @@
   <h3><?php print t('Related topics') ?></h3>
   <?php print $related_topics ?>
 <?php } ?>
+
+<?php
+foreach ($call_links as $link) {
+  print $link;
+} ?>

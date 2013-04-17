@@ -84,6 +84,11 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertNoText('Namespace', 'Namespace header is not on non-namespaced class page');
     $this->assertNoLink('api\\test1', 'Namespace link is not on non-namespaced class page');
     $this->assertNoLink('api\\test2', 'Namespace link is not on non-namespaced class page');
+
+    // Test use references.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassB.php/class/ClassB');
+    $this->assertText('1 file declares its use of ClassB', 'Reference text is on class page');
+    $this->assertLink('ClassA.php', 0, 'Link to file using class is present');
   }
 
   /**

@@ -729,6 +729,8 @@ function api_page_function($function) {
  *     theme calls.
  *   - 'references': $name is the name of a function, find string references.
  *   - 'overrides': $exclude_did is the ID of a method, find overriding methods.
+ *   - 'uses': $name is the fully-namespaced name of a class, find files that
+ *     have use declarations.
  * @param $count
  *   If TRUE (default), return a count. If FALSE, return an array.
  * @param $exclude_did
@@ -749,6 +751,9 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // In a few cases, we want to look for either the base name or the
     // namespaced name.
     $altname = $obj->namespaced_name;
+    if ($type == 'uses') {
+      $name = $altname;
+    }
   }
 
   $matches = array();
@@ -765,7 +770,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       ->condition('r.object_type', array('function', 'member-class', 'computed-member'))
       ->condition('r.object_name', $name);
   }
-  if ($type == 'overrides') {
+  elseif ($type == 'overrides') {
     // Use overrides storage to find overrides of the ID passed in as "exclude".
     $did = $exclude_did;
     $base_query = db_select('api_overrides', 'o');
@@ -786,6 +791,18 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     else {
       $base_query->condition('r.object_name', $name);
     }
+  }
+  elseif ($type == 'uses') {
+    // Use namespace storage to find files with use declarations for this class.
+    // Note that $name probably starts with a backslash, while use declarations
+    // do not.
+    $name = substr(api_full_classname($name), 1);
+    $base_query = db_select('api_namespace', 'n');
+    $d = $base_query->leftJoin('api_documentation', 'd', 'n.did = d.did');
+    $base_query->condition('d.branch_id', $branch_id)
+      ->condition('d.did', $exclude_did, '<>')
+      ->condition('n.object_type', 'use_alias')
+      ->condition('n.class_name', $name);
   }
   elseif ($type == 'implementations') {
     // Use pattern matching to find functions that look like implementations of
@@ -1148,8 +1165,10 @@ function api_page_class($class) {
 
   $objects = drupal_render($objects);
 
+  $links = api_build_references(array('uses'), $class, $branch);
+
   // Put it all together.
-  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see));
+  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'call_links' => $links));
   $output .= _api_add_comments($class);
 
   return $output;
@@ -1577,6 +1596,9 @@ function api_reference_text($type, $count, $function) {
   }
   if ($type == 'implementations') {
     return format_plural($count, '1 function implements !name', '@count functions implement !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'uses') {
+    return format_plural($count, '1 file declares its use of !name', '@count files declare their use of !name', array('!name' => $name_to_use));
   }
   if ($type == 'overrides') {
     return format_plural($count, '1 method overrides !name', '@count methods override !name', array('!name' => $name_to_use));
