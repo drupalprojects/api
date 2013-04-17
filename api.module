@@ -2957,6 +2957,7 @@ function _api_make_match_link($name, $text, $type, $try_link = FALSE, $branch = 
     $hook_elements = explode('__', $name);
     while (count($hook_elements) > 0) {
       $hook = implode('__', $hook_elements);
+      $potential_names[] = str_replace('_', '-', $hook) . '.html.twig';
       $potential_names[] = str_replace('_', '-', $hook) . '.tpl.php';
       $potential_names[] = 'theme_' . $hook;
       array_pop($hook_elements);

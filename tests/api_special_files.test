@@ -105,5 +105,14 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
     $this->assertText('Sample Twig template file, taken from', 'File description is there');
     $this->assertNoText('Available variables', 'Extra information after first line is not shown');
+
+    // Visit the Twig template file and verify the theme call link is there.
+    $this->clickLink('sample.html.twig');
+    $this->assertText('Sample Twig template file', 'Theme link went to Twig file');
+    $this->assertLink('badheader_fun', 0, 'Link to theme calls is present');
+
+    // Click through to the badheader_fun() function and check the theme link.
+    $this->clickLink('badheader_fun');
+    $this->assertLinkURLSubstring('sample', '/sample.html.twig', 'Theme call turns into link', 'Link goes to right place');
   }
 }

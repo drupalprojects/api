@@ -13,6 +13,7 @@
  * A function.
  */
 function badheader_fun() {
+  theme('sample', array());
 }
 
 /**

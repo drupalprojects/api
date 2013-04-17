@@ -751,6 +751,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     $altname = $obj->namespaced_name;
   }
 
+  $matches = array();
   $branch_id = $branch->branch_id;
   $base_query = NULL;
   $args = array();
@@ -811,6 +812,11 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       // It's presumably a theme template file.
       $name = basename($name);
       $theme_name = str_replace('-', '_', substr($name, 0, strlen($name) - 8));
+    }
+    elseif (preg_match('|^(.*)\.[^.]*\.twig$|', $name, $matches)) {
+      // It's a *.*.twig file.
+      $name = basename($name);
+      $theme_name = str_replace('-', '_', basename($matches[1]));
     }
 
     if (strlen($theme_name) > 0) {
