@@ -90,6 +90,7 @@ function api_page_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#default_value' => variable_get('api_default_core_compatibility', '7.x'),
     '#title' => t('Default core compatibility'),
+    '#required' => TRUE,
     '#description' => t('The default branch/version to display if none is given in a URL'),
   );
 
@@ -97,6 +98,8 @@ function api_page_admin_form($form, &$form_state) {
     '#type' => 'textfield',
     '#default_value' => variable_get('api_default_project', 'drupal'),
     '#title' => t('Default project'),
+    '#required' => TRUE,
+    '#autocomplete_path' => 'api/project/autocomplete',
     '#description' => t('Name of the default project to display if none is given in a URL'),
   );
 
@@ -262,6 +265,7 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#type' => 'textfield',
     '#default_value' => $branch->project,
     '#description' => t('The identifier of the project this branch is part of.'),
+    '#autocomplete_path' => 'api/project/autocomplete',
     '#required' => TRUE,
   );
 

@@ -457,6 +457,13 @@ function api_menu() {
     );
   }
 
+  // Projects autocomplete callback. This is always available.
+  $items['api/project/autocomplete'] = array(
+    'page callback' => 'api_project_autocomplete',
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+  );
+
   // The rest of the menu items require there to be at least one branch.
   $branches = api_get_branches();
   if (!count($branches)) {
@@ -516,16 +523,8 @@ function api_menu() {
     'file' => 'api.pages.inc',
   );
 
-  // Autocomplete callbacks.
 
-  // Projects callback.
-  $items['api/project/autocomplete'] = array(
-    'page callback' => 'api_project_autocomplete',
-    'access arguments' => array('access API reference'),
-    'type' => MENU_CALLBACK,
-  );
-
-  // Search callback
+  // Search autocomplete callback.
   $items['api/search/autocomplete'] = array(
     'page callback' => 'api_search_autocomplete',
     'access arguments' => array('access API reference'),
