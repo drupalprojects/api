@@ -235,6 +235,10 @@ class ApiURLPatternsTest extends ApiTestCase {
         'url' => 'api/function_dump/' . $branch_name,
         'text' => array('sample_function($parameter, $complex_parameter) ### A sample function.'),
       ),
+      array(
+        'url' => 'api/' . $project_name . '/full_list/' . $branch_name,
+        'text' => array('"object_name":"sample_function"', '"summary":"A sample function."'),
+      ),
 
       // Check pages that should not exist.
       array(

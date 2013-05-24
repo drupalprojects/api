@@ -745,6 +745,24 @@ class ApiAdminPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('php', 'PHP branch type appears');
     $this->assertText($this->php_branch_info['title'], 'Test PHP branch title appears');
 
+    // Create an API branch and verify it shows up.
+    $this->clickLink('Add new API reference branch');
+    $info = array(
+      'title' => 'sample_api_branch',
+      'data[url]' => url('<front>', array('absolute' => TRUE )) . '/' . drupal_get_path('module', 'api') . '/tests/php_sample/sample_drupal_listing.json',
+      'data[search_url]' => url('<front>', array('absolute' => TRUE )) . '/api/test_api_project/test_api_branch/search/',
+      'data[core_compatibility]' => '7.x',
+      'data[project_type]' => 'core',
+      'update_frequency' => 1,
+    );
+    $this->drupalPost(NULL, $info, t('Save branch'));
+    $this->assertText($info['title'], 'New branch title is there');
+
+    // Delete it and verify it is gone.
+    $this->clickLink('delete', 1);
+    $this->drupalPost(NULL, array(), t('Delete'));
+    $this->assertNoText($info['title'], 'New branch title is gone');
+
     // Verify the branches overview page.
     $this->drupalGet('admin/config/development/api/branches');
 

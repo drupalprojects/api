@@ -174,7 +174,7 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
 
     // Set up comment settings so comments are allowed.
     $this->drupalPost('admin/config/development/api/comments', array(
-        'comment' => 2,
+        'comment' => COMMENT_NODE_OPEN,
       ), t('Save comment settings'));
 
     // Remove the PHP branch.
@@ -184,8 +184,7 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
     // interface.
     $this->php_branch_info = $this->createPHPBranchUI();
 
-    // Leave the PHP branch, as we need it. Set up a branch for the Drupal
-    // core files.
+    // Set up a branch for the Drupal core files.
     $this->branch_info_core = $this->setUpBranchUI('', TRUE, array(
       'project' => 'drupal',
       'project_title' => 'Drupal',
@@ -231,5 +230,88 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
     $this->assertLinkURLSubstring('drupal_alter', 'drupal.php/function/drupal_alter', 'Link to core function is created', 'Link to core function goes to right place');
 
+  }
+}
+
+/**
+ * Tests the API text format in comments without a regular branch.
+ */
+class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
+  // Branch info for API reference branch.
+  public $branch_info_api;
+  // Branch info for PHP brancn.
+  public $branch_info_php;
+  // Node for commenting.
+  public $node;
+
+  public static function getInfo() {
+    return array(
+      'name' => 'API text format references',
+      'description' => 'Tests API text format functionality without a regular branch.',
+      'group' => 'API module',
+    );
+  }
+
+  function setUp() {
+    $this->baseSetUp();
+
+    // Set up a new super-user.
+    $this->super_user = $this->drupalCreateUser(array(
+      'access API reference',
+      'administer API reference',
+      'access content',
+      'access administration pages',
+      'administer blocks',
+      'administer nodes',
+      'access site reports',
+      'access comments',
+      'post comments',
+      'skip comment approval',
+      'administer filters',
+    ));
+
+    $this->drupalLogin($this->super_user);
+
+    // Remove the PHP branch.
+    $this->removePHPBranch();
+
+    // Create a "php" branch with the sample PHP function list, from the admin
+    // interface.
+    $this->php_branch_info = $this->createPHPBranchUI();
+
+    // Create an "api" branch with the sample API functions.
+    $this->api_branch_info = $this->createAPIBranchUI();
+
+    // Specifically do not set up any regular files branches.
+
+    // Set up the Filtered HTML text format to have the API format as part of
+    // it.
+    $this->drupalPost('admin/config/content/formats/filtered_html', array(
+        'filters[api_filter][status]' => 1,
+      ), t('Save configuration'));
+
+    // Parse the code.
+    $this->resetBranchesAndCache();
+    $this->updateBranches();
+    $this->processApiParseQueue();
+
+    // Make a node.
+    $this->node = $this->drupalCreateNode(array('comment' => COMMENT_NODE_OPEN));
+  }
+
+  /**
+   * Tests the API text format in comments
+   */
+  function testApiTextFormat() {
+    // Go to the node page and make a comment. Verify that links are
+    // created and go to the right places.
+    $this->drupalGet('node/' . $this->node->nid);
+    $this->drupalPost(NULL, array(
+      'subject' => 'test',
+      'comment_body[und][0][value]' => 'This is a test of links to things like foo_function() and drupal_alter().',
+      ), t('Save'));
+
+    $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
+    $this->assertLinkURLSubstring('drupal_alter', 'example.com/api/test/drupal.php/function/drupal_alter/7.x-1.x', 'Link to fake API reference function is created', 'Link to API reference function goes to right place');
   }
 }

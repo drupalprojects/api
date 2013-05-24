@@ -60,6 +60,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
       'api_php_branch' => 0,
       'api_documentation' => 0,
       'api_php_documentation' => 0,
+      'api_external_documentation' => 0,
       'api_function' => 0,
       'api_members' => 0,
       'api_overrides' => 0,
@@ -198,7 +199,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_php_documentation'] = 2;
     $this->verifyCounts($counts, 0, 'Parse PHP branch');
 
-    // Delete the branch and vefify counts.
+    // Delete the branch and verify counts.
     $branches = api_get_php_branches();
     foreach ($branches as $branch) {
       $this->drupalPost('admin/config/development/api/php_branches/' . $branch->branch_id . '/delete', array(), t('Delete'));
@@ -208,6 +209,28 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_php_branch'] = 0;
     $counts['api_php_documentation'] = 0;
     $this->verifyCounts($counts, 0, 'Delete PHP branch');
+
+    // Add the fake API branch.
+    $this->createAPIBranchUI();
+    $this->resetBranchesAndCache();
+    $counts['api_php_branch'] = 1;
+    $this->verifyCounts($counts, 0, 'Create API branch');
+
+    // Parse and verify counts.
+    $this->updateBranches();
+    $counts['api_external_documentation'] = 6;
+    $this->verifyCounts($counts, 0, 'Parse API branch');
+
+    // Delete the branch and verify counts.
+    $branches = api_get_php_branches();
+    foreach ($branches as $branch) {
+      $this->drupalPost('admin/config/development/api/php_branches/' . $branch->branch_id . '/delete', array(), t('Delete'));
+      break;
+    }
+    $this->resetBranchesAndCache();
+    $counts['api_php_branch'] = 0;
+    $counts['api_external_documentation'] = 0;
+    $this->verifyCounts($counts, 0, 'Delete API branch');
 
     // Add and parse the sample branch again, then delete the project, and
     // verify counts.
@@ -239,9 +262,10 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_extends'] = 0;
     $this->verifyCounts($counts, 0, 'Project deleted');
 
-    // Add both sample and fake PHP branches again.
+    // Add both sample and fake PHP/API branches again.
     // Update the branches, but don't parse.
     $this->createPHPBranchUI();
+    $this->createAPIBranchUI();
     $this->setUpBranchUI();
     $this->resetBranchesAndCache();
     $this->updateBranches();

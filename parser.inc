@@ -799,10 +799,66 @@ function api_save_php_documentation($docblocks) {
 }
 
 /**
+ * Saves API branch documentation information to the database.
+ *
+ * @param $docblocks
+ *   An array containing information about functions found in the branch.
+ */
+function api_save_api_documentation($docblocks) {
+  // Remove all the old items from this branch. We don't care about preserving
+  // IDs, so there is no reason to use complicated logic and update existing
+  // records.
+  db_delete('api_external_documentation')
+    ->condition('branch_id', $docblocks[0]['branch_id'])
+    ->execute();
+
+  $did = api_new_external_doc_id();
+  $count = 0;
+  foreach ($docblocks as $docblock) {
+    if (!$count) {
+      // Build up queries and save the documentation in chunks, for speed.
+      $insertQuery = db_insert('api_external_documentation')
+        ->fields(array('did', 'branch_id', 'object_name', 'namespaced_name', 'title', 'member_name', 'summary', 'object_type', 'url'));
+    }
+    $docblock['did'] = $did;
+    $insertQuery->values($docblock);
+    $did++;
+    $count++;
+    if ($count >= 500) {
+      // Using a larger chunk size could risk running into database placeholder
+      // limits.
+      $insertQuery->execute();
+      $count = 0;
+    }
+  }
+
+  if ($count > 0) {
+    $insertQuery->execute();
+  }
+}
+
+/**
  * Returns a new ID for a PHP doc item.
  */
 function api_new_php_doc_id() {
   $select = db_select('api_php_documentation', 'p');
+  $select->addExpression('MAX(did)', 'a');
+  $ids = $select->groupBy('branch_id')
+    ->execute()
+    ->fetchCol();
+
+  if (count($ids)) {
+    return max($ids) + 1;
+  }
+
+  return 1;
+}
+
+/**
+ * Returns a new ID for an API reference branch doc item.
+ */
+function api_new_external_doc_id() {
+  $select = db_select('api_external_documentation', 'p');
   $select->addExpression('MAX(did)', 'a');
   $ids = $select->groupBy('branch_id')
     ->execute()
@@ -2041,6 +2097,7 @@ function api_has_documentation($object) {
  * Checks all branches to see if it's time to update, and queues if so.
  *
  * @see api_update_branch_php()
+ * @see api_update_branch_api()
  * @see api_update_branch_files()
  */
 function api_update_all_branches() {
@@ -2059,16 +2116,16 @@ function api_update_all_branches() {
     }
   }
 
-  // Check the PHP branches to see what needs updates.
+  // Check the reference branches to see what needs updates.
   foreach (api_get_php_branches(TRUE) as $branch) {
     if (api_should_queue($branch)) {
       // Add to queue and mark as queued.
-      $queue->createItem(array('type' => 'php', 'branch_id' => $branch->branch_id));
+      $queue->createItem(array('type' => $branch->reference_type, 'branch_id' => $branch->branch_id));
       $branch->queued = time();
       drupal_write_record('api_php_branch', $branch, 'branch_id');
     }
     else {
-      watchdog('api', 'Skipped update of PHP branch %branch', array('%branch' => $branch->title));
+      watchdog('api', 'Skipped update of reference branch %branch', array('%branch' => $branch->title));
     }
   }
 }
@@ -2081,17 +2138,13 @@ function api_update_all_branches() {
  *
  * @param $branch
  *   Object representing a PHP branch to update.
- * @param $force
- *   TRUE to force an update no matter what, and FALSE to update only if the
- *   time threshold has been exceeded.
  *
  * @return
- *   TRUE if the branch was updated, and FALSE if it was skipped due to not
- *   needing to be run this time.
+ *   TRUE if the branch was updated, and FALSE if there was an error.
  *
  * @see api_update_all_branches()
  */
-function api_update_branch_php($branch, $force = FALSE) {
+function api_update_branch_php($branch) {
   $response = drupal_http_request($branch->summary);
   if ($response->code === '200') {
     $docblocks = array();
@@ -2121,6 +2174,51 @@ function api_update_branch_php($branch, $force = FALSE) {
   // We didn't get a good response.
   $branch->queued = 0;
   drupal_write_record('api_php_branch', $branch, array('branch_id'));
+  watchdog('api', 'Bad HTTP response from PHP branch %branch_name.', array('%branch_name' => $branch->title));
+  return FALSE;
+}
+
+/**
+ * Updates an API branch.
+ *
+ * Queries the branch URL to get an updated item dump, and saves each item in
+ * the database.
+ *
+ * @param $branch
+ *   Object representing an API branch to update.
+ *
+ * @return
+ *   TRUE if the branch was updated, and FALSE if there was an error.
+ *
+ * @see api_update_all_branches()
+ */
+function api_update_branch_api($branch) {
+  $response = drupal_http_request($branch->url);
+  if ($response->code === '200') {
+    $data = drupal_json_decode($response->data);
+    $docblocks = array();
+    foreach ($data as $item) {
+      $item = (array) $item;
+      $item['branch_id'] = $branch->branch_id;
+      $docblocks[] = $item;
+    }
+
+    if (count($docblocks)) {
+      api_save_api_documentation($docblocks);
+    }
+
+    // Mark the branch as having been updated.
+    $branch->last_updated = time();
+    $branch->queued = 0;
+    drupal_write_record('api_php_branch', $branch, array('branch_id'));
+    watchdog('api', 'Updated API branch %branch_name.', array('%branch_name' => $branch->title));
+    return TRUE;
+  }
+
+  // We didn't get a good response.
+  $branch->queued = 0;
+  drupal_write_record('api_php_branch', $branch, array('branch_id'));
+  watchdog('api', 'Bad HTTP response from API branch %branch_name.', array('%branch_name' => $branch->title));
   return FALSE;
 }
 
@@ -2129,17 +2227,11 @@ function api_update_branch_php($branch, $force = FALSE) {
  *
  * @param $branch
  *   Object representing the branch.
- * @param $force
- *   TRUE to foce update no matter what.
  *
  * @return
  *   TRUE if we should queue this branch, and FALSE if not.
  */
-function api_should_queue($branch, $force = FALSE) {
-  if ($force) {
-    return TRUE;
-  }
-
+function api_should_queue($branch) {
   if (isset($branch->queued) && $branch->queued) {
     // It is already queued up.
     return FALSE;

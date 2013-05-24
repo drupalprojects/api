@@ -149,6 +149,41 @@ function api_page_function_dump($branch_name) {
 }
 
 /**
+ * Page callback: Outputs a list of all documentation objects in JSON format.
+ *
+ * Note that this function outputs the JSON data directly rather than returning
+ * it.
+ *
+ * @param object $branch
+ *   Object representing the branch to dump objects for.
+ *
+ * @see api_menu()
+ */
+function api_dump_full_list($branch) {
+  $result = db_select('api_documentation', 'd')
+    ->fields('d', array('object_name', 'namespaced_name', 'member_name', 'title', 'summary', 'object_type', 'branch_id', 'file_name'))
+    ->condition('d.branch_id', $branch->branch_id)
+    ->condition('d.object_type', 'mainpage', '<>')
+    ->orderBy('d.object_name')
+    ->execute();
+
+  $objs = array();
+  foreach ($result as $doc) {
+    $objs[] = array(
+      'object_name' => $doc->object_name,
+      'namespaced_name' => $doc->namespaced_name,
+      'title' => $doc->title,
+      'member_name' => $doc->member_name,
+      'summary' => $doc->summary,
+      'object_type' => $doc->object_type,
+      'url' => url(api_url($doc), array('absolute' => TRUE)),
+    );
+  }
+
+  drupal_json_output($objs);
+}
+
+/**
  * Page callback: Performs a search.
  *
  * @param $branch

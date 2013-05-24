@@ -136,7 +136,7 @@ function api_schema() {
   );
 
   $schema['api_php_branch'] = array(
-    'description' => 'Information about php branches (e.g., php.net functions)',
+    'description' => 'Information about PHP reference branches (e.g., php.net functions)',
     'fields' => array(
       'branch_id' => array(
         'description' => 'Primary key, numeric ID',
@@ -157,7 +157,7 @@ function api_schema() {
         'not null' => TRUE,
       ),
       'reference_type' => array(
-        'description' => 'Type of references: php, etc.',
+        'description' => 'Type of references: php, api, etc.',
         'type' => 'varchar',
         'length' => '30',
         'not null' => TRUE,
@@ -367,6 +367,75 @@ function api_schema() {
       'object_type' => array('object_type'),
       'branch_id' => array('branch_id'),
       'member_name' => array('member_name'),
+    ),
+  );
+
+  $schema['api_external_documentation'] = array(
+    'fields' => array(
+      'did' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'branch_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'object_name' => array(
+        'type' => 'varchar',
+        'length' => '127',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'namespaced_name' => array(
+        'description' => 'Fully-qualified namespaced name, starting with backslash',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'title' => array(
+        'description' => 'Display title',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'member_name' => array(
+        'description' => 'For class members, the name without Class::',
+        'type' => 'varchar',
+        'length' => 127,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'object_type' => array(
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'summary' => array(
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => TRUE,
+      ),
+      'url' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('did'),
+    'indexes' => array(
+      'object_name' => array('object_name', 'branch_id', 'object_type'),
+      'object_type' => array('object_type'),
+      'branch_id' => array('branch_id'),
+      'member_name' => array('member_name'),
+      'namespaced_name' => array('namespaced_name'),
+      'title' => array('title'),
     ),
   );
 
@@ -1382,6 +1451,80 @@ function api_update_7122() {
 function api_update_7123() {
   $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
+
+/**
+ * Add table {api_external_documentation}.
+ */
+function api_update_7124() {
+  db_create_table('api_external_documentation', array(
+    'fields' => array(
+      'did' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'branch_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'object_name' => array(
+        'type' => 'varchar',
+        'length' => '127',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'namespaced_name' => array(
+        'description' => 'Fully-qualified namespaced name, starting with backslash',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'title' => array(
+        'description' => 'Display title',
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'member_name' => array(
+        'description' => 'For class members, the name without Class::',
+        'type' => 'varchar',
+        'length' => 127,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'object_type' => array(
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'summary' => array(
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => TRUE,
+      ),
+      'url' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+    ),
+    'primary key' => array('did'),
+    'indexes' => array(
+      'object_name' => array('object_name', 'branch_id', 'object_type'),
+      'object_type' => array('object_type'),
+      'branch_id' => array('branch_id'),
+      'member_name' => array('member_name'),
+      'namespaced_name' => array('namespaced_name'),
+      'title' => array('title'),
+    ),
+  ));
 }
 
 /**

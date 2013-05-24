@@ -91,7 +91,7 @@ function api_page_admin_form($form, &$form_state) {
     '#default_value' => variable_get('api_default_core_compatibility', '7.x'),
     '#title' => t('Default core compatibility'),
     '#required' => TRUE,
-    '#description' => t('The default branch/version to display if none is given in a URL'),
+    '#description' => t('The core compatibility of the default branch/version to display if none is given in a URL'),
   );
 
   $form['api_default_project'] = array(
@@ -125,6 +125,11 @@ function api_php_branch_list() {
     '#markup' => '<p>' . l(t('Add new PHP reference branch'), 'admin/config/development/api/php_branches/new') . '</p>',
   );
 
+  $output['add_new_api'] = array(
+    '#type' => 'markup',
+    '#markup' => '<p>' . l(t('Add new API reference branch'), 'admin/config/development/api/php_branches/new_api') . '</p>',
+  );
+
   // Build a list of PHP branches.
   $branches = api_get_php_branches();
 
@@ -141,8 +146,15 @@ function api_php_branch_list() {
     $row[] = check_plain($branch->title);
     $row[] = check_plain($branch->reference_type);
     $ops = array();
-    $ops[] = l(t('edit'), 'admin/config/development/api/php_branches/' . $branch->branch_id);
+
+    if ($branch->reference_type == 'php') {
+      $ops[] = l(t('edit'), 'admin/config/development/api/php_branches/' . $branch->branch_id);
+    } elseif ($branch->reference_type == 'api') {
+      $ops[] = l(t('edit'), 'admin/config/development/api/api_branches/' . $branch->branch_id);
+    }
+
     $ops[] = l(t('delete'), 'admin/config/development/api/php_branches/' . $branch->branch_id . '/delete');
+
     $ops[] = l(t('update'), 'admin/config/development/api/php_branches/' . $branch->branch_id . '/update');
     $row[] = implode(' ', $ops);
 
@@ -154,7 +166,7 @@ function api_php_branch_list() {
     '#markup' => theme('table', array(
     'header' => $header,
     'rows' => $rows,
-    'empty' => t('There are no PHP references set up. You can <a href="@url">add a PHP reference branch</a>.', array('@url' => url('admin/config/development/api/php_branches/new'))),
+    'empty' => t('There are no reference branches set up. You can <a href="@url">add a PHP reference branch</a> or <a href="@apiurl">add an API reference branch</a>.', array('@url' => url('admin/config/development/api/php_branches/new'), '@apiurl' => url('admin/config/development/api/api_branches/new'))),
   )));
 
   return $output;
@@ -502,7 +514,7 @@ function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#required' => TRUE,
   );
 
-  // At the moment, there is only the PHP reference type.
+  // This form is only for PHP-type branches.
   $form['reference_type'] = array(
     '#type' => 'hidden',
     '#value' => 'php',
@@ -517,6 +529,7 @@ function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#required' => TRUE,
     '#description' => t('The URL of the PHP function summary list.'),
   );
+
   $form['data']['path'] = array(
     '#type' => 'textfield',
     '#title' => t('Function URL'),
@@ -550,6 +563,8 @@ function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
 
 /**
  * Form submission handler for api_php_branch_edit_form().
+ *
+ * Also used by api_api_branch_edit_form().
  */
 function api_php_branch_edit_form_submit($form, &$form_state) {
   $branch = $form['#branch'];
@@ -562,6 +577,111 @@ function api_php_branch_edit_form_submit($form, &$form_state) {
 
   drupal_set_message(t('Saved %branch_name.', array('%branch_name' => $branch->title)));
   $form_state['redirect'] = 'admin/config/development/api/php_branches';
+}
+
+/**
+ * Form constructor for the edit form for an API reference branch.
+ *
+ * @param $branch_id
+ *   ID of the branch to edit.
+ *
+ * @see api_php_branch_edit_form_submit()
+ * @ingroup forms
+ */
+function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
+  if (is_numeric($branch_id)) {
+    $branches = api_get_php_branches();
+    $branch = isset($branches[$branch_id]) ? $branches[$branch_id] : NULL;
+  }
+
+  if (!isset($branch)) {
+    $branch = new stdClass();
+    $branch->branch_id = 0;
+    $branch->title = '';
+    $branch->reference_type = 'api';
+    $branch->url = '';
+    $branch->core_compatibility = '7.x';
+    $branch->project_type = 'core';
+    $branch->update_frequency = 1;
+    $branch->search_url = '';
+  }
+
+  $form = array(
+    '#branch' => $branch,
+  );
+
+  $form['title'] = array(
+    '#title' => t('Title'),
+    '#type' => 'textfield',
+    '#default_value' => $branch->title,
+    '#description' => t('Used in admin screens only.'),
+    '#required' => TRUE,
+  );
+
+  // This form is for the API type of reference branch.
+  $form['reference_type'] = array(
+    '#type' => 'hidden',
+    '#value' => 'api',
+  );
+
+  $form['data'] = array('#tree' => TRUE);
+
+  $form['data']['url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Branch full_list URL'),
+    '#default_value' => $branch->url,
+    '#required' => TRUE,
+    '#description' => t('The URL of the API documentation dump, such as http://api.drupal.org/api/drupal/full_list/7'),
+  );
+
+  $form['data']['search_url'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Branch search URL'),
+    '#default_value' => $branch->url,
+    '#required' => TRUE,
+    '#description' => t('The URL to use for searching by appending the search term, such as http://api.drupal.org/api/drupal/7/search/'),
+  );
+
+  $form['data']['core_compatibility'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $branch->core_compatibility,
+    '#title' => t('Core compatibility'),
+    '#required' => TRUE,
+  );
+
+  $form['data']['project_type'] = array(
+    '#title' => t('Type'),
+    '#type' => 'textfield',
+    '#default_value' => $branch->project_type,
+    '#description' => t('Type of project (core, module, theme, etc.).'),
+    '#required' => TRUE,
+  );
+
+  $form['update_frequency'] = array(
+    '#type' => 'select',
+    '#title' => t('Branch update frequency'),
+    '#description' => t('During cron runs, this branch will be checked for updates in the information. This sets a minimum time to wait before checking.'),
+    '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
+    '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save branch'),
+  );
+
+  if (is_numeric($branch_id)) {
+    $form[] = array(
+      '#type' => 'markup',
+      '#markup' => l(t('Delete'), 'admin/config/development/api/php_branches/' . $branch->branch_id . '/delete'),
+    );
+  }
+
+  // Use the submit handler for the PHP branch edit form, which is generic
+  // enough to work for this type too.
+  $form['#submit'] = array('api_php_branch_edit_form_submit');
+
+  return $form;
 }
 
 /**
