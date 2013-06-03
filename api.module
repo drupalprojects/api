@@ -915,6 +915,25 @@ function api_menu() {
       'file' => 'api.pages.inc',
     );
 
+    if ($is_default) {
+      $items['api/' . $branch->project . '/deprecated'] = array(
+        'title' => 'Deprecated',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'deprecated'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/deprecated/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'deprecated'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+
     // Dump of all documentation items in the branch.
     if ($is_default) {
       $items['api/' . $branch->project . '/full_list'] = array(
@@ -1448,7 +1467,7 @@ function api_object_load($object_name_or_did, $branch = NULL, $object_type = '',
     if (!empty($result_object->documented_did) && $result_object->documented_did !== $result_object->did) {
       $documented_object = api_object_load((int) $result_object->documented_did, $branch, $object_type);
       if (isset($documented_object)) {
-        foreach (array('documentation', 'parameters', 'return_value', 'see', 'throws', 'var') as $member) {
+        foreach (array('documentation', 'parameters', 'return_value', 'see', 'deprecated', 'throws', 'var') as $member) {
           $result_object->$member = $documented_object->$member;
         }
       }
@@ -1613,6 +1632,7 @@ function api_theme() {
         'call_links' => array(),
         'code' => NULL,
         'see' => NULL,
+        'deprecated' => NULL,
         'throws' => NULL,
         'class' => NULL,
       ),
@@ -1629,6 +1649,7 @@ function api_theme() {
         'code' => NULL,
         'related_topics' => NULL,
         'see' => NULL,
+        'deprecated' => NULL,
         'class' => NULL,
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
@@ -1644,6 +1665,7 @@ function api_theme() {
         'code' => NULL,
         'related_topics' => NULL,
         'see' => NULL,
+        'deprecated' => NULL,
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
       'path' => drupal_get_path('module', 'api') . '/templates',
@@ -1658,6 +1680,7 @@ function api_theme() {
         'code' => NULL,
         'related_topics' => NULL,
         'see' => NULL,
+        'deprecated' => NULL,
         'var' => NULL,
         'class' => NULL,
       ),
@@ -1677,6 +1700,7 @@ function api_theme() {
         'code' => NULL,
         'related_topics' => NULL,
         'see' => NULL,
+        'deprecated' => NULL,
         'call_links' => array(),
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
@@ -1691,6 +1715,7 @@ function api_theme() {
         'objects' => NULL,
         'code' => NULL,
         'see' => NULL,
+        'deprecated' => NULL,
         'related_topics' => NULL,
         'defined' => '',
         'call_links' => array(),
@@ -1924,6 +1949,9 @@ function api_block_view($delta) {
         if ($counts['namespaces'] > 0) {
           $links[] = l(t('Namespaces'), 'api/' . $branch->project . '/namespaces' . $suffix);
         }
+        if ($counts['deprecated'] > 0) {
+          $links[] = l(t('Deprecated'), 'api/' . $branch->project . '/deprecated' . $suffix);
+        }
 
         return array(
           'subject' => t('API Navigation'),
@@ -1962,9 +1990,10 @@ function api_listing_counts($branch) {
     'globals' => 0,
     'files' => 0,
     'namespaces' => 0,
+    'deprecated' => 0,
   );
 
-  // These queries mirror what is done in api_page_listing().
+  // These queries mirror what is done in the views used by api_page_listing().
   $query = db_select('api_documentation', 'ad')
     ->condition('branch_id', $branch->branch_id)
     ->condition('object_type', 'group')
@@ -1990,6 +2019,15 @@ function api_listing_counts($branch) {
     ->groupBy('branch_id');
   $query->addExpression('COUNT(*)', 'num');
   $return['classes'] = $query
+    ->execute()
+    ->fetchField();
+
+  $query = db_select('api_documentation', 'ad')
+    ->condition('branch_id', $branch->branch_id)
+    ->condition('deprecated', '', '<>')
+    ->groupBy('branch_id');
+  $query->addExpression('COUNT(*)', 'num');
+  $return['deprecated'] = $query
     ->execute()
     ->fetchField();
 
@@ -2598,7 +2636,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
   $prepend = '';
   $append = '';
   $prepend_if_not_found = NULL;
-  $use_php = TRUE;
+  $use_php = FALSE;
   $type = '';
   $pattern = '';
   $continue_matching = FALSE;
@@ -2622,6 +2660,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $append = '(';
       $pattern = '!' . API_RE_WORD_BOUNDARY_START . '(' . API_RE_FUNCTION_IN_TEXT . ')\(!';
       $type = 'function';
+      $use_php = TRUE;
       break;
 
     case 'code function':
@@ -2630,6 +2669,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $prepend = '<span class="php-function-or-constant">';
       $append = '</span>';
       $type = 'function_or_constant';
+      $use_php = TRUE;
       break;
 
     case 'code class':
@@ -2657,7 +2697,6 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $prepend = '<span class="php-function-or-constant">\'';
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
-      $use_php = FALSE;
       $type = 'function';
       break;
 
@@ -2670,7 +2709,6 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $append = '</span>';
       $prepend_if_not_found = '';
       $append_if_not_found = '';
-      $use_php = FALSE;
       $type = 'yaml_reference';
       break;
 
@@ -2682,7 +2720,6 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $prepend = '<span class="php-function-or-constant">\'';
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
-      $use_php = FALSE;
       $type = 'hook';
       break;
 
@@ -2692,7 +2729,6 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $prepend = '<span class="php-function-or-constant">\'';
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
-      $use_php = FALSE;
       $type = 'alter hook';
       break;
 
@@ -2702,7 +2738,6 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $prepend = '<span class="php-function-or-constant">\'';
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
-      $use_php = FALSE;
       $type = 'theme';
       break;
 

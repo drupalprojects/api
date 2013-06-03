@@ -162,6 +162,7 @@ function api_parse_php_file($docblock) {
     'documentation' => '',
     'references' => array(),
     'see' => '',
+    'deprecated' => '',
     'start_line' => 0,
     'namespaced_name' => '',
     'modifiers' => '',
@@ -580,17 +581,15 @@ function api_save_documentation($docblocks) {
 
     if ($docblock['content'] && trim($docblock['content'])) {
       // Find parameter definitions.
-      $offset = 0;
       $params = '';
-      while (preg_match('/' . API_RE_TAG_START . 'param\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', substr($docblock['content'], $offset), $param_match, PREG_OFFSET_CAPTURE)) {
-        $docblock['content'] = str_replace($param_match[0][0], '', $docblock['content']);
+      while (preg_match('/' . API_RE_TAG_START . 'param\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $param_match)) {
+        $docblock['content'] = str_replace($param_match[0], '', $docblock['content']);
         // Add some formatting to the parameter -- strong tag for everything
         // that was on the @param line, and a colon after. Note that tags
         // are stripped out below, so we use [strong] and then fix it later.
-        $this_param = $param_match[1][0];
+        $this_param = $param_match[1];
         $this_param = preg_replace('|^([^\n]+)|', '[strong]$1[/strong]:', $this_param);
         $params .= "\n\n" . $this_param;
-        $offset = $param_match[0][1];
       }
       // Format and then replace our fake tags with real ones.
       $params = api_format_documentation($params);
@@ -608,12 +607,10 @@ function api_save_documentation($docblocks) {
       $docblock['return_value'] = api_format_documentation($docblock['return_value']);
 
       // Find @see lines.
-      $offset = 0;
       $docblock['see'] = '';
-      while (preg_match('/' . API_RE_TAG_START . 'see\s(.*?)\n/s', substr($docblock['content'], $offset), $match, PREG_OFFSET_CAPTURE)) {
-        $docblock['content'] = str_replace($match[0][0], '', $docblock['content']);
-        $docblock['see'] .= "\n\n" . $match[1][0];
-        $offset = $match[0][1];
+      while (preg_match('/' . API_RE_TAG_START . 'see\s(.*?)\n/s', $docblock['content'], $match)) {
+        $docblock['content'] = str_replace($match[0], '', $docblock['content']);
+        $docblock['see'] .= "\n\n" . $match[1];
       }
       $docblock['see'] = api_format_documentation($docblock['see']);
 
@@ -624,12 +621,21 @@ function api_save_documentation($docblocks) {
         $docblock['var'] = trim($match[1]);
       }
 
-      // Find @throws, a paragraph
+      // Find @throws, a paragraph (could be more than one).
       $docblock['throws'] = '';
-      if (preg_match('/' . API_RE_TAG_START . 'throws\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $match)) {
+      while (preg_match('/' . API_RE_TAG_START . 'throws\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $match)) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
-        $docblock['throws'] = api_format_documentation($match[1]);
+        $docblock['throws'] .= "\n\n" . $match[1];
       }
+      $docblock['throws'] = api_format_documentation($docblock['throws']);
+
+      // Find @deprecated, a paragraph (could be more than one).
+      $docblock['deprecated'] = '';
+      while (preg_match('/' . API_RE_TAG_START . 'deprecated\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $match)) {
+        $docblock['content'] = str_replace($match[0], '', $docblock['content']);
+        $docblock['deprecated'] .= "\n\n" . $match[1];
+      }
+      $docblock['deprecated'] = api_format_documentation($docblock['deprecated']);
 
       // Format everything remaining as the main documentation.
       $docblock['documentation'] = api_format_documentation($docblock['content']);
@@ -1857,7 +1863,7 @@ function api_shutdown() {
       if ($class_did != $object->class_did) {
         $query = db_select('api_documentation', 'd')
           ->condition('class_did', $class_did)
-          ->fields('d', array('did', 'summary', 'documentation', 'see', 'throws', 'var', 'class_did'))
+          ->fields('d', array('did', 'summary', 'documentation', 'see', 'deprecated', 'throws', 'var', 'class_did'))
           ->condition('d.object_type', $object->object_type)
           ->condition('d.member_name', $object->member_name);
         $query->leftJoin('api_function', 'af', 'af.did = d.did');
@@ -2085,7 +2091,7 @@ function api_shutdown() {
  *   - var
  */
 function api_has_documentation($object) {
-  foreach (array('documentation', 'parameters', 'return_value', 'see', 'throws', 'var') as $member) {
+  foreach (array('documentation', 'parameters', 'return_value', 'see', 'deprecated', 'throws', 'var') as $member) {
     if (!empty($object->$member)) {
       return TRUE;
     }
@@ -2509,6 +2515,7 @@ function _api_add_text_defaults(&$record, $table) {
         'documentation' => '',
         'code' => '',
         'see' => '',
+        'deprecated' => '',
         'var' => '',
         'throws' => '',
         'namespace' => '',

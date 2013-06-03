@@ -54,6 +54,11 @@
   <h3><?php print l(t('Namespaces'), 'api/' . $branch->project . '/namespaces/' . $branch->branch_name); ?></h3>
 <?php
   }
+  if ($counts['deprecated'] > 0) {
+?>
+  <h3><?php print l(t('Deprecated'), 'api/' . $branch->project . '/deprecated/' . $branch->branch_name); ?></h3>
+<?php
+  }
 ?>
   <h3><?php print t('API search'); ?></h3>
   <?php $form = drupal_get_form('api_search_form', $branch);

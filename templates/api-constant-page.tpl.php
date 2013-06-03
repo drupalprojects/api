@@ -10,6 +10,7 @@
  * - $override: If this is an override, the text to show for that.
  * - $namespace: Name of the namespace for this function, if any.
  * - $see: See also documentation.
+ * - $deprecated: Deprecated documentation.
  * - $defined: HTML reference to file that defines this constant.
  * - $class: The text for the class section.
  * - $code: HTML-formatted declaration of this constant.
@@ -47,6 +48,13 @@
   <h3><?php print t('Namespace'); ?></h3>
   <?php print $namespace; ?>
 <?php endif; ?>
+
+<?php if (!empty($deprecated)) { ?>
+<div class="api-deprecated">
+  <h3><?php print t('Deprecated') ?></h3>
+  <?php print $deprecated ?>
+</div>
+<?php } ?>
 
 <?php if (!empty($see)) { ?>
   <h3><?php print t('See also') ?></h3>

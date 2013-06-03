@@ -33,11 +33,17 @@
  * should not link to the defgroup above either.
  *
  * @see http://example.com/samp_GRP-6.x
+ *
+ * @deprecated This global is deprecated for sample purposes. Use
+ *   something else instead.
  */
 global $sample_global;
 
 /**
  * A sample constant.
+ *
+ * @deprecated This constant is deprecated for sample purposes. Use
+ *   something else instead.
  */
 define('SAMPLE_CONSTANT', 7);
 
@@ -133,6 +139,9 @@ function sample_function($parameter, $complex_parameter) {
  *
  * @return SampleInterface
  *   This return value should link to the interface.
+ *
+ * @deprecated This function is deprecated for sample purposes. Use
+ *   sample_in_code_links() instead.
  *
  * @ingroup samp_GRP-6.x
  */

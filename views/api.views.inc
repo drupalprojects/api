@@ -293,6 +293,14 @@ function api_views_data() {
       ),
     ),
 
+    'deprecated' => array(
+      'title' => t('Deprecated'),
+      'help' => t('Whether this item is deprecated or not'),
+      'filter' => array(
+        'handler' => 'views_handler_filter_boolean_operator_string',
+      ),
+    ),
+
   );
 
   $data['api_branch'] = array(

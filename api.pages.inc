@@ -343,6 +343,7 @@ function api_page_file($file) {
 
   $documentation = api_link_documentation($file->documentation, $branch, $file->did);
   $see = api_link_documentation($file->see, $branch, $file->did, NULL, TRUE, TRUE);
+  $deprecated = api_link_documentation($file->deprecated, $branch, $file->did, NULL, TRUE, FALSE);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($file->did));
   $code = api_link_code($file->code, $branch, $file->did);
   $defined = $file->file_name;
@@ -373,7 +374,7 @@ function api_page_file($file) {
   // If this is a theme template, make reference link.
   $links = api_build_references(array('theme_invokes'), $file, $branch);
 
-  $output = theme('api_file_page', array('object' => $file, 'documentation' => $documentation, 'objects' => $objects, 'code' => $code, 'see' => $see, 'related_topics' => $related_topics, 'defined' => $defined, 'call_links' => $links));
+  $output = theme('api_file_page', array('object' => $file, 'documentation' => $documentation, 'objects' => $objects, 'code' => $code, 'see' => $see, 'deprecated' => $deprecated, 'related_topics' => $related_topics, 'defined' => $defined, 'call_links' => $links));
   $output .= _api_add_comments($file);
   return $output;
 }
@@ -419,7 +420,8 @@ function api_page_branch($branch) {
  * @param $branch
  *   Object representing branch to generate the listing for.
  * @param $object_type
- *   Type of object to list ('file', 'group', etc.).
+ *   Type of object to list ('file', 'group', etc.), or 'deprecated' for the
+ *   Deprecated page.
  * @param $is_page
  *   TRUE if this is on its own page, FALSE if it is included in another page.
  *
@@ -444,6 +446,7 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
       'global' => t('Globals'),
       'group' => t('Topics'),
       'namespace' => t('Namespaces'),
+      'deprecated' => t('Deprecated'),
     );
     $title = $titles[$object_type];
     drupal_set_title($title);
@@ -486,6 +489,12 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_namespaces', 'block_namespace_list', array($branch->branch_id)),
+    );
+  }
+  elseif ($object_type === 'deprecated' ) {
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_listings', 'block_deprecated', array($branch->branch_id)),
     );
   }
 
@@ -734,6 +743,7 @@ function api_page_function($function) {
   $parameters = api_link_documentation($function->parameters, $branch, $function->file_did, $function->class_did, TRUE);
   $return = api_link_documentation($function->return_value, $branch, $function->file_did, $function->class_did, TRUE);
   $see = api_link_documentation($function->see, $branch, $function->file_did, $function->class_did, TRUE, TRUE);
+  $deprecated = api_link_documentation($function->deprecated, $branch, $function->file_did, $function->class_did, TRUE, FALSE);
   $throws = api_link_documentation($function->throws, $branch, $function->file_did, $function->class_did, TRUE);
   $code = api_link_code($function->code, $branch, $function->file_did, $function->class_did);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($function->did));
@@ -743,7 +753,7 @@ function api_page_function($function) {
   $links = api_build_references(array('calls', 'references', 'implementations', 'invokes', 'theme_invokes', 'overrides'), $function, $branch);
 
   // Put it all together and theme the output.
-  $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'throws' => $throws, 'class' => $class));
+  $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'deprecated' => $deprecated, 'throws' => $throws, 'class' => $class));
   $output .= _api_add_comments($function);
   return $output;
 }
@@ -1102,6 +1112,7 @@ function api_page_simple_item($item, $type) {
   $code = api_link_code($item->code, $branch, $item->file_did, $item->class_did);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($item->did));
   $see = api_link_documentation($item->see, $branch, $item->file_did, $item->class_did, TRUE, TRUE);
+  $deprecated = api_link_documentation($item->deprecated, $branch, $item->file_did, $item->class_did, TRUE, FALSE);
   $var = '';
   if ($type == 'property') {
     $var = api_link_name($item->var, $branch, '', '', $item->file_did, $item->class_did);
@@ -1115,7 +1126,7 @@ function api_page_simple_item($item, $type) {
     'property' => 'api_property_page',
   );
 
-  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'var' => $var, 'class' => $class));
+  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'var' => $var, 'class' => $class));
   $output .= _api_add_comments($item);
   return $output;
 }
@@ -1140,6 +1151,7 @@ function api_page_class($class) {
   $related_topics = api_display_view('api_references', 'block_related_topics', array($class->did));
   $code = api_link_code($class->code, $branch, $class->file_did, $class->did);
   $see = api_link_documentation($class->see, $branch, $class->file_did, $class->did, TRUE, TRUE);
+  $deprecated = api_link_documentation($class->deprecated, $branch, $class->file_did, $class->did, TRUE, FALSE);
 
   // Figure out the class hierarchy, and what classes implement if this is
   // an interface.
@@ -1203,7 +1215,7 @@ function api_page_class($class) {
   $links = api_build_references(array('uses'), $class, $branch);
 
   // Put it all together.
-  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'call_links' => $links));
+  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'call_links' => $links));
   $output .= _api_add_comments($class);
 
   return $output;

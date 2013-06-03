@@ -13,6 +13,7 @@
  * - $throws: Documentation of thown exceptions.
  * - $class: If this is a method, the text for the class section.
  * - $see: See also documentation.
+ * - $deprecated: Deprecated documentation.
  * - $related_topics: Related topics documentation.
  * - $call_links: Links to calling functions, hook implementations, etc.
  * - $defined: HTML reference to file that defines this function.
@@ -78,6 +79,13 @@
 <?php } ?>
 
 <?php print $override; ?>
+
+<?php if (!empty($deprecated)) { ?>
+<div class="api-deprecated">
+  <h3><?php print t('Deprecated') ?></h3>
+  <?php print $deprecated ?>
+</div>
+<?php } ?>
 
 <?php if (!empty($throws)) { ?>
   <h3><?php print t('Throws') ?></h3>

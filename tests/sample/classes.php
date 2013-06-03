@@ -41,6 +41,9 @@ class Sample extends ClassNotDefinedHere implements SampleInterface {
    * longer than 255 characters just as an added check, because the var will not
    * hold that much text. So it rambles a bit, but it's important nonetheless.
    * Just a bit more text and it is done.
+   *
+   * @deprecated This property is deprecated for sample purposes. Use
+   *   something else instead.
    */
   private $property = 'variable value';
 
@@ -87,6 +90,9 @@ interface SampleInterface {
 
 /**
  * Subclass.
+ *
+ * @deprecated This class is deprecated for sample purposes. Use
+ *   something else instead.
  *
  * @see Sample::foo()
  */

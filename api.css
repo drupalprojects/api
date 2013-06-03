@@ -125,3 +125,6 @@ ol#api-alternatives {
   margin-bottom: 10px;
 }
 
+.api-deprecated {
+  background-color: #ffecd8;
+}

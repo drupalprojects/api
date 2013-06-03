@@ -8,6 +8,7 @@
  * - $alternatives: List of alternate versions (branches) of this file.
  * - $documentation: Documentation from the comment header of the file.
  * - $see: See also documentation.
+ * - $deprecated: Deprecated documentation.
  * - $namespace: Name of the namespace for this function, if any.
  * - $objects: List of functions, classes, etc. defined in the file.
  * - $call_links: Links to calling functions (for theme templates).
@@ -46,6 +47,13 @@
   <h3><?php print t('Namespace'); ?></h3>
   <?php print $namespace; ?>
 <?php endif; ?>
+
+<?php if (!empty($deprecated)) { ?>
+<div class="api-deprecated">
+  <h3><?php print t('Deprecated') ?></h3>
+  <?php print $deprecated ?>
+</div>
+<?php } ?>
 
 <?php if (!empty($see)) { ?>
   <h3><?php print t('See also') ?></h3>

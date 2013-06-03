@@ -280,6 +280,12 @@ function api_schema() {
         'size' => 'medium',
         'not null' => TRUE,
       ),
+      'deprecated' => array(
+        'description' => 'Deprecated descriptions',
+        'type' => 'text',
+        'size' => 'medium',
+        'not null' => FALSE,
+      ),
       'class_did' => array(
         'description' => 'Documentation ID of class this is part of',
         'type' => 'int',
@@ -1526,6 +1532,22 @@ function api_update_7124() {
     ),
   ));
 }
+
+/**
+ * Add deprecated field to {api_documentation} table.
+ */
+function api_update_7125() {
+  db_add_field('api_documentation', 'deprecated', array(
+      'description' => 'Deprecation descriptions',
+      'type' => 'text',
+      'size' => 'medium',
+      'not null' => FALSE,
+    ));
+}
+
+// @todo: We need to mark everything for reparse... but wait to do it since
+// it is disruptive to people running api.module and more changes are coming
+// soon.
 
 /**
  * Remove variables and other data on uninstall.
