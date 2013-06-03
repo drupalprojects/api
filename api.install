@@ -94,7 +94,6 @@ function api_schema() {
         'description' => 'Ordering weight',
         'type' => 'int',
         'unsigned' => TRUE,
-        'size' => 'tiny',
         'not null' => TRUE,
         'default' => 0,
       ),
@@ -1543,6 +1542,20 @@ function api_update_7125() {
       'size' => 'medium',
       'not null' => FALSE,
     ));
+}
+
+/**
+ * Adjust the weight field on api_branch to be an INT field.
+ */
+function api_update_7126() {
+  db_drop_index('api_branch', 'weight');
+  db_change_field('api_branch', 'weight', 'weight', array(
+    'description' => 'Ordering weight',
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  ), array('indexes' => array('weight' => array('weight'))));
 }
 
 // @todo: We need to mark everything for reparse... but wait to do it since
