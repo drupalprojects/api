@@ -2274,8 +2274,8 @@ function api_reset_branches() {
     drupal_write_record('api_branch', $branch, 'branch_id');
   }
 
-  // Rebuild the menu system.
-  menu_rebuild();
+  // Tell the menu system it needs rebuilding.
+  variable_set('menu_rebuild_needed', TRUE);
 }
 
 /**
