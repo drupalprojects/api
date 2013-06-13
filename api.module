@@ -3108,6 +3108,7 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     $potential_names = array(
       'hook_' . $name,
       'hook_entity_' . $name,
+      'hook_entity_bundle_' . $name,
       'hook_field_' . $name,
       'field_default_' . $name,
       'hook_user_' . $name,

@@ -902,6 +902,8 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // - "field_default_$string"
     // - "hook_user_$string"
     // - "hook_entity_$string"
+    // - "hook_entity_bundle_$string"
+    // - "hook_node_$string"
     // - "hook_$string_alter"
     // In all cases but the last, {reference_storage} has object_type
     // 'potential hook'; in the last case it is 'potential alter'.
@@ -921,9 +923,17 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       elseif (strpos($hook_name, 'entity_') === 0) {
         $sub_hook_name = substr($hook_name, 7);
         $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
+        if (strpos($sub_hook_name, 'bundle_') === 0) {
+          $sub_sub_hook_name = substr($sub_hook_name, 7);
+          $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_sub_hook_name));
+        }
       }
       elseif (strpos($hook_name, 'field_') === 0) {
         $sub_hook_name = substr($hook_name, 6);
+        $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
+      }
+      elseif (strpos($hook_name, 'node_') === 0) {
+        $sub_hook_name = substr($hook_name, 5);
         $or_clauses->condition(db_and()->condition('r.object_type', 'potential hook')->condition('r.object_name', $sub_hook_name));
       }
       elseif (strrpos($hook_name, '_alter') === strlen($hook_name) - 6) {

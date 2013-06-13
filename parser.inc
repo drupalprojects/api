@@ -1299,6 +1299,25 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
   // Hook/theme invokes.
   $invoke_type = '';
+  $invoke_function_names = array(
+    '_field_invoke',
+    '_field_invoke_default',
+    '_field_invoke_multiple',
+    '_field_invoke_multiple_default',
+    'bootstrap_invoke_all',
+    'entity_invoke_bundle_hook',
+    'getImplementations',
+    'implementsHook',
+    'invoke',
+    'invokeAll',
+    'invokeHook',
+    'module_hook',
+    'module_implements',
+    'module_invoke',
+    'module_invoke_all',
+    'node_invoke',
+    'user_module_invoke',
+  );
   $paren_count = 0;
   $target_paren_count = 0;
 
@@ -1513,7 +1532,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
             $invoke_type = 'theme';
             $target_paren_count = $paren_count + 1;
           }
-          elseif (in_array($value, array('module_invoke', 'module_invoke_all', 'module_implements', 'module_hook', '_field_invoke', '_field_invoke_multiple', '_field_invoke_default', '_field_invoke_multiple_default', 'node_invoke', 'user_module_invoke', 'bootstrap_invoke_all', 'invokeHook', 'invokeAll', 'implementsHook', 'getImplementations'))) {
+          elseif (in_array($value, $invoke_function_names)) {
             $invoke_type = 'hook';
             $target_paren_count = $paren_count + 1;
           }
