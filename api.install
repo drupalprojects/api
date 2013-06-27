@@ -1558,9 +1558,13 @@ function api_update_7126() {
   ), array('indexes' => array('weight' => array('weight'))));
 }
 
-// @todo: We need to mark everything for reparse... but wait to do it since
-// it is disruptive to people running api.module and more changes are coming
-// soon.
+/**
+ * Mark all files for reparse, due to some updates to the parsing code.
+ */
+function api_update_7127() {
+  $count = api_update_mark_for_reparse();
+  return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
 
 /**
  * Remove variables and other data on uninstall.

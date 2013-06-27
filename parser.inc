@@ -501,6 +501,10 @@ function api_save_documentation($docblocks) {
       $use_aliases = array_merge($docblock['references']['use_alias'], $use_aliases);
     }
 
+
+    // Change @Annotation to @ingroup annotation.
+    $docblock['content'] = preg_replace('/' . API_RE_TAG_START . 'Annotation' . API_RE_WORD_BOUNDARY_END . '/', "\n@ingroup annotation\n", $docblock['content']);
+
     if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $docblock['content'])) {
       preg_match('/' . API_RE_TAG_START . 'mainpage (.*?)\n/', $docblock['content'], $mainpage_matches);
       $docblock['title'] = $mainpage_matches[1];
@@ -1043,9 +1047,9 @@ function api_format_documentation($documentation, $auto_p = TRUE) {
   // Replace left over curly braces
   $documentation = preg_replace('/' . API_RE_TAG_START . '[{}]/', '', $documentation);
 
-  // Change @Plugin section into @code. This has to be at the very end of the
-  // documentation block.
-  $documentation = preg_replace('/' . API_RE_TAG_START . 'Plugin(.*)$/s', '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@Plugin" . '$1' . "\n@endcode", $documentation);
+  // Change @Plugin and other annotation sections into @code. They have to be
+  // at the very end of the documentation block.
+  $documentation = preg_replace('/' . API_RE_TAG_START . '(' . API_RE_FUNCTION_CHARACTERS . '\(.*\))$/s', '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . '$1' . "\n@endcode", $documentation);
 
   // Process the @code @endcode tags.
   $documentation = preg_replace_callback('/' . API_RE_TAG_START . 'code(.+?)' . API_RE_TAG_START . 'endcode/s', 'api_format_embedded_php', $documentation);
@@ -1426,7 +1430,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           // This is a string like 'foo'. If we're in a call of some sort,
           // then this is a potential function, hook, etc. name.
           $class = 'php-string';
-          if ($invoke_type != '' && preg_match("|^'" . API_RE_HOOK_NAME . "'$|", $value)) {
+          if ($invoke_type != '' && preg_match("|^'" . API_RE_FUNCTION_CHARACTERS . "'$|", $value)) {
             $class .= ' potential-' . $invoke_type;
             if ($track_references) {
               $newname = str_replace("'", '', $value);

@@ -12,7 +12,7 @@
  */
 
 /**
- * Regular expression for matching file names.
+ * Regular expression for matching file names with one or more extensions.
  */
 define('API_RE_FILENAME', '([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)');
 
@@ -20,7 +20,7 @@ define('API_RE_FILENAME', '([a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)+)');
  * Regular expression for matching PHP functions and methods in text.
  *
  * These are patterns like ClassName::methodName(), or just function_name().
- * Possibly with namespaces.
+ * Possibly with namespaces. Doesn't include the ().
  */
 define('API_RE_FUNCTION_IN_TEXT', '\\\\*[a-zA-Z_\x7f-\xff][\\\\a-zA-Z0-9_\x7f-\xff:]*');
 
@@ -30,12 +30,9 @@ define('API_RE_FUNCTION_IN_TEXT', '\\\\*[a-zA-Z_\x7f-\xff][\\\\a-zA-Z0-9_\x7f-\x
 define('API_RE_GROUP_NAME', '[a-zA-Z_0-9\.\-]+');
 
 /**
- * Regular expression for matching hook names.
- *
- * Since the actual PHP function name already has a prefix, these can
- * technically start with a number, although it's unlikely.
+ * Regular expression for matching characters interior to function names.
  */
-define('API_RE_HOOK_NAME', '[a-zA-Z0-9_\x7f-\xff]+');
+define('API_RE_FUNCTION_CHARACTERS', '[a-zA-Z0-9_\x7f-\xff]+');
 
 /**
  * Regular expression for aggressively matching class names in text.
@@ -62,7 +59,7 @@ define('API_RE_TAG_START', '(?<!\\\)@');
 /**
  * Regular expression for word boundary start for API linking.
  */
-define('API_RE_WORD_BOUNDARY_START', '(?<=\s|^|\()');
+define('API_RE_WORD_BOUNDARY_START', '(?<=\s|^|\(|@)');
 
 /**
  * Regular expression for word boundary end for API linking.
@@ -2716,7 +2713,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       // Find potential hook names in marked-up code. These are strings that
       // are legal function names, which were found in parsing to be inside
       // module_implements() and related functions.
-      $pattern = '!<span class="php-string potential-hook">\'(' . API_RE_HOOK_NAME . ')\'</span>!';
+      $pattern = '!<span class="php-string potential-hook">\'(' . API_RE_FUNCTION_CHARACTERS . ')\'</span>!';
       $prepend = '<span class="php-function-or-constant">\'';
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
@@ -2725,7 +2722,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
 
     case 'code alter hook name':
       // Works like 'code hook name' above, but for alter hooks.
-      $pattern = '!<span class="php-string potential-alter">\'(' . API_RE_HOOK_NAME . ')\'</span>!';
+      $pattern = '!<span class="php-string potential-alter">\'(' . API_RE_FUNCTION_CHARACTERS . ')\'</span>!';
       $prepend = '<span class="php-function-or-constant">\'';
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
