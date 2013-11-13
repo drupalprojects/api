@@ -345,6 +345,7 @@ function api_page_file($file) {
   $see = api_link_documentation($file->see, $branch, $file->did, NULL, TRUE, TRUE);
   $deprecated = api_link_documentation($file->deprecated, $branch, $file->did, NULL, TRUE, FALSE);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($file->did));
+
   $code = api_link_code($file->code, $branch, $file->did);
   $defined = $file->file_name;
 
@@ -1222,7 +1223,7 @@ function api_page_class($class) {
 
   $objects = drupal_render($objects);
 
-  $links = api_build_references(array('uses'), $class, $branch);
+  $links = api_build_references(array('uses', 'references'), $class, $branch);
 
   // Put it all together.
   $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'call_links' => $links));

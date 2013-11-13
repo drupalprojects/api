@@ -251,8 +251,8 @@ function api_schema() {
       ),
       'code' => array(
         'description' => 'Formatted source code',
-        'type' => 'text',
-        'size' => 'medium',
+        'type' => 'blob',
+        'size' => 'big',
         'not null' => TRUE,
       ),
       'start_line' => array(
@@ -1565,6 +1565,21 @@ function api_update_7127() {
   $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
+
+/**
+ * Make the api_documentation.code field binary instead of text.
+ */
+function api_update_7128() {
+  db_change_field('api_documentation', 'code', 'code', array(
+    'description' => 'Formatted source code',
+    'type' => 'blob',
+    'size' => 'big',
+    'not null' => TRUE,
+  ));
+}
+
+// @todo Need to have an update function that reparses again, due to changes
+// in parsing code. Wait until this round of changes is done though!
 
 /**
  * Remove variables and other data on uninstall.

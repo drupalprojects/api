@@ -71,9 +71,10 @@ function api_parse_text_file($docblock) {
     $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE);
   }
 
-  // We don't actually want to keep track of references for text files.
-  $references = array();
-  $docblock['code'] = api_format_php($docblock['source'], $references, TRUE, FALSE);
+  // Number the lines.
+  $output = api_number_lines($docblock['source']);
+  $output = '<pre class="php"><code>' . $output . '</code></pre>';
+  $docblock['code'] = $output;
 
   api_save_documentation(array($docblock));
 }
@@ -241,15 +242,43 @@ function api_parse_yaml_file($docblock) {
   $references = _api_find_yaml_references($parsed);
   $docblock['references'] = array('potential callback' => $references);
 
-  // Format the source, putting spans around the found reference strings.
-  $dummy = array();
-  $code = api_format_php($docblock['source'], $dummy, TRUE, FALSE);
+  // Number the lines.
+  $code = api_number_lines($docblock['source']);
+  $code = '<pre class="php"><code>' . $code . '</code></pre>';
+
+  // Wrap each found reference string in a span. We have to use preg_replace()
+  // to do this, because we only want to match whole strings, enclosed in
+  // single quotes, double quotes, or whitespace. And we want to do the whole
+  // thing in one replace, so it matches the longest possible string in each
+  // case. So we also need to sort the strings by length, longest first,
+  // because PHP regular expressions with alternatives take the first matching
+  // one.
+  $newstrings = array();
+  usort($references, '_api_length_compare');
   foreach ($references as $string) {
-    $code = str_replace($string, '<span class="yaml-reference">' . $string . '</span>', $code);
+    $newstrings[] = preg_quote($string, '/');
   }
+
+  $regexp = '/(?<=[\'"\s])(' . implode('|', $newstrings) . ')(?=[\'"\s])/';
+  $code = preg_replace($regexp, '<span class="yaml-reference">$1</span>', $code);
+
   $docblock['code'] = $code;
 
   api_save_documentation(array($docblock));
+}
+
+/**
+ * Sort callback for usort in api_parse_yaml_file().
+ *
+ * Sorts with longest first.
+ */
+function _api_length_compare($a, $b) {
+  $lena = strlen($a);
+  $lenb = strlen($b);
+  if ($lena < $lenb) {
+    return 1;
+  }
+  return ($lena > $lenb) ? -1 : 0;
 }
 
 /**
@@ -955,8 +984,8 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
 
         break;
 
-      case 'function':
       case 'potential callback':
+      case 'function':
       case 'member-self':
         // Don't save a reference to the item itself.
         unset($list[$shortname]);
@@ -965,6 +994,14 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
 
       default:
         foreach ($list as $call) {
+          // If the name contains a backslash, and the first occurrence is not
+          // at the beginning, make sure it starts with a backslash
+          // so it is a fully-namespaced reference.
+          $pos = strpos($call, '\\');
+          if ($pos !== FALSE && $pos !== 0) {
+            $call = '\\' . $call;
+          }
+
           api_reference($branch, $type, $call, $did, TRUE);
         }
     }
@@ -1669,16 +1706,33 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
   // Add line numbering, if requested.
   if ($number !== FALSE) {
-    $start = (is_int($number)) ? $number : 1;
-    $lines = explode("\n", $output);
-    $output = '<ol class="code-lines" start="' . $number . '">';
-    foreach ($lines as $line) {
-      $output .= '<li>' . $line . "\n</li>";
-    }
-    $output .= '</ol>';
+    $output = api_number_lines($output, $number);
   }
 
   $output = '<pre class="php"><code>' . $output . '</code></pre>';
+  return $output;
+}
+
+/**
+ * Numbers lines in code.
+ *
+ * @param string $code
+ *   Code to number.
+ * @param int $number
+ *   Number to start with.
+ *
+ * @return string
+ *   Numbered code. Uses UL list.
+ */
+function api_number_lines($code, $number = 1) {
+  $start = (is_int($number)) ? $number : 1;
+  $lines = explode("\n", $code);
+  $output = '<ol class="code-lines" start="' . $number . '">';
+  foreach ($lines as $line) {
+    $output .= '<li>' . $line . "\n</li>";
+  }
+  $output .= '</ol>';
+
   return $output;
 }
 

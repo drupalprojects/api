@@ -2919,7 +2919,7 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   - 'group': $name is a group/topic identifier.
  *   - 'global': $name is a global variable.
  *   - 'yaml_reference': $name is the possibly namespaced name of a function or
- *     method, possibly in single or double quotes (in a YAML file).
+ *     method, or class, possibly in single or double quotes (in a YAML file).
  *
  * @return
  *   The text as a link to the object page.
@@ -2935,9 +2935,10 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = 
   $name = trim($name);
 
   if ($type == 'yaml_reference') {
-    // Trim off quotes and match as a function name.
+    // Trim off quotes and match as any object name.
     $name = trim($name, '"\'');
-    $type = 'function';
+    $type = 'function_or_constant';
+    $is_link = FALSE;
   }
 
   // Get some information we will need in several places below.
