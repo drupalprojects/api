@@ -325,6 +325,7 @@ function api_schema() {
       'member_name' => array('member_name'),
       'namespace' => array('namespace'),
       'namespaced_name' => array('namespaced_name'),
+      'branch_object_class' => array('branch_id', 'object_type', 'class_did'),
     ),
   );
 
@@ -1577,6 +1578,14 @@ function api_update_7128() {
     'not null' => TRUE,
   ));
 }
+
+/**
+ * Add an index to the api_documentation table.
+ */
+function api_update_7129() {
+  db_add_index('api_documentation', 'branch_object_class', array('branch_id', 'object_type', 'class_did'));
+}
+
 
 // @todo Need to have an update function that reparses again, due to changes
 // in parsing code. Wait until this round of changes is done though!
