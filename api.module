@@ -1943,26 +1943,26 @@ function api_block_view($delta) {
         $links = array();
         $links[] = l($branch->title, 'api/' . $branch->project . $suffix);
         $counts = api_listing_counts($branch);
-        if ($counts['constants'] > 0) {
-          $links[] = l(t('Constants'), 'api/' . $branch->project . '/constants' . $suffix);
+        if ($counts['groups'] > 0) {
+          $links[] = l(t('Topics'), 'api/' . $branch->project . '/groups' . $suffix);
         }
         if ($counts['classes'] > 0) {
           $links[] = l(t('Classes'), 'api/' . $branch->project . '/classes' . $suffix);
         }
-        if ($counts['files'] > 0) {
-          $links[] = l(t('Files'), 'api/' . $branch->project . '/files' . $suffix);
-        }
         if ($counts['functions'] > 0) {
           $links[] = l(t('Functions'), 'api/' . $branch->project . '/functions' . $suffix);
         }
-        if ($counts['globals'] > 0) {
-          $links[] = l(t('Globals'), 'api/' . $branch->project . '/globals' . $suffix);
-        }
-        if ($counts['groups'] > 0) {
-          $links[] = l(t('Topics'), 'api/' . $branch->project . '/groups' . $suffix);
+        if ($counts['files'] > 0) {
+          $links[] = l(t('Files'), 'api/' . $branch->project . '/files' . $suffix);
         }
         if ($counts['namespaces'] > 0) {
           $links[] = l(t('Namespaces'), 'api/' . $branch->project . '/namespaces' . $suffix);
+        }
+        if ($counts['constants'] > 0) {
+          $links[] = l(t('Constants'), 'api/' . $branch->project . '/constants' . $suffix);
+        }
+        if ($counts['globals'] > 0) {
+          $links[] = l(t('Globals'), 'api/' . $branch->project . '/globals' . $suffix);
         }
         if ($counts['deprecated'] > 0) {
           $links[] = l(t('Deprecated'), 'api/' . $branch->project . '/deprecated' . $suffix);
