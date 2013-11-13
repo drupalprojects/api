@@ -1260,6 +1260,7 @@ function api_page_group($group) {
     'global' => t('Globals'),
     'class' => t('Classes'),
     'interface' => t('Interfaces'),
+    'file' => t('Files'),
   );
 
   $objects = array();
