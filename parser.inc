@@ -1452,11 +1452,32 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_VARIABLE:
+          // This is a PHP variable like $foo. It could be a member
+          // variable like self::$foo.
+          $class = 'php-variable';
+          if ($in_member) {
+            $class .= ' variable';
+            if ($member_of == 'parent') {
+              $class .= ' member-of-parent';
+            }
+            elseif ($member_of == '$this' || $member_of == 'self' || $member_of == 'static') {
+              $class .= ' member-of-self';
+            }
+            elseif (strpos($member_of, '$') === 0) {
+              $class .= ' member-of-variable';
+            }
+            elseif (strlen($member_of) > 0) {
+              $class .= ' member-of-class-' . $member_of;
+            }
+            else {
+              $class .= ' member-of-variable';
+            }
+          }
           $in_member = FALSE;
           $member_of = $value;
           $in_namespace = FALSE;
           $full_namespaced_name = '';
-          $output .= '<span class="php-variable">' . $value . '</span>';
+          $output .= '<span class="' . $class . '">' . $value . '</span>';
           break;
 
         case T_CONSTANT_ENCAPSED_STRING:
@@ -1490,8 +1511,11 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           $output .= '<span class="php-string">' . $value . '</span>';
           break;
 
+        case T_STATIC:
         case T_STRING:
           // This is a function, constant, etc. being declared or used.
+          // Plus the special case of the static keyword, since this can
+          // also be used as static::memberFunction().
 
           // See if the next token is a backslash. In which case, add to the
           // name so far and continue on.
@@ -1643,7 +1667,6 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_REQUIRE_ONCE:
         case T_REQUIRE:
         case T_RETURN:
-        case T_STATIC:
         case T_STRING_CAST:
         case T_SWITCH:
         case T_UNSET_CAST:

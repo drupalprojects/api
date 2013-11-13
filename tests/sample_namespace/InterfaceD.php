@@ -12,6 +12,9 @@ namespace api\test1;
 interface InterfaceD {
   /**
    * Another exciting method.
+   *
+   * @param \api\test2\InterfaceC $foo
+   *   Something to test making links to a class.
    */
-  function dMethod() {}
+  function dMethod($foo) {}
 }

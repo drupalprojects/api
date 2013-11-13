@@ -741,7 +741,9 @@ function api_page_function($function) {
 
   // Build the page sections.
   $documentation = api_link_documentation($function->documentation, $branch, $function->file_did, $function->class_did);
+
   $parameters = api_link_documentation($function->parameters, $branch, $function->file_did, $function->class_did, TRUE);
+
   $return = api_link_documentation($function->return_value, $branch, $function->file_did, $function->class_did, TRUE);
   $see = api_link_documentation($function->see, $branch, $function->file_did, $function->class_did, TRUE, TRUE);
   $deprecated = api_link_documentation($function->deprecated, $branch, $function->file_did, $function->class_did, TRUE, FALSE);
@@ -1126,7 +1128,7 @@ function api_page_simple_item($item, $type) {
   $deprecated = api_link_documentation($item->deprecated, $branch, $item->file_did, $item->class_did, TRUE, FALSE);
   $var = '';
   if ($type == 'property') {
-    $var = api_link_name($item->var, $branch, '', '', $item->file_did, $item->class_did);
+    $var = api_link_name($item->var, $branch, '', '', $item->file_did, $item->class_did, NULL, FALSE, TRUE, NULL, NULL, 'class');
   }
 
   $class = api_class_section($item, $branch);
@@ -1696,7 +1698,6 @@ function api_class_section($item, $branch) {
   $class = api_object_load((int) $item->class_did, $branch, array('class', 'interface'));
 
   if (is_null($class)) {
-    print "returning FALSE";
     return FALSE;
   }
 

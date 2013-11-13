@@ -75,6 +75,10 @@ class Sample extends ClassNotDefinedHere implements SampleInterface {
 
     // This should link to a search.
     $x->bar();
+
+    // This should link to the property. Not really valid PHP as this is
+    // not a static property, but just to test that the link works.
+    $foo = static::$property;
   }
 }
 

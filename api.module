@@ -41,7 +41,7 @@ define('API_RE_FUNCTION_CHARACTERS', '[a-zA-Z0-9_\x7f-\xff]+');
  * only want to match class names if they include a capital letter, so as
  * not to be too overly aggressive. Possibly can include namespaces.
  */
-define('API_RE_CLASS_NAME_TEXT', '\\\\*[\\\\a-zA-Z0-9_\x7f-\xff]*[A-Z][\\\\a-zA-Z0-9_\x7f-\xff]*');
+define('API_RE_CLASS_NAME_TEXT', '[\\\\a-zA-Z0-9_\x7f-\xff]*[A-Z][\\\\a-zA-Z0-9_\x7f-\xff]*');
 
 /**
  * Regular expression for less-aggressively matching class names in text.
@@ -59,12 +59,12 @@ define('API_RE_TAG_START', '(?<!\\\)@');
 /**
  * Regular expression for word boundary start for API linking.
  */
-define('API_RE_WORD_BOUNDARY_START', '(?<=\s|^|\(|@)');
+define('API_RE_WORD_BOUNDARY_START', '(?<=\s|^|\(|@|\>)');
 
 /**
  * Regular expression for word boundary end for API linking.
  */
-define('API_RE_WORD_BOUNDARY_END', '(?=$|[\s.,:;?!)])');
+define('API_RE_WORD_BOUNDARY_END', '(?=$|[\s.,:;?!)\<\[])');
 
 /**
  * File path separator.
@@ -2759,7 +2759,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
     case 'code member':
       // Works like 'code hook name' above, but for class members.
       $callback_match = 'api_link_member_name';
-      $pattern = '!(<span class="php-function-or-constant [^"]+ member-of-[^"]+">' . DRUPAL_PHP_FUNCTION_PATTERN . '</span>)!';
+      $pattern = '!(<span class="(?:php-function-or-constant|php-variable) [^"]+ member-of-[^"]+">\$*' . DRUPAL_PHP_FUNCTION_PATTERN . '</span>)!';
       break;
 
     case 'file':
@@ -3473,13 +3473,19 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $file
   // The pattern matched to get here contains the entire span with all of its
   // classes. Parse it out.
   $matches = array();
-  preg_match('!<span class="php-function-or-constant ([^"]+) member-of-([^"]+)">(' . DRUPAL_PHP_FUNCTION_PATTERN . ')</span>!', $text, $matches);
+  preg_match('!<span class="(?:php-function-or-constant|php-variable) ([^"]+) member-of-([^"]+)">(\$*' . DRUPAL_PHP_FUNCTION_PATTERN . ')</span>!', $text, $matches);
   $name = $matches[3];
   $member_type = $matches[2];
   $object_type = $matches[1];
 
   $prepend = '<span class="php-function-or-constant">';
   $append = '</span>';
+
+  // Strip off a $ if there is one at the start.
+  if (strpos($name, '$') === 0) {
+    $name = substr($name, 1);
+    $prepend .= '$';
+  }
 
   // Get some information we will need in several places below.
   $nameinfo = api_get_namespace_info($file_did);

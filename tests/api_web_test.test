@@ -557,6 +557,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('Sample', 0, 'Link to class is there');
     $this->assertText('Sample class.', 'Class description is there');
     $this->assertText('public function Sample::baz', 'H1 title text is there');
+    $this->assertLink('property', 0, 'Link to static property is there');
 
     // And check the calling functions links.
     $this->assertLink('Sample::foo', 0, 'Calling function 1 is there');

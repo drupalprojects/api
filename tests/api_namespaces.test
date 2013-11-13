@@ -61,6 +61,11 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('api\\test1');
     $this->assertLink('InterfaceD', 0, 'Link went back to namespace page');
 
+    // Verify that on method/function pages, param types make links.
+    $this->clickLink('InterfaceD');
+    $this->clickLink('InterfaceD::dMethod');
+    $this->assertLink('\\api\\test2\\InterfaceC', 0, 'Link to param type is there');
+
     $this->drupalGet('api/' . $this->branch_info['project'] . '/namespaces');
     $this->clickLink('api\\test2');
     $this->assertLink('ClassB', 0, 'ClassB is on second namespace page');
@@ -69,6 +74,11 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('InterfaceD', 0, 'InterfaceD is on second namespace page');
     $this->assertText('InterfaceD2.php', 'Right InterfaceD file is on second namespace page');
     $this->assertNoLink('ClassA', 'ClassA is not on second namespace page');
+
+    // Verify that on class variable pages, types make links.
+    $this->clickLink('ClassE');
+    $this->clickLink('ClassE::$foobar');
+    $this->assertLink('\\api\\test1\\InterfaceD', 0, 'Link to type of member variable is there');
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassA.php');
     $this->assertText('Namespace', 'Namespace header is on file page');
@@ -215,12 +225,12 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
     $this->checkAndClearLog();
     $this->updateBranches();
     $this->processApiParseQueue();
-    $counts['node'] = 27;
-    $counts['api_documentation'] = 26;
+    $counts['node'] = 28;
+    $counts['api_documentation'] = 27;
     $counts['api_function'] = 11;
     $counts['api_file'] = 8;
-    $counts['api_members'] = 11;
-    $counts['api_overrides'] = 10;
+    $counts['api_members'] = 12;
+    $counts['api_overrides'] = 11;
     $counts['api_extends'] = 1;
     $counts['api_namespace'] = 8;
     $this->verifyCounts($counts, 0, 'Parse the branch');
