@@ -41,8 +41,8 @@ function api_views_default_views() {
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'title' => 'title',
+    'deprecated' => 'title',
     'file_name' => 'file_name',
-    'object_type' => 'object_type',
     'summary' => 'summary',
   );
   $handler->display->display_options['style_options']['default'] = 'title';
@@ -51,17 +51,17 @@ function api_views_default_views() {
       'sortable' => 1,
       'default_sort_order' => 'asc',
       'align' => '',
-      'separator' => '',
+      'separator' => ' ',
       'empty_column' => 0,
     ),
-    'file_name' => array(
-      'sortable' => 1,
+    'deprecated' => array(
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
     ),
-    'object_type' => array(
+    'file_name' => array(
       'sortable' => 1,
       'default_sort_order' => 'asc',
       'align' => '',
@@ -82,6 +82,15 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title']['field'] = 'title';
   $handler->display->display_options['fields']['title']['label'] = 'Name';
   $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Deprecated */
+  $handler->display->display_options['fields']['deprecated']['id'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['deprecated']['field'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['label'] = '';
+  $handler->display->display_options['fields']['deprecated']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['deprecated']['alter']['text'] = '<span class="api-deprecated">Deprecated</span>';
+  $handler->display->display_options['fields']['deprecated']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['deprecated']['hide_empty'] = TRUE;
   /* Field: API documentation: File name */
   $handler->display->display_options['fields']['file_name']['id'] = 'file_name';
   $handler->display->display_options['fields']['file_name']['table'] = 'api_documentation';
@@ -168,6 +177,7 @@ function api_views_default_views() {
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'title' => 'title',
+    'deprecated' => 'title',
     'object_name' => 'object_name',
     'namespace' => 'namespace',
     'summary' => 'summary',
@@ -176,6 +186,13 @@ function api_views_default_views() {
   $handler->display->display_options['style_options']['info'] = array(
     'title' => array(
       'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => ' ',
+      'empty_column' => 0,
+    ),
+    'deprecated' => array(
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
@@ -213,6 +230,15 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title']['table'] = 'api_documentation';
   $handler->display->display_options['fields']['title']['field'] = 'title';
   $handler->display->display_options['fields']['title']['label'] = 'File name';
+  /* Field: API documentation: Deprecated */
+  $handler->display->display_options['fields']['deprecated']['id'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['deprecated']['field'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['label'] = '';
+  $handler->display->display_options['fields']['deprecated']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['deprecated']['alter']['text'] = '<span class="api-deprecated">Deprecated</span>';
+  $handler->display->display_options['fields']['deprecated']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['deprecated']['hide_empty'] = TRUE;
   /* Field: API documentation: Object name */
   $handler->display->display_options['fields']['object_name']['id'] = 'object_name';
   $handler->display->display_options['fields']['object_name']['table'] = 'api_documentation';
@@ -304,6 +330,7 @@ function api_views_default_views() {
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'object_name' => 'object_name',
+    'deprecated' => 'object_name',
     'modifiers' => 'modifiers',
     'object_type' => 'object_type',
     'namespace' => 'namespace',
@@ -314,6 +341,13 @@ function api_views_default_views() {
   $handler->display->display_options['style_options']['info'] = array(
     'object_name' => array(
       'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => ' ',
+      'empty_column' => 0,
+    ),
+    'deprecated' => array(
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
@@ -366,6 +400,15 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['object_name']['field'] = 'object_name';
   $handler->display->display_options['fields']['object_name']['label'] = 'Name';
   $handler->display->display_options['fields']['object_name']['link_to_docs'] = 'object';
+  /* Field: API documentation: Deprecated */
+  $handler->display->display_options['fields']['deprecated']['id'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['deprecated']['field'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['label'] = '';
+  $handler->display->display_options['fields']['deprecated']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['deprecated']['alter']['text'] = '<span class="api-deprecated">Deprecated</span>';
+  $handler->display->display_options['fields']['deprecated']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['deprecated']['hide_empty'] = TRUE;
   /* Field: API documentation: Modifiers */
   $handler->display->display_options['fields']['modifiers']['id'] = 'modifiers';
   $handler->display->display_options['fields']['modifiers']['table'] = 'api_documentation';
@@ -590,6 +633,15 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title']['field'] = 'title';
   $handler->display->display_options['fields']['title']['label'] = 'Name';
   $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Deprecated */
+  $handler->display->display_options['fields']['deprecated']['id'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['deprecated']['field'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['label'] = '';
+  $handler->display->display_options['fields']['deprecated']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['deprecated']['alter']['text'] = '<span class="api-deprecated">Deprecated</span>';
+  $handler->display->display_options['fields']['deprecated']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['deprecated']['hide_empty'] = TRUE;
   /* Field: API documentation: Summary */
   $handler->display->display_options['fields']['summary']['id'] = 'summary';
   $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
@@ -1142,22 +1194,30 @@ function api_views_default_views() {
   $handler->display->display_options['pager']['type'] = 'none';
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
-    'modifiers' => 'modifiers',
     'title' => 'title',
+    'deprecated' => 'title',
+    'modifiers' => 'modifiers',
     'object_type' => 'object_type',
     'summary' => 'summary',
     'title_1' => 'summary',
   );
   $handler->display->display_options['style_options']['default'] = 'title';
   $handler->display->display_options['style_options']['info'] = array(
-    'modifiers' => array(
+    'title' => array(
       'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => ' ',
+      'empty_column' => 0,
+    ),
+    'deprecated' => array(
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
     ),
-    'title' => array(
+    'modifiers' => array(
       'sortable' => 1,
       'default_sort_order' => 'asc',
       'align' => '',
@@ -1211,6 +1271,16 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title']['relationship'] = 'did';
   $handler->display->display_options['fields']['title']['label'] = 'Name';
   $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Deprecated */
+  $handler->display->display_options['fields']['deprecated']['id'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['deprecated']['field'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['relationship'] = 'did';
+  $handler->display->display_options['fields']['deprecated']['label'] = '';
+  $handler->display->display_options['fields']['deprecated']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['deprecated']['alter']['text'] = '<span class="api-deprecated">Deprecated</span>';
+  $handler->display->display_options['fields']['deprecated']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['deprecated']['hide_empty'] = TRUE;
   /* Field: API documentation: Modifiers */
   $handler->display->display_options['fields']['modifiers']['id'] = 'modifiers';
   $handler->display->display_options['fields']['modifiers']['table'] = 'api_documentation';
@@ -1471,6 +1541,7 @@ function api_views_default_views() {
   $handler->display->display_options['style_plugin'] = 'table';
   $handler->display->display_options['style_options']['columns'] = array(
     'title' => 'title',
+    'deprecated' => 'title',
     'file_name' => 'file_name',
     'summary' => 'summary',
   );
@@ -1478,6 +1549,13 @@ function api_views_default_views() {
   $handler->display->display_options['style_options']['info'] = array(
     'title' => array(
       'sortable' => 1,
+      'default_sort_order' => 'asc',
+      'align' => '',
+      'separator' => ' ',
+      'empty_column' => 0,
+    ),
+    'deprecated' => array(
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
@@ -1511,6 +1589,16 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title']['relationship'] = 'from_did';
   $handler->display->display_options['fields']['title']['label'] = 'Name';
   $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: Deprecated */
+  $handler->display->display_options['fields']['deprecated']['id'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['deprecated']['field'] = 'deprecated';
+  $handler->display->display_options['fields']['deprecated']['relationship'] = 'from_did';
+  $handler->display->display_options['fields']['deprecated']['label'] = '';
+  $handler->display->display_options['fields']['deprecated']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['deprecated']['alter']['text'] = '<span class="api-deprecated">Deprecated</span>';
+  $handler->display->display_options['fields']['deprecated']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['deprecated']['hide_empty'] = TRUE;
   /* Field: API documentation: File name */
   $handler->display->display_options['fields']['file_name']['id'] = 'file_name';
   $handler->display->display_options['fields']['file_name']['table'] = 'api_documentation';

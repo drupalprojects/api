@@ -35,6 +35,7 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertNoRaw('hidden_function', 'Hidden function is not on functions list page');
     $this->assertNoRaw('hidden_function_two', 'Second hidden function is not on functions list page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Verify file/function links.
     $this->assertLinkURLSubstring('sample_function', $this->branch_info['project'] . '/sample.php/function/sample_function', 'sample_function link exists', 'sample_function link went to the right place');
@@ -55,6 +56,7 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('SAMPLE_CONSTANT_IN_SUB_DIR', 0,   'subdir constant is on constants list page');
     $this->assertLink('sample-subdir.php', 0,   'sample-subdir.php file name is on constants list page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Verify constant/function links.
     $this->assertLinkURLSubstring('SAMPLE_CONSTANT', $this->branch_info['project'] . '/sample.php/constant/SAMPLE_CONSTANT', 'SAMPLE_CONSTANT link exists', 'SAMPLE_CONSTANT link went to the right place');
@@ -77,6 +79,7 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('classes-subdir.php', 0, 'classes-subdir.php file name is on classes list page');
     $this->assertNoText('baz', 'Member name is not on classes page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Verify file/class links.
     $this->assertLinkURLSubstring('Sample', $this->branch_info['project'] . '/classes.php/class/Sample', 'Sample link exists', 'Sample link went to the right place');
@@ -105,6 +108,7 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('htmlfile.html', 0, 'HTML file link is present');
     $this->assertText('This is a sample text file for testing.', 'Text file description is present');
     $this->assertLink('subdirectory/textfile.txt', 0, 'Text file link is present');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Verify file links.
     $this->assertLinkURLSubstring('classes.php', $this->branch_info['project'] . '/classes.php', 'classes.php link exists', 'classes.php link went to the right place');
@@ -119,6 +123,7 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('A sample global.', '$sample_global description is on the globals list page');
     $this->assertLink('sample-subdir.php', 0, 'sample-subdir.php file name is on globals list page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Verify global/file links.
     $this->assertLinkURLSubstring('$sample_global', $this->branch_info['project'] . '/sample.php/global/sample_global', 'sample_global link exists', 'sample_global link went to the right place');
@@ -499,6 +504,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('A class constant.', 'Constant description appears on class page');
     $this->assertText('* Only implemented in children.', 'Source code appears on class page');
     $this->assertText('class Sample', 'H1 title text is there');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Plugin annotation section.
     $this->assertText(t('Plugin annotation'), 'Plugin annotation header is there');
@@ -653,6 +659,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('$sample_global', 0, 'sample_global link is on sample topic page');
     $this->assertText('A sample global.', 'sample_global description is on sample topic page');
     $this->assertLink('sample_insubdir_function', 0, 'sample_insubdir_function link is on sample topic page');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Verify section, sub-section, and ref links.
     $this->assertRaw('<h3 id="sec_one">Section 1</h3>', 'Section 1 header is there');
@@ -702,6 +709,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('$sample_global', 0, 'sample_global link is on sample file page');
     $this->assertText('A sample global.', 'sample_global description is on sample file page');
     $this->assertText('* Use for sample-related purposes.', 'source code is on sample file page');
+    $this->assertText('Deprecated', 'Deprecated is shown');
 
     // Verify links.
     $this->assertLinkURLSubstring('sample_function', $this->branch_info['project'] . '/sample.php/function/sample_function', 'sample_function link exists', 'sample_function link went to the right place');
