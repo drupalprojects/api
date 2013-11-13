@@ -2614,7 +2614,7 @@ function api_filter_documentation_process($text) {
     }
   }
 
-  return api_link_documentation($text, $branch, $file_did, $class_did, FALSE, FALSE);
+  return api_link_documentation($text, $branch, $file_did, $class_did, TRUE, FALSE);
 }
 
 /**
@@ -3260,7 +3260,6 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
       // check_plained at parse time. Don't double-encode it!
       $options['html'] = TRUE;
     }
-
     return l($text, $url, $options);
   }
 
@@ -3785,7 +3784,7 @@ function _api_make_match_link_class_member($name, $namespace_info, $member_type,
 
   if ($using_api_branch) {
     $api_branches = api_get_php_branches();
-    $api_branch = $api_branches[$best[0]->branch_id];
+    $api_branch = $api_branches[$matches[0]->branch_id];
     $url = $api_branch->search_url . $name;
     unset($options['attributes']['class']);
   }

@@ -308,10 +308,12 @@ class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('node/' . $this->node->nid);
     $this->drupalPost(NULL, array(
       'subject' => 'test',
-      'comment_body[und][0][value]' => 'This is a test of links to things like foo_function() and drupal_alter().',
+      'comment_body[und][0][value]' => 'This is a test of links to things like foo_function() and drupal_alter() and SelectQuery and SelectQuery::execute().',
       ), t('Save'));
 
     $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
     $this->assertLinkURLSubstring('drupal_alter', 'example.com/api/test/drupal.php/function/drupal_alter/7.x-1.x', 'Link to fake API reference function is created', 'Link to API reference function goes to right place');
+    $this->assertLinkURLSubstring('SelectQuery', 'example.com/api/test/select.inc/class/SelectQuery/7.x-1.x', 'Link to fake API reference class is created', 'Link to API reference class goes to right place');
+    $this->assertLinkURLSubstring('SelectQuery::execute', 'example.com/api/test/select.inc/function/SelectQuery', 'Link to fake API reference method is created', 'Link to API reference method goes to right place');
   }
 }

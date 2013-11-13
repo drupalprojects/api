@@ -218,7 +218,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
 
     // Parse and verify counts.
     $this->updateBranches();
-    $counts['api_external_documentation'] = 6;
+    $counts['api_external_documentation'] = 8;
     $this->verifyCounts($counts, 0, 'Parse API branch');
 
     // Delete the branch and verify counts.
