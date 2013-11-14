@@ -1410,24 +1410,24 @@ function api_views_default_views() {
     'file_name' => 'file_name',
     'summary' => 'summary',
   );
-  $handler->display->display_options['style_options']['default'] = 'title';
+  $handler->display->display_options['style_options']['default'] = '-1';
   $handler->display->display_options['style_options']['info'] = array(
     'title' => array(
-      'sortable' => 1,
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
     ),
     'object_type' => array(
-      'sortable' => 1,
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
       'empty_column' => 0,
     ),
     'file_name' => array(
-      'sortable' => 1,
+      'sortable' => 0,
       'default_sort_order' => 'asc',
       'align' => '',
       'separator' => '',
@@ -1470,10 +1470,30 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
   $handler->display->display_options['fields']['summary']['field'] = 'summary';
   $handler->display->display_options['fields']['summary']['label'] = 'Description';
-  /* Sort criterion: API documentation: Object name */
-  $handler->display->display_options['sorts']['object_name']['id'] = 'object_name';
-  $handler->display->display_options['sorts']['object_name']['table'] = 'api_documentation';
-  $handler->display->display_options['sorts']['object_name']['field'] = 'object_name';
+  /* Sort criterion: API documentation: Title: length */
+  $handler->display->display_options['sorts']['title_length']['id'] = 'title_length';
+  $handler->display->display_options['sorts']['title_length']['table'] = 'api_documentation';
+  $handler->display->display_options['sorts']['title_length']['field'] = 'title_length';
+  $handler->display->display_options['sorts']['title_length']['exposed'] = TRUE;
+  $handler->display->display_options['sorts']['title_length']['expose']['label'] = 'Length of Name';
+  /* Sort criterion: API documentation: Title */
+  $handler->display->display_options['sorts']['title']['id'] = 'title';
+  $handler->display->display_options['sorts']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['sorts']['title']['field'] = 'title';
+  $handler->display->display_options['sorts']['title']['exposed'] = TRUE;
+  $handler->display->display_options['sorts']['title']['expose']['label'] = 'Name';
+  /* Sort criterion: API documentation: Object type */
+  $handler->display->display_options['sorts']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['sorts']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['sorts']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['sorts']['object_type']['exposed'] = TRUE;
+  $handler->display->display_options['sorts']['object_type']['expose']['label'] = 'Type';
+  /* Sort criterion: API documentation: File name */
+  $handler->display->display_options['sorts']['file_name']['id'] = 'file_name';
+  $handler->display->display_options['sorts']['file_name']['table'] = 'api_documentation';
+  $handler->display->display_options['sorts']['file_name']['field'] = 'file_name';
+  $handler->display->display_options['sorts']['file_name']['exposed'] = TRUE;
+  $handler->display->display_options['sorts']['file_name']['expose']['label'] = 'Location';
   /* Contextual filter: API documentation: Branch */
   $handler->display->display_options['arguments']['branch_id']['id'] = 'branch_id';
   $handler->display->display_options['arguments']['branch_id']['table'] = 'api_documentation';
@@ -1500,7 +1520,7 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type']['exposed'] = TRUE;
   $handler->display->display_options['filters']['object_type']['expose']['operator_id'] = 'object_type_op';
-  $handler->display->display_options['filters']['object_type']['expose']['label'] = 'Type';
+  $handler->display->display_options['filters']['object_type']['expose']['label'] = 'Filter by Type';
   $handler->display->display_options['filters']['object_type']['expose']['operator'] = 'object_type_op';
   $handler->display->display_options['filters']['object_type']['expose']['identifier'] = 'object_type';
   $handler->display->display_options['filters']['object_type']['expose']['remember_roles'] = array(

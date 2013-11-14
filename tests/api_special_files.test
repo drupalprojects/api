@@ -115,4 +115,18 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('badheader_fun');
     $this->assertLinkURLSubstring('sample', '/sample.html.twig', 'Theme call turns into link', 'Link goes to right place');
   }
+
+  /**
+   * Tests searching case sensitivity.
+   */
+  function testSearchCaseSensitivity() {
+    // Search for lower-case function name should get to the function page.
+    $this->drupalPost('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search', array('search' => 'sample_function'), t('Search'));
+    $this->assertURLContains('dup_names.php/function/sample_function', 'Got to function page with lower-case search');
+
+    // Search for upper-case function name should get to the constant page.
+    $this->drupalPost('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search', array('search' => 'SAMPLE_FUNCTION'), t('Search'));
+    $this->assertURLContains('dup_names.php/constant/SAMPLE_FUNCTION', 'Got to constant page with upper-case search');
+
+  }
 }

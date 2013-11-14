@@ -210,11 +210,27 @@ function api_search_listing($branch) {
     ->condition('branch_id', $branch->branch_id)
     ->condition('title', $search_text);
 
-  $count = $query->countQuery()->execute()->fetchField();
-  if ($count == 1) {
-    // There is one exact match.
-    $item = $query->execute()->fetchObject();
-    drupal_goto(api_url($item));
+  // Unfortunately, MySQL is not case-sensitive. So, to figure out if there
+  // is exactly one case-sensitive match, we need to look at the results.
+  $results = $query->execute();
+  $exact = NULL;
+  foreach ($results as $item) {
+    if ($item->title == $search_text) {
+      if ($exact) {
+        // We have now found multiple results. On to the next step.
+        $exact = NULL;
+        break;
+      }
+      else {
+        // This is an exact match. Store it.
+        $exact = $item;
+      }
+    }
+  }
+
+  if ($exact) {
+    // We found one exact match.
+    drupal_goto(api_url($exact));
   }
 
   // If we get here, there were multiple or zero matches.

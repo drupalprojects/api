@@ -148,6 +148,14 @@ function api_views_data() {
       ),
     ),
 
+    'title_length' => array(
+      'title' => t('Title: length'),
+      'help' => t('Length of the Title field'),
+      'sort' => array(
+        'handler' => 'api_views_handler_sort_title_length',
+      ),
+    ),
+
     'member_name' => array(
       'title' => t('Member name'),
       'help' => t('For class members, the name without the Class:: prefix; for others, blank.'),
