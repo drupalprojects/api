@@ -146,7 +146,7 @@ function api_help($path, $arg) {
  *   Array of branch objects, in order by branch weight.
  */
 function api_get_branches($_reset = FALSE) {
-  static $branches;
+  $branches = &drupal_static(__FUNCTION__);
 
   if (!isset($branches) || $_reset) {
     $query = db_select('api_branch', 'b')
@@ -198,7 +198,7 @@ function api_get_branch_by_id($id = NULL) {
  *   Array of branch names in use.
  */
 function api_get_branch_names($_reset = FALSE) {
-  static $branch_names;
+  $branch_names = &drupal_static(__FUNCTION__);
 
   if (!isset($branch_names) || $_reset) {
     $result = db_select('api_branch', 'b')
@@ -221,7 +221,7 @@ function api_get_branch_names($_reset = FALSE) {
  *   Array of reference branch objects, in order by title.
  */
 function api_get_php_branches($_reset = FALSE) {
-  static $branches;
+  $branches = drupal_static(__FUNCTION__);
 
   if (!isset($branches) || $_reset) {
     $result = db_select('api_php_branch', 'b')
@@ -1125,7 +1125,7 @@ function _api_make_menu_projects() {
     return array();
   }
 
-  $compatibility = variable_get('api_default_core_compatibility', '7.x');
+  $compatibility = variable_get('api_default_core_compatibility', '');
   $projects = array();
 
   foreach ($branches as $branch) {
@@ -2197,6 +2197,13 @@ function api_save_branch($branch) {
  *   A reference branch object.
  */
 function api_save_php_branch($branch) {
+  // If core compatibility has not yet been set and we've just added an
+  // API reference branch, set it now.
+  $version = variable_get('api_default_core_compatibility', NULL);
+  if (!$version && isset($branch->data['core_compatibility'])) {
+    variable_set('api_default_core_compatibility', $branch->data['core_compatibility']);
+  }
+
   $branch->data = serialize($branch->data);
   if (empty($branch->branch_id)) {
     drupal_write_record('api_php_branch', $branch);
@@ -2266,19 +2273,51 @@ function api_project_exists($project_name) {
  */
 function api_reset_branches() {
   // Recalculate the default branch.
-  $branches = api_get_branches(TRUE);
   $project = variable_get('api_default_project', '');
   $version = variable_get('api_default_core_compatibility', '');
+  $branches = api_get_branches(TRUE);
+  $default_id = variable_get('api_default_branch', -99);
+  $values_set = FALSE;
   foreach ($branches as $branch) {
-    if ($branch->project == $project && $branch->preferred && $branch->core_compatibility == $version) {
+    if (($branch->project == $project) && $branch->preferred && ($branch->core_compatibility == $version) && ($default_id != $branch->branch_id)) {
+      $values_set = TRUE;
       variable_set('api_default_branch', $branch->branch_id);
       break;
     }
   }
 
-  // Reset the branch lists.
   $branches = api_get_branches(TRUE);
-  api_get_branch_names(TRUE);
+
+  // Make sure the default branch variable is set to something.
+  $default_id = variable_get('api_default_branch', NULL);
+  $default_branch = api_get_branch_by_id($default_id);
+  if (!$default_branch && count($branches) > 0) {
+    $default_branch = reset($branches);
+  }
+
+  if (isset($default_branch) && (!$default_id || ($default_branch->branch_id != $default_id))) {
+    $values_set = TRUE;
+    variable_set('api_default_branch', $default_branch->branch_id);
+  }
+
+  // Make sure the default project and core compatibility are set to agree
+  // with the default branch.
+  if ($default_branch && (!$project || ($project != $default_branch->project))) {
+    $values_set = TRUE;
+    variable_set('api_default_project', $default_branch->project);
+  }
+  if ($default_branch && (!$version || ($version != $default_branch->core_compatibility))) {
+    $values_set = TRUE;
+    variable_set('api_default_core_compatibility', $default_branch->core_compatibility);
+  }
+
+  if ($values_set) {
+    drupal_set_message(t('Default branch, project, and/or core compatibility values were reset to stay consistent'));
+  }
+
+  // Reset the branch lists.
+  drupal_static_reset('api_get_branch_names');
+  $branches = api_get_branches(TRUE);
 
   // Reweight all branches.
   usort($branches, 'api_branch_sort');
@@ -2288,6 +2327,7 @@ function api_reset_branches() {
     $weight += 1;
     drupal_write_record('api_branch', $branch, 'branch_id');
   }
+  drupal_static_reset('api_get_branches');
 
   // Tell the menu system it needs rebuilding.
   variable_set('menu_rebuild_needed', TRUE);
@@ -2944,7 +2984,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = 
   // Get some information we will need in several places below.
   $nameinfo = api_get_namespace_info($file_did);
   $namespaced_name = api_full_classname($name, $nameinfo['namespace'], $nameinfo['use_alias']);
-  $core_compatibility = ($branch) ? $branch->core_compatibility : variable_get('api_default_core_compatibility', '7.x');
+  $core_compatibility = ($branch) ? $branch->core_compatibility : variable_get('api_default_core_compatibility', '');
   $api_branches = api_get_php_branches();
 
   // If we get here, we're looking to match some kind of documentation object.
@@ -3488,7 +3528,7 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $file
 
   // Get some information we will need in several places below.
   $nameinfo = api_get_namespace_info($file_did);
-  $core_compatibility = ($branch) ? $branch->core_compatibility : variable_get('api_default_core_compatibility', '7.x');
+  $core_compatibility = ($branch) ? $branch->core_compatibility : variable_get('api_default_core_compatibility', '');
   $api_branches = api_get_php_branches();
 
   // Convert parent references to the name of the parent class, which must be

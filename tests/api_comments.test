@@ -284,6 +284,11 @@ class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
 
     // Specifically do not set up any regular files branches.
 
+    // Set the core compatibility to 7.x.
+    $this->drupalPost('admin/config/development/api', array(
+        'api_default_core_compatibility' => '7.x',
+      ), t('Save configuration'));
+
     // Set up the Filtered HTML text format to have the API format as part of
     // it.
     $this->drupalPost('admin/config/content/formats/filtered_html', array(

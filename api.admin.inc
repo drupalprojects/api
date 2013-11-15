@@ -25,6 +25,46 @@ function api_page_admin_overview() {
     '#markup' => '<h3>' . t('Status') . '</h3>',
   );
 
+  // Check whether there is a default branch, project, and core compatibility.
+  $ok = TRUE;
+  $branch_id = variable_get('api_default_branch', NULL);
+  $branches = api_get_branches();
+  if (!$branch_id || !isset($branches[$branch_id])) {
+    $ok = FALSE;
+    $output['branch_status'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('You do not have a default branch set up.') . '</p>',
+    );
+  }
+  $project = variable_get('api_default_project', NULL);
+  $version = variable_get('api_default_core_compatibility', NULL);
+  if (!$project) {
+    $ok = FALSE;
+    $output['project_status'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('You do not have a default project set up.') . '</p>',
+    );
+  }
+  if (!$version) {
+    $ok = FALSE;
+    $output['version_status'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('You do not have a default core compatibility set up.') . '</p>',
+    );
+  }
+  if ($ok) {
+    $output['setup_status'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('You have a default branch, project, and core compatibility set up, so after parsing, you should be able to view API pages.') . '</p>',
+    );
+  }
+  else {
+    $output['setup_status'] = array(
+      '#type' => 'markup',
+      '#markup' => '<p>' . t('Without a default branch, project, and core compatibility, you cannot view API pages. You will also need a default core compatibility, but not a default project or branch, if you are using an API reference branch to use the API text filter.') . '</p>',
+    );
+  }
+
   // Display library status.
   if (api_libraries_loaded(FALSE)) {
     $output['library_status'] = array(
@@ -88,19 +128,18 @@ function api_page_admin_overview() {
 function api_page_admin_form($form, &$form_state) {
   $form['api_default_core_compatibility'] = array(
     '#type' => 'textfield',
-    '#default_value' => variable_get('api_default_core_compatibility', '7.x'),
+    '#default_value' => variable_get('api_default_core_compatibility', ''),
     '#title' => t('Default core compatibility'),
     '#required' => TRUE,
-    '#description' => t('The core compatibility of the default branch/version to display if none is given in a URL'),
+    '#description' => t('The core compatibility of the default branch/version to display if none is given in a URL. This may be overridden by the API module if a corresponding branch does not exist.'),
   );
 
   $form['api_default_project'] = array(
     '#type' => 'textfield',
-    '#default_value' => variable_get('api_default_project', 'drupal'),
+    '#default_value' => variable_get('api_default_project', ''),
     '#title' => t('Default project'),
-    '#required' => TRUE,
     '#autocomplete_path' => 'api/project/autocomplete',
-    '#description' => t('Name of the default project to display if none is given in a URL'),
+    '#description' => t('Name of the default project to display if none is given in a URL. This may be overridden by the API module if a corresponding branch does not exist.'),
   );
 
   $form = system_settings_form($form);

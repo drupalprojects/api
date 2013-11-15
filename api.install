@@ -652,9 +652,9 @@ function api_schema() {
  */
 function api_enable() {
   // Make sure a few things are reset. This is only necessary for running tests.
-  api_get_branches(TRUE);
-  api_get_branch_names(TRUE);
-  api_get_php_branches(TRUE);
+  drupal_static_reset('api_get_branches');
+  drupal_static_reset('api_get_branch_names');
+  drupal_static_reset('api_get_php_branches');
 
   // Create the PHP branch if it doesn't already exist.
   $exists = FALSE;

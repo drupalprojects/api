@@ -399,13 +399,6 @@ class ApiWebPagesBaseTest extends ApiTestCase {
       $project_info,
       t('Save project')
     );
-    if ($default) {
-      // Make this the default project/core compat.
-      $this->drupalPost('admin/config/development/api', array(
-          'api_default_core_compatibility' => $info['core_compatibility'],
-          'api_default_project' => $info['project'],
-        ), t('Save configuration'));
-    }
 
     // Create the branch.
     $branch_info = array(
@@ -427,6 +420,15 @@ class ApiWebPagesBaseTest extends ApiTestCase {
     );
 
     if ($default) {
+      // Make this the default project/core compat. This has to be done after
+      // the setup for the branch, because the API module will override the
+      // setting if the branch doesn't exist yet, in an attempt to make sure
+      // a branch exists.
+      $this->drupalPost('admin/config/development/api', array(
+          'api_default_core_compatibility' => $info['core_compatibility'],
+          'api_default_project' => $info['project'],
+        ), t('Save configuration'));
+
       $branches = api_get_branches(TRUE);
       $this_id = 0;
       foreach ($branches as $branch) {
