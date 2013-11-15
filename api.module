@@ -950,6 +950,10 @@ function api_menu() {
     );
 
     // Dump of all documentation items in the branch.
+    // Note that you can put query parameters on this URL: 'limit' to limit
+    // the number of items output, and 'page' to move on to the next page if
+    // limit is set (page numbering starts at 0 just like the standard Drupal
+    // pager). Query params are optional.
     if ($is_default) {
       $items['api/' . $branch->project . '/full_list'] = array(
         'title' => 'Full list of items',
@@ -961,6 +965,7 @@ function api_menu() {
       );
     }
 
+    // See note on previous block about query parameters.
     $items['api/' . $branch->project . '/full_list/' . $branch->branch_name] = array(
       'title' => 'Full list of items',
       'page callback' => 'api_dump_full_list',

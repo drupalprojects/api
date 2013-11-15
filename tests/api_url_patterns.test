@@ -235,9 +235,28 @@ class ApiURLPatternsTest extends ApiTestCase {
         'url' => 'api/function_dump/' . $branch_name,
         'text' => array('sample_function($parameter, $complex_parameter) ### A sample function.'),
       ),
+      // Check the full list dump, with and without paging and limits.
       array(
         'url' => 'api/' . $project_name . '/full_list/' . $branch_name,
-        'text' => array('"object_name":"sample_function"', '"summary":"A sample function."'),
+        'text' => array('"object_name":"sample_function"', '"summary":"A sample function."', '"object_name":"another_sample","namespaced_name"', '"summary":"Returns HTML for another sample."'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/full_list/' . $branch_name,
+        'url_options' => array('query' => array('limit' => 1)),
+        'text' => array('"object_name":"another_sample"'),
+        'notext' => array('"object_name":"classes.php"'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/full_list/' . $branch_name,
+        'url_options' => array('query' => array('limit' => 1, 'page' => 1)),
+        'text' => array('"object_name":"classes.php"'),
+        'notext' => array('"object_name":"another_sample"', '"object_name":"class_samples"'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/full_list/' . $branch_name,
+        'url_options' => array('query' => array('limit' => 2)),
+        'text' => array('"object_name":"another_sample"', '"object_name":"classes.php"'),
+        'notext' => array('"object_name":"class_samples"'),
       ),
 
       // Check pages that should not exist.
@@ -286,7 +305,8 @@ class ApiURLPatternsTest extends ApiTestCase {
 
     foreach ($tests as $test) {
       // Verify the HTTP response is expected.
-      $this->drupalGet($test['url']);
+      $options = isset($test['url_options']) ? $test['url_options'] : array();
+      $this->drupalGet($test['url'], $options);
       $response = isset($test['response']) ? $test['response'] : 200;
       $this->assertResponse($response, $test['url'] . ' got expected HTTP response');
 
@@ -294,6 +314,13 @@ class ApiURLPatternsTest extends ApiTestCase {
       if (isset($test['text'])) {
         foreach ($test['text'] as $text) {
           $this->assertText($text);
+        }
+      }
+
+      // Verify the non-expected text is not on the page.
+      if (isset($test['notext'])) {
+        foreach ($test['notext'] as $text) {
+          $this->assertNoText($text);
         }
       }
 

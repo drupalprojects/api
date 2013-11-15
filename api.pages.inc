@@ -152,7 +152,9 @@ function api_page_function_dump($branch_name) {
  * Page callback: Outputs a list of all documentation objects in JSON format.
  *
  * Note that this function outputs the JSON data directly rather than returning
- * it.
+ * it. Also, query parameters 'limit' and 'page' can be used to limit to a
+ * certain number of results, and to get subsequent pages (both are integers and
+ * page numbering starts at 0; you can omit 'page' on the first page as well).
  *
  * @param object $branch
  *   Object representing the branch to dump objects for.
@@ -160,12 +162,23 @@ function api_page_function_dump($branch_name) {
  * @see api_menu()
  */
 function api_dump_full_list($branch) {
-  $result = db_select('api_documentation', 'd')
+  $query = db_select('api_documentation', 'd')
     ->fields('d', array('object_name', 'namespaced_name', 'member_name', 'title', 'summary', 'object_type', 'branch_id', 'file_name'))
     ->condition('d.branch_id', $branch->branch_id)
     ->condition('d.object_type', 'mainpage', '<>')
-    ->orderBy('d.object_name')
-    ->execute();
+    ->orderBy('d.object_name');
+
+  // See if there is a limit or a page number.
+  $params = drupal_get_query_parameters();
+  if (isset($params['limit'])) {
+    $page = isset($params['page']) ? (int) $params['page'] : 0;
+    $limit = (int) $params['limit'];
+    $start = $page * $limit;
+
+    $query->range($start, $limit);
+  }
+
+  $result = $query->execute();
 
   $objs = array();
   foreach ($result as $doc) {
