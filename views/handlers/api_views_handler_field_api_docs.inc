@@ -27,6 +27,7 @@ class api_views_handler_field_api_docs extends views_handler_field {
    * Overrides views_handler_field::render().
    */
   function render($values) {
+    module_load_include('inc', 'api', 'api.formatting');
     $doc = $this->get_value($values);
     $branch_id = $this->get_value($values, 'branch_id');
     $branch = api_get_branch_by_id($branch_id);

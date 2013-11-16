@@ -5,6 +5,8 @@
  * Pages (except administrative) for the API module.
  */
 
+module_load_include('inc', 'api', 'api.formatting');
+
 /**
  * Page callback: Redirects to an appropriate search page.
  *
