@@ -643,6 +643,8 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     $branch->project_type = 'core';
     $branch->update_frequency = 1;
     $branch->search_url = '';
+    $branch->timeout = 30;
+    $branch->page_limit = 2000;
   }
 
   $form = array(
@@ -676,7 +678,7 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
   $form['data']['search_url'] = array(
     '#type' => 'textfield',
     '#title' => t('Branch search URL'),
-    '#default_value' => $branch->url,
+    '#default_value' => $branch->search_url,
     '#required' => TRUE,
     '#description' => t('The URL to use for searching by appending the search term, such as http://api.drupal.org/api/drupal/7/search/'),
   );
@@ -702,6 +704,20 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#description' => t('During cron runs, this branch will be checked for updates in the information. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
     '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+  );
+
+  $form['data']['page_limit'] = array(
+    '#type' => 'textfield',
+    '#default_value' => (isset($branch->page_limit) ? $branch->page_limit : ''),
+    '#title' => t('Items per page'),
+    '#description' => t('Updates are paged using this many items per page. 2000 is suggested, and is the default if not set'),
+  );
+
+  $form['data']['timeout'] = array(
+    '#type' => 'textfield',
+    '#default_value' => (isset($branch->timeout) ? $branch->timeout : ''),
+    '#title' => t('Timeout'),
+    '#description' => t('Downloads for each page of updates time out after this many seconds. If you are having trouble with timeouts, decrease the items per page setting, or increase this timeout value. Defaults to 30 seconds if not set.'),
   );
 
   $form['submit'] = array(

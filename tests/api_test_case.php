@@ -467,16 +467,22 @@ class ApiWebPagesBaseTest extends ApiTestCase {
   /**
    * Sets up an API reference branch using the sample code, in the admin UI.
    *
+   * @param $info
+   *   Array of information to override the defaults (see function code to see
+   *   what they are).
+   *
    * @return
    *   Information array used to create the branch.
    */
-  function createAPIBranchUI() {
-    $info = array(
+  function createAPIBranchUI($info = array()) {
+    $info += array(
       'title' => 'sample_api_branch',
       'data[url]' => url('<front>', array('absolute' => TRUE )) . '/' . drupal_get_path('module', 'api') . '/tests/php_sample/sample_drupal_listing.json',
       'data[search_url]' => url('<front>', array('absolute' => TRUE )) . '/api/test_api_project/test_api_branch/search/',
       'data[core_compatibility]' => '7.x',
       'data[project_type]' => 'core',
+      'data[page_limit]' => 2000,
+      'data[timeout]' => 30,
       'update_frequency' => 1,
     );
 

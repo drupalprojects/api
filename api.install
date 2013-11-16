@@ -391,7 +391,7 @@ function api_schema() {
       ),
       'object_name' => array(
         'type' => 'varchar',
-        'length' => '127',
+        'length' => '255',
         'not null' => TRUE,
         'default' => '',
       ),
@@ -428,10 +428,9 @@ function api_schema() {
         'not null' => TRUE,
       ),
       'url' => array(
-        'type' => 'varchar',
-        'length' => '255',
+        'type' => 'text',
+        'size' => 'medium',
         'not null' => TRUE,
-        'default' => '',
       ),
     ),
     'primary key' => array('did'),
@@ -1586,6 +1585,32 @@ function api_update_7129() {
   db_add_index('api_documentation', 'branch_object_class', array('branch_id', 'object_type', 'class_did'));
 }
 
+/**
+ * Make the api_external_documentation.url field text instead of varchar.
+ */
+function api_update_7130() {
+  db_change_field('api_external_documentation', 'url', 'url', array(
+    'type' => 'text',
+    'size' => 'medium',
+    'not null' => TRUE,
+  ));
+
+  // Due to a previous code update, it would be a good idea to reset the
+  // branch list too.
+  api_reset_branches();
+}
+
+/**
+ * Make the api_external_documentation.object_name longer.
+ */
+function api_update_7131() {
+  db_change_field('api_external_documentation', 'object_name', 'object_name', array(
+    'type' => 'varchar',
+    'length' => '255',
+    'not null' => TRUE,
+    'default' => '',
+  ));
+}
 
 // @todo Need to have an update function that reparses again, due to changes
 // in parsing code. Wait until this round of changes is done though!

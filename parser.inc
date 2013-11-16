@@ -2280,7 +2280,7 @@ function api_update_branch_php($branch) {
   // We didn't get a good response.
   $branch->queued = 0;
   drupal_write_record('api_php_branch', $branch, array('branch_id'));
-  watchdog('api', 'Bad HTTP response from PHP branch %branch_name.', array('%branch_name' => $branch->title));
+  watchdog('api', 'Bad HTTP response from PHP branch %branch_name.', array('%branch_name' => $branch->title), WATCHDOG_WARNING);
   return FALSE;
 }
 
@@ -2299,32 +2299,61 @@ function api_update_branch_php($branch) {
  * @see api_update_all_branches()
  */
 function api_update_branch_api($branch) {
-  $response = drupal_http_request($branch->url);
-  if ($response->code === '200') {
-    $data = drupal_json_decode($response->data);
-    $docblocks = array();
-    foreach ($data as $item) {
-      $item = (array) $item;
-      $item['branch_id'] = $branch->branch_id;
-      $docblocks[] = $item;
-    }
+  $limit = (int) (isset($branch->page_limit) ? $branch->page_limit : 0);
+  $timeout = (int) (isset($branch->timeout) ? $branch->timeout : 0);
+  if ($limit <= 0) {
+    $limit = 2000;
+  }
+  if ($timeout <= 0) {
+    $timeout = 30;
+  }
 
-    if (count($docblocks)) {
-      api_save_api_documentation($docblocks);
+  // Download JSON by page.
+  $base_url = $branch->url . ((strpos($branch->url, '?') > 0) ? '&' : '?') . 'limit=' . $limit . '&page=';
+
+  $docblocks = array();
+  $done = array();
+  $page = 0;
+  $found = TRUE;
+
+  // Continue in this loop as long as the last response was successful and
+  // contained new data, but as a failsafe stop after 1000 pages.
+  while ($found && $page < 1000) {
+    $found = FALSE;
+    $response = @drupal_http_request($base_url . $page, array('timeout' => $timeout));
+    $page++;
+    if (isset($response) && ($response->code === '200')) {
+      $data = drupal_json_decode($response->data);
+      foreach ($data as $item) {
+        $item = (array) $item;
+        // Only save new items.
+        $key = $item['url'] . '..' . $item['object_type'] . '..' . $item['namespaced_name'];
+        if (!isset($done[$key])) {
+          $found = TRUE;
+          $done[$key] = TRUE;
+          $item['branch_id'] = $branch->branch_id;
+          $docblocks[] = $item;
+        }
+      }
     }
+  }
+
+  if (count($docblocks)) {
+    // We found at least one doc block, so save the data.
+    api_save_api_documentation($docblocks);
 
     // Mark the branch as having been updated.
     $branch->last_updated = time();
     $branch->queued = 0;
     drupal_write_record('api_php_branch', $branch, array('branch_id'));
-    watchdog('api', 'Updated API branch %branch_name.', array('%branch_name' => $branch->title));
+    watchdog('api', 'Updated API branch %branch_name in %count page requests.', array('%branch_name' => $branch->title, '%count' => $page));
     return TRUE;
   }
 
   // We didn't get a good response.
   $branch->queued = 0;
   drupal_write_record('api_php_branch', $branch, array('branch_id'));
-  watchdog('api', 'Bad HTTP response from API branch %branch_name.', array('%branch_name' => $branch->title));
+  watchdog('api', 'No documentation was downloaded from API branch %branch_name.', array('%branch_name' => $branch->title), WATCHDOG_WARNING);
   return FALSE;
 }
 
