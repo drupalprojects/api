@@ -1059,3 +1059,51 @@ class ApiSearchTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('SampleInSubDir::$foo', 0, 'SampleInSubDir::$foo is listed');
   }
 }
+
+/**
+ * Tests the exclude from Drupalism functionality.
+ */
+class ApiExcludeDrupalismTestCase extends ApiWebPagesBaseTest {
+  public static function getInfo() {
+    return array(
+      'name' => 'Drupalism exclusion',
+      'description' => 'Tests that excluding files from Drupalisms works',
+      'group' => 'API module',
+    );
+  }
+
+  /**
+   * Overrides ApiWebPagesBaseTest::setUp() so we have the excluded directory.
+   */
+  function setUp() {
+    $this->baseSetUp();
+
+    // Create a "file" branch with the excluded directory but exclude it from
+    // drupalisms.
+    $this->branch_info = $this->setUpBranchUI('', TRUE, array(
+      'excluded' => '',
+      'exclude_drupalism_regexp' => '|to_exclude|',
+    ));
+
+    $this->removePHPBranch();
+
+    // Parse the code.
+    $this->resetBranchesAndCache();
+    $this->updateBranches();
+    $this->processApiParseQueue();
+  }
+
+  /**
+   * Tests that the hook does not turn into a link in the excluded file.
+   */
+  function testDrupalExclusion() {
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/functions');
+    $this->clickLink('excluded_function');
+    $this->assertText('sample_two', 'sample_two text is there in excluded.php');
+    $this->assertNoLink('sample_two', 'sample_two text is not a link in excluded.php');
+
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_in_code_links');
+    $this->assertText('sample_two', 'sample_two text is there in sample.php');
+    $this->assertLink('sample_two', 0, 'sample_two text is a link in sample.php');
+  }
+}

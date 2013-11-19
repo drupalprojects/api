@@ -9,6 +9,8 @@
  * An excluded function that should not be in the package.
  */
 function excluded_function() {
+  // This is for testing whether we can exclude "drupalisms" from this file.
+  $baz = theme('sample_two', $foo);
 }
 
 /**

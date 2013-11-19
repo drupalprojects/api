@@ -385,6 +385,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
       'update_frequency' => 1,
       'directory' => drupal_get_path('module', 'api') . '/tests/sample',
       'excluded' => drupal_get_path('module', 'api') . '/tests/sample/to_exclude',
+      'exclude_drupalism_regexp' => '',
       'regexps' => '',
     );
     $info['preferred'] = $default ? 1 : 0;
@@ -410,6 +411,7 @@ class ApiWebPagesBaseTest extends ApiTestCase {
       'update_frequency' => $info['update_frequency'],
       'data[directories]' => $prefix . $info['directory'],
       'data[exclude_files_regexp]' => $info['regexps'],
+      'data[exclude_drupalism_regexp]' => $info['exclude_drupalism_regexp'],
     );
     if ($info['excluded'] != 'none') {
       $branch_info['data[excluded_directories]'] = $prefix . $info['excluded'];

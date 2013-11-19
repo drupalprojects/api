@@ -292,6 +292,9 @@ function api_reset_queue_form_submit($form, &$form_state) {
 function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
   if (is_numeric($branch_id)) {
     $branch = api_get_branch_by_id($branch_id);
+    if (!isset($branch->exclude_drupalism_regexp)) {
+      $branch->exclude_drupalism_regexp = '';
+    }
   }
   else {
     $branch = new stdClass();
@@ -305,6 +308,7 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     $branch->excluded_directories = '';
     $branch->exclude_files_regexp = '';
     $branch->update_frequency = 1;
+    $branch->exclude_drupalism_regexp = '';
   }
 
   $form = array(
@@ -383,6 +387,15 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#element_validate' => array('api_check_regexps'),
   );
 
+  $form['data']['exclude_drupalism_regexp'] = array(
+    '#title' => t('Exclude files from Drupal-specific parsing by regular expressions'),
+    '#type' => 'textarea',
+    '#default_value' => $branch->exclude_drupalism_regexp,
+    '#rows' => 3,
+    '#description' => t('Regular expressions: all matching files will be excluded from Drupal-specific parsing, one per line. Include delimeters. Note that if you change this setting, you will need to re-parse affected files.'),
+    '#element_validate' => array('api_check_regexps'),
+  );
+
   $form['update_frequency'] = array(
     '#type' => 'select',
     '#title' => t('Branch update frequency'),
@@ -456,7 +469,7 @@ function api_check_directories($element, &$form_state) {
 /**
  * Verifies that all regular expressions are legal.
  *
- * Element validation callback for the exclude regexp element of
+ * Element validation callback for the exclude regexp elements of
  * api_branch_edit_form().
  */
 function api_check_regexps($element, &$form_state) {

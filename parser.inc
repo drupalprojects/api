@@ -22,6 +22,17 @@
  *   File name to store in the database for this file.
  */
 function api_parse_file($callback, $file_path, $branch, $file_name) {
+  // See if this is a Drupal file or a Drupal-excluded file.
+  $drupal_regexps = (isset($branch->exclude_drupalism_regexp) ? explode("\n", $branch->exclude_drupalism_regexp) : array());
+  $drupal_regexps = array_filter(array_map('trim', $drupal_regexps));
+  $is_drupal = TRUE;
+  foreach ($drupal_regexps as $regexp) {
+    if (preg_match($regexp, $file_path)) {
+      $is_drupal = FALSE;
+      break;
+    }
+  }
+
   $basename = drupal_basename($file_name);
   $docblock = array(
     'object_name' => $file_name,
@@ -39,6 +50,7 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
     'class' => '',
     'namespaced_name' => '',
     'modifiers' => '',
+    'is_drupal' => $is_drupal,
   );
 
   $callback($docblock);
@@ -136,7 +148,7 @@ function api_parse_php_file($docblock) {
 
     // This is a text file or template file with no declarations of functions,
     // constants, etc. But we do want to track references in it.
-    $docblock['code'] = api_format_php($docblock['source'], $docblock['references'], TRUE);
+    $docblock['code'] = api_format_php($docblock['source'], $docblock['references'], TRUE, TRUE, $docblock['is_drupal']);
 
     api_save_documentation(array($docblock));
     // Free up memory.
@@ -151,7 +163,7 @@ function api_parse_php_file($docblock) {
   // Reserve the first array slot for the file documentation block. Note that
   // we will only keep some of the references we parsed out.
   $references = array();
-  $docblock['code'] = api_format_php($docblock['source'], $references, TRUE);
+  $docblock['code'] = api_format_php($docblock['source'], $references, TRUE, TRUE, $docblock['is_drupal']);
   $docblocks = array($docblock);
 
   // Set default documentation block array for items other than the file.
@@ -167,6 +179,7 @@ function api_parse_php_file($docblock) {
     'start_line' => 0,
     'namespaced_name' => '',
     'modifiers' => '',
+    'is_drupal' => $docblock['is_drupal'],
   );
 
   $found_references = api_documentation_loop($statements, $default_block, $docblocks);
@@ -385,7 +398,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         $docblock['content'] = $editor->commentToString($statement->comment);
         $statement->comment = '';
         $references = array();
-        $docblock['code'] = api_format_php("<?php\n" . $statement->toString() . "\n?" . ">", $references, FALSE, ($statement->type == T_FUNCTION));
+        $docblock['code'] = api_format_php("<?php\n" . $statement->toString() . "\n?" . ">", $references, FALSE, ($statement->type == T_FUNCTION), $docblock['is_drupal']);
 
         if (isset($statement->modifiers) && !$statement->modifiers->isEmpty()) {
           $docblock['modifiers'] = $statement->modifiers->toString();
@@ -532,8 +545,11 @@ function api_save_documentation($docblocks) {
 
 
     // Change @Annotation to @ingroup annotation.
-    $docblock['content'] = preg_replace('/' . API_RE_TAG_START . 'Annotation' . API_RE_WORD_BOUNDARY_END . '/', "\n@ingroup annotation\n", $docblock['content']);
+    if ($docblock['is_drupal']) {
+      $docblock['content'] = preg_replace('/' . API_RE_TAG_START . 'Annotation' . API_RE_WORD_BOUNDARY_END . '/', "\n@ingroup annotation\n", $docblock['content']);
+    }
 
+    // Deal with @mainpage.
     if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $docblock['content'])) {
       preg_match('/' . API_RE_TAG_START . 'mainpage (.*?)\n/', $docblock['content'], $mainpage_matches);
       $docblock['title'] = $mainpage_matches[1];
@@ -541,6 +557,7 @@ function api_save_documentation($docblocks) {
       $docblock['object_type'] = 'mainpage';
       $docblock['object_name'] = $docblocks[0]['branch']->branch_name;
     }
+    // Deal with @defgroup.
     elseif (preg_match('/' . API_RE_TAG_START . 'defgroup/', $docblock['content'])) {
       if (preg_match('/' . API_RE_TAG_START . 'defgroup ([a-zA-Z0-9_.-]+) +(.*?)\n/', $docblock['content'], $group_matches)) {
         $group_name = $group_matches[1];
@@ -611,9 +628,11 @@ function api_save_documentation($docblocks) {
 
     // Treat {@inheritdoc} as a blank doc block, meaning inherit from parent.
     $docblock['content'] = str_replace('{@inheritdoc}', '', $docblock['content']);
+    // Some vendor files use @inheritDoc instead.
+    $docblock['content'] = str_replace('{@inheritDoc}', '', $docblock['content']);
 
     if ($docblock['content'] && trim($docblock['content'])) {
-      // Find parameter definitions.
+      // Find parameter definitions with @param.
       $params = '';
       while (preg_match('/' . API_RE_TAG_START . 'param\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $param_match)) {
         $docblock['content'] = str_replace($param_match[0], '', $docblock['content']);
@@ -630,7 +649,7 @@ function api_save_documentation($docblocks) {
       $params = str_replace('[/strong]', '</strong>', $params);
       $docblock['parameters'] = $params;
 
-      // Find return value definitions.
+      // Find return value definitions with @return.
       $docblock['return_value'] = '';
       preg_match_all('/' . API_RE_TAG_START . 'return\s(.*?)(?=\n' . API_RE_TAG_START . '|$)/s', $docblock['content'], $return_matches, PREG_SET_ORDER);
       foreach ($return_matches as $return_match) {
@@ -673,6 +692,7 @@ function api_save_documentation($docblocks) {
       // Format everything remaining as the main documentation.
       $docblock['documentation'] = api_format_documentation($docblock['content']);
     }
+
     // Grab the first line as a summary, unless already provided.
     if (!isset($docblock['summary'])) {
       $docblock['summary'] = api_documentation_summary($docblock['documentation']);
@@ -1018,15 +1038,17 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
  * Formats a documentation block as HTML.
  *
  * First escapes all HTML tags. Then processes links and code blocks, and
- * converts newlines into paragraphs.
+ * converts newlines into paragraphs. Note that this function does not do any
+ * Drupal-specific formatting, aside from formatting plugin annotation, which
+ * should be fine for vendor files as well.
  *
- * @param $documentation
+ * @param string $documentation
  *   Documentation string to format.
- * @param $auto_p
+ * @param bool $auto_p
  *   TRUE (default) to convert to paragraphs. FALSE to skip this conversion and
  *   put the documentation in PRE tags.
  *
- * @return
+ * @return string
  *   Formatted documentation.
  */
 function api_format_documentation($documentation, $auto_p = TRUE) {
@@ -1170,7 +1192,7 @@ function api_autop($text) {
  */
 function api_format_embedded_php($matches) {
   $references = array();
-  return "\n" . api_format_php("<?php" . decode_entities($matches[1]) . "?" . ">", $references, FALSE, FALSE) . "\n";
+  return "\n" . api_format_php("<?php" . decode_entities($matches[1]) . "?" . ">", $references, FALSE, FALSE, FALSE) . "\n";
 }
 
 /**
@@ -1290,12 +1312,13 @@ function api_documentation_summary($documentation) {
  *   integer to start numbering at that line number.
  * @param $track_references
  *   TRUE (default) to track references, FALSE to skip reference tracking.
+ * @param $is_drupal
+ *   TRUE (default) to use Drupal-specific parsing; FALSE to skip Drupalisms.
  *
  * @return
  *   HTML-formatted code, with spans enclosing various PHP elements.
  */
-function api_format_php($code, &$references, $number = FALSE, $track_references = TRUE) {
-
+function api_format_php($code, &$references, $number = FALSE, $track_references = TRUE, $is_drupal = TRUE) {
   // Check for invalid Unicode, which screws everything up.
   if (!mb_check_encoding($code, 'UTF-8')) {
     return t('Non-displayable characters.');
@@ -1359,6 +1382,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
     'node_invoke',
     'user_module_invoke',
   );
+
   $paren_count = 0;
   $target_paren_count = 0;
 
@@ -1593,17 +1617,19 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           $in_member = FALSE;
 
           // Save $invoke_type state.
-          if ($value == 'theme') {
-            $invoke_type = 'theme';
-            $target_paren_count = $paren_count + 1;
-          }
-          elseif (in_array($value, $invoke_function_names)) {
-            $invoke_type = 'hook';
-            $target_paren_count = $paren_count + 1;
-          }
-          elseif (in_array($value, array('drupal_alter', 'alter'))) {
-            $invoke_type = 'alter';
-            $target_paren_count = $paren_count + 1;
+          if ($is_drupal) {
+            if ($value == 'theme') {
+              $invoke_type = 'theme';
+              $target_paren_count = $paren_count + 1;
+            }
+            elseif (in_array($value, $invoke_function_names)) {
+              $invoke_type = 'hook';
+              $target_paren_count = $paren_count + 1;
+            }
+            elseif (in_array($value, array('drupal_alter', 'alter'))) {
+              $invoke_type = 'alter';
+              $target_paren_count = $paren_count + 1;
+            }
           }
 
           break;
