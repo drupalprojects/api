@@ -313,6 +313,14 @@ function api_schema() {
         'not null' => TRUE,
         'default' => '',
       ),
+      'is_drupal' => array(
+        'description' => 'Whether this is or is not a Drupal object',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+      ),
     ),
     'primary key' => array('did'),
     'indexes' => array(
@@ -326,6 +334,7 @@ function api_schema() {
       'namespace' => array('namespace'),
       'namespaced_name' => array('namespaced_name'),
       'branch_object_class' => array('branch_id', 'object_type', 'class_did'),
+      'is_drupal' => array('is_drupal'),
     ),
   );
 
@@ -1610,6 +1619,20 @@ function api_update_7131() {
     'not null' => TRUE,
     'default' => '',
   ));
+}
+
+/**
+ * Add field is_drupal to the api_documentation table.
+ */
+function api_update_7132() {
+  db_add_field('api_documentation', 'is_drupal', array(
+        'description' => 'Whether this is or is not a Drupal object',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+    ), array('indexes' => array('is_drupal' => array('is_drupal'))));
 }
 
 // @todo Need to have an update function that reparses again, due to changes

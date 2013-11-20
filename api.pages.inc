@@ -372,12 +372,12 @@ function api_page_file($file) {
 
   api_object_title_and_breadcrumb($branch, $file);
 
-  $documentation = api_link_documentation($file->documentation, $branch, $file->did);
-  $see = api_link_documentation($file->see, $branch, $file->did, NULL, TRUE, TRUE);
-  $deprecated = api_link_documentation($file->deprecated, $branch, $file->did, NULL, TRUE, FALSE);
+  $documentation = api_link_documentation($file->documentation, $branch, $file->did, NULL, FALSE, FALSE, $file->is_drupal);
+  $see = api_link_documentation($file->see, $branch, $file->did, NULL, TRUE, TRUE, $file->is_drupal);
+  $deprecated = api_link_documentation($file->deprecated, $branch, $file->did, NULL, TRUE, FALSE, $file->is_drupal);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($file->did));
 
-  $code = api_link_code($file->code, $branch, $file->did);
+  $code = api_link_code($file->code, $branch, $file->did, NULL, $file->is_drupal);
   $defined = $file->file_name;
 
   $types = array(
@@ -771,15 +771,15 @@ function api_page_function($function) {
   }
 
   // Build the page sections.
-  $documentation = api_link_documentation($function->documentation, $branch, $function->file_did, $function->class_did);
+  $documentation = api_link_documentation($function->documentation, $branch, $function->file_did, $function->class_did, FALSE, FALSE, $function->is_drupal);
 
-  $parameters = api_link_documentation($function->parameters, $branch, $function->file_did, $function->class_did, TRUE);
+  $parameters = api_link_documentation($function->parameters, $branch, $function->file_did, $function->class_did, TRUE, FALSE, $function->is_drupal);
 
-  $return = api_link_documentation($function->return_value, $branch, $function->file_did, $function->class_did, TRUE);
-  $see = api_link_documentation($function->see, $branch, $function->file_did, $function->class_did, TRUE, TRUE);
-  $deprecated = api_link_documentation($function->deprecated, $branch, $function->file_did, $function->class_did, TRUE, FALSE);
-  $throws = api_link_documentation($function->throws, $branch, $function->file_did, $function->class_did, TRUE);
-  $code = api_link_code($function->code, $branch, $function->file_did, $function->class_did);
+  $return = api_link_documentation($function->return_value, $branch, $function->file_did, $function->class_did, TRUE, FALSE, $function->is_drupal);
+  $see = api_link_documentation($function->see, $branch, $function->file_did, $function->class_did, TRUE, TRUE, $function->is_drupal);
+  $deprecated = api_link_documentation($function->deprecated, $branch, $function->file_did, $function->class_did, TRUE, FALSE, $function->is_drupal);
+  $throws = api_link_documentation($function->throws, $branch, $function->file_did, $function->class_did, TRUE, FALSE, $function->is_drupal);
+  $code = api_link_code($function->code, $branch, $function->file_did, $function->class_did, $function->is_drupal);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($function->did));
   $class = api_class_section($function, $branch);
 
@@ -817,11 +817,20 @@ function api_page_function($function) {
  *   overrides.
  * @param $limit
  *   (optional) Limit the number of references returned to this amount.
+ * @param bool $is_drupal
+ *   (optional) If set to FALSE, and $type is a Drupal-specific type (such as
+ *   theme- or hook- related), just return an empty list or zero count.
  *
  * @return
  *   The number of references or an array of references.
  */
-function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0) {
+function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0, $is_drupal = TRUE) {
+
+  // Early return: if this is a Drupal type and $is_drupal is FALSE.
+  $drupal_types = array('implementations', 'theme_invokes', 'invokes');
+  if (!$is_drupal && in_array($type, $drupal_types)) {
+    return ($count) ? 0 : array();
+  }
 
   if (!is_string($name)) {
     // It should be an object. Derive the name.
@@ -887,18 +896,20 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // Use pattern matching to find functions that look like implementations of
     // this one. i.e. something_hookname, where "something" doesn't start with
     // an underscore. Note that LIKE uses _ as "match any one character", so
-    // _ has to be escaped in this query.
+    // _ has to be escaped in this query. Limit this to Drupal functions.
     if (strpos($name, 'hook_') === 0) {
       $hook_name = substr($name, 5);
       $base_query = db_select('api_documentation', 'd')
         ->condition('d.object_name', '%\_' . $hook_name, 'LIKE')
         ->condition('d.object_name', '\_%', 'NOT LIKE')
         ->condition('d.branch_id', $branch_id)
-        ->condition('d.did', $exclude_did, '<>');
+        ->condition('d.did', $exclude_did, '<>')
+        ->condition('d.is_drupal', 1);
     }
   }
   elseif ($type == 'theme_invokes') {
     // Use reference storage to find functions that call this theme.
+    // Limit this to Drupal functions.
     $theme_name = '';
     if (strpos($name, 'theme_') === 0) {
       // It's presumably a theme function.
@@ -924,6 +935,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
       $base_query->condition($d . '.branch_id', $branch_id)
         ->condition($d . '.did', $exclude_did, '<>')
         ->condition('r.object_type', 'potential theme')
+        ->condition('d.is_drupal', 1)
         ->condition(db_or()->condition('r.object_name', $theme_name)->condition('r.object_name', $theme_name . '\_\_%', 'LIKE'));
     }
   }
@@ -943,6 +955,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // 'potential hook'; in the last case it is 'potential alter'.
     // So, we need to build a query that will find these matches between
     // $string (field object_name) and $name (passed into this function).
+    // And only do this for Drupal functions.
     $or_clauses = db_or();
     $found = FALSE;
 
@@ -985,20 +998,16 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     if ($found) {
       $base_query = db_select('api_reference_storage', 'r');
       $d = $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
-      $base_query->condition($d . '.branch_id', $branch_id)
-        ->condition($d . '.did', $exclude_did, '<>')
+      $base_query->condition('d.branch_id', $branch_id)
+        ->condition('d.did', $exclude_did, '<>')
+        ->condition('d.is_drupal', 1)
         ->condition($or_clauses);
     }
   }
 
   // See if we built a query to execute.
   if (is_null($base_query)) {
-    if ($count) {
-      return 0;
-    }
-    else {
-      return array();
-    }
+    return ($count) ? 0 : array();
   }
 
   // Execute the query.
@@ -1009,7 +1018,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   }
 
   // If we get here, we want to return a list.
-  $base_query->fields('d', array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type'))
+  $base_query->fields('d', array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type', 'class_did', 'is_drupal'))
     ->orderBy('d.title', 'ASC');
   if ($limit > 0) {
     $base_query->range(0, $limit);
@@ -1021,7 +1030,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     $list[] = array(
       'function' => l($object->title, api_url($object)),
       'file' => api_file_link($object),
-      'description' => api_link_documentation($object->summary, $branch),
+      'description' => api_link_documentation($object->summary, $branch, NULL, $object->class_did, FALSE, FALSE, $object->is_drupal),
     );
   }
 
@@ -1046,11 +1055,11 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
 function api_build_references($types, $object, $branch) {
   $output = array();
   foreach ($types as $type) {
-    $count = api_find_references($object, $branch, $type, TRUE, $object->did);
+    $count = api_find_references($object, $branch, $type, TRUE, $object->did, 0, $object->is_drupal);
     if ($count > 0) {
       $limit = variable_get('api_reference_limit', 5);
       $section = '';
-      $section .= api_list_references($object, $branch, $type, $limit);
+      $section .= api_list_references($object, $branch, $type, $limit, $object->is_drupal);
       if ($count > $limit) {
         $section .= '<p>' . theme('api_function_reference_link', array('type' => $type, 'count' => $count, 'function' => $object, 'override_text' => t('... See full list'))) . '</p>';
       }
@@ -1082,11 +1091,11 @@ function api_build_references($types, $object, $branch) {
 function api_page_function_calls($function, $type) {
   $branch = api_get_branch_by_id($function->branch_id);
 
-  $call_count = api_find_references($function, $branch, $type, TRUE, $function->did);
+  $call_count = api_find_references($function, $branch, $type, TRUE, $function->did, 0, $function->is_drupal);
   $call_title = api_reference_text($type, $call_count, $function);
   api_object_title_and_breadcrumb($branch, $function, $call_title, TRUE);
 
-  return api_list_references($function, $branch, $type);
+  return api_list_references($function, $branch, $type, 0, $function->is_drupal);
 }
 
 /**
@@ -1100,9 +1109,15 @@ function api_page_function_calls($function, $type) {
  *   Type of references: see api_find_references() for list.
  * @param $limit
  *   (optional) Limit list to a few references.
+ * @param bool $is_drupal
+ *   (optional) If set to FALSE, and $type is a Drupal-specific type (such as
+ *   theme- or hook- related), just return an empty list or zero count.
+ *
+ * @return string
+ *   HTML for a list of references.
  */
-function api_list_references($object, $branch, $type, $limit = 0) {
-  $call_functions = api_find_references($object, $branch, $type, FALSE, $object->did, $limit);
+function api_list_references($object, $branch, $type, $limit = 0, $is_drupal = FALSE) {
+  $call_functions = api_find_references($object, $branch, $type, FALSE, $object->did, $limit, $is_drupal);
 
   $note = '';
   if ($type == 'implementations') {
@@ -1152,11 +1167,11 @@ function api_page_simple_item($item, $type) {
 
   api_object_title_and_breadcrumb($branch, $item);
 
-  $documentation = api_link_documentation($item->documentation, $branch, $item->file_did, $item->class_did);
-  $code = api_link_code($item->code, $branch, $item->file_did, $item->class_did);
+  $documentation = api_link_documentation($item->documentation, $branch, $item->file_did, $item->class_did, FALSE, FALSE, $item->is_drupal);
+  $code = api_link_code($item->code, $branch, $item->file_did, $item->class_did, $item->is_drupal);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($item->did));
-  $see = api_link_documentation($item->see, $branch, $item->file_did, $item->class_did, TRUE, TRUE);
-  $deprecated = api_link_documentation($item->deprecated, $branch, $item->file_did, $item->class_did, TRUE, FALSE);
+  $see = api_link_documentation($item->see, $branch, $item->file_did, $item->class_did, TRUE, TRUE, $item->is_drupal);
+  $deprecated = api_link_documentation($item->deprecated, $branch, $item->file_did, $item->class_did, TRUE, FALSE, $item->is_drupal);
   $var = '';
   if ($type == 'property') {
     $var = api_link_name($item->var, $branch, '', '', $item->file_did, $item->class_did, NULL, FALSE, TRUE, NULL, NULL, 'class');
@@ -1191,11 +1206,11 @@ function api_page_class($class) {
 
   api_object_title_and_breadcrumb($branch, $class);
 
-  $documentation = api_link_documentation($class->documentation, $branch, $class->file_did, $class->did);
+  $documentation = api_link_documentation($class->documentation, $branch, $class->file_did, $class->did, FALSE, FALSE, $class->is_drupal);
   $related_topics = api_display_view('api_references', 'block_related_topics', array($class->did));
-  $code = api_link_code($class->code, $branch, $class->file_did, $class->did);
-  $see = api_link_documentation($class->see, $branch, $class->file_did, $class->did, TRUE, TRUE);
-  $deprecated = api_link_documentation($class->deprecated, $branch, $class->file_did, $class->did, TRUE, FALSE);
+  $code = api_link_code($class->code, $branch, $class->file_did, $class->did, $class->is_drupal);
+  $see = api_link_documentation($class->see, $branch, $class->file_did, $class->did, TRUE, TRUE, $class->is_drupal);
+  $deprecated = api_link_documentation($class->deprecated, $branch, $class->file_did, $class->did, TRUE, FALSE, $class->is_drupal);
 
   // Figure out the class hierarchy, and what classes implement if this is
   // an interface.
@@ -1281,8 +1296,8 @@ function api_page_group($group) {
 
   api_object_title_and_breadcrumb($branch, $group);
 
-  $documentation = api_link_documentation($group->documentation, $branch);
-  $see = api_link_documentation($group->see, $branch, NULL, NULL, TRUE, TRUE);
+  $documentation = api_link_documentation($group->documentation, $branch, $group->file_did, NULL, FALSE, FALSE, $group->is_drupal);
+  $see = api_link_documentation($group->see, $branch, $group->file_did, NULL, TRUE, TRUE, $group->is_drupal);
 
   // Find and render all items in this group.
   $types = array(

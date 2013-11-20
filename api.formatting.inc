@@ -18,14 +18,23 @@
  *   Can omit if namespaces are not relevant.
  * @param int $class_did
  *   Documentation ID of the class the code is in (if any).
+ * @param bool $is_drupal
+ *   (optional) If set explicitly to FALSE, omit the Drupal-specific link steps.
  *
  * @return string
  *   Code with function names formatted as links.
  *
  * @see api_link_documentation
  */
-function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL) {
-  return _api_link_documentation($code, $branch, $file_did, $class_did, array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml reference', 'code global', 'code class'));
+function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_drupal = TRUE) {
+  if ($is_drupal) {
+    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml reference', 'code global', 'code class');
+  }
+  else {
+    $steps = array('code function', 'code member', 'code string', 'yaml reference', 'code global', 'code class');
+  }
+
+  return _api_link_documentation($code, $branch, $file_did, $class_did, $steps);
 }
 
 /**
@@ -45,16 +54,18 @@ function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL) {
  *   TRUE. Otherwise, just try to link words with backslashes in them.
  * @param bool $aggressive_topics
  *   For use in @see only, if TRUE try linking every paragraph as a topic name.
+ * @param bool $is_drupal
+ *   (optional) If set explicitly to FALSE, omit the Drupal-specific link steps.
  *
  * @return string
  *   Documentation with function names formatted as links.
  *
  * @see api_link_code
  */
-function api_link_documentation($documentation, $branch, $file_did = NULL, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE) {
+function api_link_documentation($documentation, $branch, $file_did = NULL, $class_did = NULL, $aggressive_classes = FALSE, $aggressive_topics = FALSE, $is_drupal = TRUE) {
 
-  // First use the API filter to make links. To do that, we have to find a
-  // branch to use if possible, and figure out what stages we need.
+  // First make as many links as possible in the text. To do that, we have to
+  // find a branch to use if possible, and figure out what stages we need.
 
   if (is_null($branch)) {
     $branch = api_get_active_branch();
@@ -62,7 +73,12 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
 
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
-  $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'code class', 'tags', 'link', 'function');
+  if ($is_drupal) {
+    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'code class', 'tags', 'link', 'function');
+  }
+  else {
+    $stages = array('code function', 'code member', 'code string', 'code global', 'code class', 'tags', 'link', 'function');
+  }
 
   if ($aggressive_topics) {
     // Look for topics before classes, constants, and files.

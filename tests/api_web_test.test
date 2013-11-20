@@ -1101,9 +1101,17 @@ class ApiExcludeDrupalismTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('excluded_function');
     $this->assertText('sample_two', 'sample_two text is there in excluded.php');
     $this->assertNoLink('sample_two', 'sample_two text is not a link in excluded.php');
+    $this->assertText('sample_function', 'sample_function text is there in excluded.php');
+    $this->assertLink('sample_function', 0, 'sample_function text is a link in excluded.php');
+    $this->clickLink('sample_function');
+    $this->assertLink('excluded_function', 0, 'sample_function page has reference link to excluded_function()');
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_in_code_links');
     $this->assertText('sample_two', 'sample_two text is there in sample.php');
     $this->assertLink('sample_two', 0, 'sample_two text is a link in sample.php');
+    $this->clickLink('sample_two');
+    $this->assertLink('sample_in_code_links', 0, 'Theme page has reference link to sample_in_code_links()');
+    $this->assertNoLink('excluded_function', 'Theme page has no reference link to excluded_function()');
+
   }
 }
