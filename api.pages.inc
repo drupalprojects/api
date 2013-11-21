@@ -403,8 +403,8 @@ function api_page_file($file) {
 
   $objects = drupal_render($objects);
 
-  // If this is a theme template, make reference link.
-  $links = api_build_references(array('theme_invokes'), $file, $branch);
+  // If this is a theme template or YML file, make reference link.
+  $links = api_build_references(array('theme_invokes', 'yml_config', 'yml_keys'), $file, $branch);
 
   $output = theme('api_file_page', array('object' => $file, 'documentation' => $documentation, 'objects' => $objects, 'code' => $code, 'see' => $see, 'deprecated' => $deprecated, 'related_topics' => $related_topics, 'defined' => $defined, 'call_links' => $links));
   $output .= _api_add_comments($file);
@@ -810,6 +810,10 @@ function api_page_function($function) {
  *   - 'overrides': $exclude_did is the ID of a method, find overriding methods.
  *   - 'uses': $name is the fully-namespaced name of a class, find files that
  *     have use declarations.
+ *   - 'yml_config': $name is a YML config file name, find string references
+ *     to the file name without .yml.
+ *   - 'yml_keys': $name is a YML config file name, and $exclude_did is its
+ *     documentation ID. Find references to keys in this file.
  * @param $count
  *   If TRUE (default), return a count. If FALSE, return an array.
  * @param $exclude_did
@@ -818,8 +822,8 @@ function api_page_function($function) {
  * @param $limit
  *   (optional) Limit the number of references returned to this amount.
  * @param bool $is_drupal
- *   (optional) If set to FALSE, and $type is a Drupal-specific type (such as
- *   theme- or hook- related), just return an empty list or zero count.
+ *   (optional) If set to FALSE, and $type is a Drupal-specific type (related
+ *   to themes, hooks, or YAML), just return an empty list or zero count.
  *
  * @return
  *   The number of references or an array of references.
@@ -827,7 +831,7 @@ function api_page_function($function) {
 function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0, $is_drupal = TRUE) {
 
   // Early return: if this is a Drupal type and $is_drupal is FALSE.
-  $drupal_types = array('implementations', 'theme_invokes', 'invokes');
+  $drupal_types = array('implementations', 'theme_invokes', 'invokes', 'yml_config', 'yml_keys');
   if (!$is_drupal && in_array($type, $drupal_types)) {
     return ($count) ? 0 : array();
   }
@@ -842,6 +846,19 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     if ($type == 'uses') {
       $name = $altname;
     }
+  }
+
+  $references_type = 'potential callback';
+  $group = FALSE;
+  if ($type == 'yml_config') {
+    // Verify this is a *.yml file. If not, just return.
+    if (strpos($name, '.yml') != strlen($name) - 4) {
+      return ($count) ? 0 : array();
+    }
+    // Strip off the .yml and look for string references.
+    $name = substr($name, 0, strlen($name) - 4);
+    $type = 'references';
+    $references_type = 'potential file';
   }
 
   $matches = array();
@@ -872,13 +889,31 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     $d = $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
     $base_query->condition($d . '.branch_id', $branch_id)
       ->condition($d . '.did', $exclude_did, '<>')
-      ->condition('r.object_type', 'potential callback');
+      ->condition('r.object_type', $references_type);
     if (isset($altname)) {
       $base_query->condition('r.object_name', array($name, $altname));
     }
     else {
       $base_query->condition('r.object_name', $name);
     }
+  }
+  elseif ($type == 'yml_keys') {
+    // In this case, $exclude_did is the documentation ID of a file. We
+    // want to find the string keys that file has in reference storage, and
+    // then match those with 'potential callback' or 'potential file'
+    // references.
+    $base_query = db_select('api_reference_storage', 'r');
+    $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+    $base_query
+      ->condition('d.branch_id', $branch_id)
+      ->condition('r.object_type', array('potential callback', 'potential file'));
+    $base_query->innerJoin('api_reference_storage', 'rstrings', 'r.object_name = rstrings.object_name');
+    $base_query
+      ->condition('rstrings.from_did', $exclude_did)
+      ->condition('rstrings.object_type', 'yaml string');
+    // A given function/method might have multiple matching YML keys, so we
+    // need to group this query.
+    $group = TRUE;
   }
   elseif ($type == 'uses') {
     // Use namespace storage to find files with use declarations for this class.
@@ -1013,11 +1048,19 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   // Execute the query.
   if ($count) {
     // We're looking for a count here.
-    $base_query->addExpression('COUNT(*)', 'num');
+    if ($group) {
+      $base_query->addExpression('COUNT(DISTINCT d.did)', 'num');
+    }
+    else {
+      $base_query->addExpression('COUNT(d.did)', 'num');
+    }
     return $base_query->execute()->fetchField();
   }
 
   // If we get here, we want to return a list.
+  if ($group) {
+    $base_query->groupBy('d.did');
+  }
   $base_query->fields('d', array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type', 'class_did', 'is_drupal'))
     ->orderBy('d.title', 'ASC');
   if ($limit > 0) {
@@ -1672,13 +1715,8 @@ function api_file_link($object) {
  * Returns the page title or link text for a references page/link.
  *
  * @param $type
- *   The type of reference link, one of:
- *   - 'calls': Function calls.
- *   - 'implementations': Hook implementations.
- *   - 'theme_invokes': Theme calls to a function or file.
- *   - 'invokes': Calls to module_invokes and similar functions.
- *   - 'references': String references to a function name.
- *   - 'overrides': Methods that override this method.
+ *   The type of reference link. This is either one of the values listed in
+ *   api_find_references(), or:
  *   - 'hierarchy': Class hierarchy ($count is ignored).
  * @param $count
  *   The number of referenced items.
@@ -1693,6 +1731,10 @@ function api_reference_text($type, $count, $function) {
   $name_to_use = check_plain($function->title);
   if ($type == 'references') {
     $name_to_use = "'" . $name_to_use . "'";
+  }
+  elseif ($type == 'yml_config') {
+    $name_to_use = "'" . substr($name_to_use, 0, strlen($name_to_use) - 4) . "'";
+    $type = 'references';
   }
   elseif ($function->object_type == 'function') {
     $name_to_use .= '()';
@@ -1718,6 +1760,9 @@ function api_reference_text($type, $count, $function) {
   }
   if ($type == 'references') {
     return format_plural($count, '1 string reference to !name', '@count string references to !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'yml_keys') {
+    return format_plural($count, '1 string reference to YAML keys in !name', '@count string references to YAML keys in !name', array('!name' => $name_to_use));
   }
   if ($type == 'hierarchy') {
     return t('Expanded class hierarchy of !name', array('!name' => $name_to_use));

@@ -105,10 +105,10 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
    * Tests that YAML works properly for linking and references.
    */
   function testYaml() {
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.yml');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.routing.yml');
 
     // Verify that the page name is correct.
-    $this->assertTitleContains('sample.yml', 'Page title is correct');
+    $this->assertTitleContains('sample.routing.yml', 'Page title is correct');
 
     // Verify the links to referenced functions, methods, and classes.
     $this->assertLinkURLSubstring('\api\test1\ClassA::cMethod', $this->branch_info['project'] . '/ClassA.php/function/ClassA', 'cMethod link exists', 'cMethod link went to the right place');
@@ -116,28 +116,43 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('another_function', $this->branch_info['project'] . '/no_namespace.php/function/another_function', 'another_function link exists', 'another_function link went to the right place');
     $this->assertLinkURLSubstring('api\test1\ClassA', $this->branch_info['project'] . '/ClassA.php/class/ClassA', 'ClassA link exists', 'ClassA link went to the right place');
 
+    // Test the references section on the YML file.
+    $this->assertText("1 string reference to 'sample.routing'", 'String reference is there');
+    $this->assertLink('ClassQ::bMethod', 0, 'Link to referencing method is there');
+    $this->assertText("1 string reference to YAML keys in sample.routing.yml", 'YAML keys reference is there');
+    $this->assertLink('another_function', 0, 'Link to YML referencing function is there');
+
     // Verify that the class with a suffix does not turn into a link.
     $this->assertNoLink('ClassQ', 'ClassQ did not turn into a link');
 
     // Verify the references on the linked functions.
     $this->clickLink('another_function');
     $this->assertText("1 string reference to 'another_function'", 'Reference text is there');
-    $this->assertLink('sample.yml', 0, 'Referenced file is linked');
+    $this->assertLink('sample.routing.yml', 0, 'Referenced file is linked');
 
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.yml');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.routing.yml');
     $this->clickLink('\api\test1\ClassA::cMethod');
     $this->assertText("1 string reference to 'ClassA::cMethod'", 'Reference text is there');
-    $this->assertLink('sample.yml', 0, 'Referenced file is linked');
+    $this->assertLink('sample.routing.yml', 0, 'Referenced file is linked');
 
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.yml');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.routing.yml');
     $this->clickLink('\api\test1\ClassA::dMethod');
     $this->assertText("1 string reference to 'ClassA::dMethod'", 'Reference text is there');
-    $this->assertLink('sample.yml', 0, 'Referenced file is linked');
+    $this->assertLink('sample.routing.yml', 0, 'Referenced file is linked');
 
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.yml');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.routing.yml');
     $this->clickLink('api\test1\ClassA');
     $this->assertText("1 string reference to 'ClassA'", 'Reference text is there');
-    $this->assertLink('sample.yml', 0, 'Referenced file is linked');
+    $this->assertLink('sample.routing.yml', 0, 'Referenced file is linked');
+
+    // Verify the links to the YML file.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/no_namespace.php/function/another_function');
+    $this->assertLinkURLSubstring('user_register', $this->branch_info['project'] . '/sample.routing.yml', 'user_register link exists', 'user_register link went to the right place');
+
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/no_namespace.php/class/ClassQ');
+    $this->clickLink('ClassQ::bMethod');
+    $this->assertLinkURLSubstring('sample.routing', $this->branch_info['project'] . '/sample.routing.yml', 'sample.routing link exists', 'sample.routing link went to the right place');
+
   }
 }
 

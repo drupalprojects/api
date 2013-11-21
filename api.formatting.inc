@@ -28,7 +28,7 @@
  */
 function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_drupal = TRUE) {
   if ($is_drupal) {
-    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml reference', 'code global', 'code class');
+    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'yaml reference', 'code global', 'code class');
   }
   else {
     $steps = array('code function', 'code member', 'code string', 'yaml reference', 'code global', 'code class');
@@ -74,7 +74,7 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
   if ($is_drupal) {
-    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'code global', 'code class', 'tags', 'link', 'function');
   }
   else {
     $stages = array('code function', 'code member', 'code string', 'code global', 'code class', 'tags', 'link', 'function');
@@ -175,6 +175,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $append = '</span>';
       $type = 'function_or_constant';
       $use_php = TRUE;
+      $continue_matching = TRUE;
       break;
 
     case 'code class':
@@ -203,6 +204,26 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
       $type = 'function';
+      $continue_matching = TRUE;
+      break;
+
+    case 'yaml string':
+      // Find potential YAML key strings in marked-up code.
+      $pattern = '!<span class="php-string">\'(' . API_RE_YAML_STRING . ')\'</span>!';
+      $prepend = '<span class="php-function-or-constant">\'';
+      $append = '\'</span>';
+      $prepend_if_not_found = '<span class="php-string">\'';
+      $type = 'yaml_string';
+      $continue_matching = TRUE;
+      break;
+
+    case 'yaml file':
+      // Find potential YAML file name strings in marked-up code.
+      $pattern = '!<span class="php-string">\'(' . API_RE_YAML_STRING . ')\'</span>!';
+      $prepend = '<span class="php-function-or-constant">\'';
+      $append = '\'</span>';
+      $prepend_if_not_found = '<span class="php-string">\'';
+      $type = 'yaml_file';
       break;
 
     case 'yaml reference':
@@ -212,8 +233,6 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $pattern = '!<span class="yaml-reference">(' . API_RE_FUNCTION_IN_TEXT . ')</span>!';
       $prepend = '<span class="php-function-or-constant">';
       $append = '</span>';
-      $prepend_if_not_found = '';
-      $append_if_not_found = '';
       $type = 'yaml_reference';
       break;
 
@@ -289,14 +308,26 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
 
   // See if we have more stages to do. If so, set up to call this function
   // again; if not, we're done.
+  $append_if_not_found = $append;
+  $prepend_if_no_change = '';
+  $append_if_no_change = '';
   if (count($stages) > 0) {
     $callback = '_api_link_documentation';
+    if ($continue_matching) {
+      // In this case, we want to tell the matching callback function not
+      // to prepend or append anything, and api_split to put back the wrappers
+      // if there was no change.
+      $prepend_if_no_change = ($prepend_if_not_found) ? $prepend_if_not_found : $prepend;
+      $append_if_no_change = $append;
+      $prepend_if_not_found = '';
+      $append_if_not_found = '';
+    }
   }
   else {
     $callback = NULL;
   }
 
-  return api_split($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $file_did, $class_did, NULL, NULL, $use_php, $prepend_if_not_found, NULL, $type), $callback, array($branch, $file_did, $class_did, $stages), $continue_matching);
+  return api_split($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $file_did, $class_did, NULL, FALSE, $use_php, $prepend_if_not_found, $append_if_not_found, $type), $callback, array($branch, $file_did, $class_did, $stages), $continue_matching, $prepend_if_no_change, $append_if_no_change);
 }
 
 /**
@@ -321,16 +352,26 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
  * @param $continue_matching
  *   If TRUE, call $callback again on the matched text if it is left unchanged
  *   by its callback.
+ * @param $prepend_if_not_changed
+ *   String to prepend if the match callback makes no change and we are
+ *   continuing.
+ * @param $append_if_not_changed
+ *   String to append if the match callback makes no change and we are
+ *   continuing.
  *
  * @return
  *   The original string, with both matched and unmatched portions filtered by
  *   the appropriate callbacks.
  */
-function api_split($pattern, $subject, $callback_match = NULL, $callback_match_arguments = array(), $callback = NULL, $callback_arguments = array(), $continue_matching = FALSE) {
+function api_split($pattern, $subject, $callback_match = NULL, $callback_match_arguments = array(), $callback = NULL, $callback_arguments = array(), $continue_matching = FALSE, $prepend_if_not_changed = '', $append_if_not_changed = '') {
   $return = '';
   $matched = FALSE;
   foreach (preg_split($pattern . 'sm', $subject, -1, PREG_SPLIT_DELIM_CAPTURE) as $part) {
+    // The return values will alternate being unmatched text and delimeters.
+    // And note that the "delimiters" are only part of the expression.
     if ($matched) {
+      // This is a "delimiter", which is a piece of the matched regular
+      // expression (whatever is in parens).
       if (is_null($callback_match)) {
         $return .= $part;
       }
@@ -338,12 +379,14 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
         $new_text = call_user_func_array($callback_match, array_merge(array($part), $callback_match_arguments));
 
         if ($new_text == $part && $continue_matching) {
-          $new_text = call_user_func_array($callback, array_merge(array($part), $callback_arguments));
+          $new_text = call_user_func_array($callback, array_merge(array($prepend_if_not_changed . $part . $append_if_not_changed), $callback_arguments));
         }
+
         $return .= $new_text;
       }
     }
     else {
+      // This is a part of the input text that did not match.
       if (is_null($callback)) {
         $return .= $part;
       }
@@ -351,6 +394,9 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
         $return .= call_user_func_array($callback, array_merge(array($part), $callback_arguments));
       }
     }
+
+    // This makes the foreach alternate between thinking it's a delimeter and
+    // unmatched text.
     $matched = !$matched;
   }
   return $return;
@@ -410,6 +456,9 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   - 'global': $name is a global variable.
  *   - 'yaml_reference': $name is the possibly namespaced name of a function or
  *     method, or class, possibly in single or double quotes (in a YAML file).
+ *   - 'yaml_string': $name is a string that could be a 'yaml string' reference.
+ *   - 'yaml_file': $name is possibly the name of a YAML config file (missing
+ *     the .yml extension).
  *
  * @return
  *   The text as a link to the object page.
@@ -419,7 +468,7 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  */
 function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL, $text = NULL, $is_link = FALSE, $use_php = TRUE, $prepend_if_not_found = NULL, $append_if_not_found = NULL, $type = '') {
 
-  if (is_null($text)) {
+  if (!$text) {
     $text = $name;
   }
   $name = trim($name);
@@ -428,6 +477,12 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = 
     // Trim off quotes and match as any object name.
     $name = trim($name, '"\'');
     $type = 'function_or_constant';
+    $is_link = FALSE;
+  }
+  elseif ($type == 'yaml_file') {
+    // Add .yml and match as a file.
+    $name = $name . '.yml';
+    $type = 'file';
     $is_link = FALSE;
   }
 
@@ -570,6 +625,10 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
   // Now do the standard linking tries.
   // Build a query to find the matches.
   if ($api_branch_ids) {
+    // This will not work for 'yaml_string' references.
+    if ($type == 'yaml_string') {
+      return FALSE;
+    }
     $using_api_branch = TRUE;
     $query = db_select('api_external_documentation', 'ad')
       ->fields('ad')
@@ -598,7 +657,7 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     $search_name = $query->addField('ad', 'object_name', 'search_name');
     $search_name_field = 'ad.object_name';
   }
-  elseif ($type != 'theme' && $type != 'file') {
+  elseif ($type != 'theme' && $type != 'file' && $type != 'yaml_string') {
     $match_name = $query->addField('ad', 'object_name', 'match_name');
     $match_name_field = 'ad.object_name';
     $search_name_field = NULL;
@@ -683,10 +742,22 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
   elseif ($type == 'group') {
     $query->condition('ad.object_type', 'group');
   }
+  elseif ($type == 'yaml_string') {
+    // This is a bit of a different case. Here, we have a string and we are
+    // trying to see if it was defined as a top-level key in a YAML services
+    // or routing file. This would be stored in the {api_reference_storage}
+    // table.
+    $query->innerJoin('api_reference_storage', 'ar', 'ad.did = ar.from_did');
+    $match_name = $query->addField('ar', 'object_name', 'match_name');
+    $query->condition('ar.object_type', 'yaml string');
+    $match_name_field = 'ar.object_name';
+    $search_name_field = NULL;
+  }
 
   // Execute the query and make an array of matches, making sure to only
   // keep the highest-priority matches.
   $query->condition($match_name_field, $potential_names);
+
   $results = $query->execute();
   $best = array();
   $name_matched = '';

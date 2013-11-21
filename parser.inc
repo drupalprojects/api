@@ -251,29 +251,56 @@ function api_parse_yaml_file($docblock) {
   }
 
   // Find potential references, which are array values that look like they
-  // could be callback function names.
-  $references = _api_find_yaml_references($parsed);
-  $docblock['references'] = array('potential callback' => $references);
-
-  // Number the lines.
-  $code = api_number_lines($docblock['source']);
-  $code = '<pre class="php"><code>' . $code . '</code></pre>';
-
-  // Wrap each found reference string in a span. We have to use preg_replace()
-  // to do this, because we only want to match whole strings, enclosed in
-  // single quotes, double quotes, or whitespace. And we want to do the whole
-  // thing in one replace, so it matches the longest possible string in each
-  // case. So we also need to sort the strings by length, longest first,
-  // because PHP regular expressions with alternatives take the first matching
-  // one.
-  $newstrings = array();
-  usort($references, '_api_length_compare');
-  foreach ($references as $string) {
-    $newstrings[] = preg_quote($string, '/');
+  // could be callback function names, in addition to some array keys. The
+  // level of keys we want depends on (a) if it's a Drupal file, and (b) the
+  // file extension.
+  $key_level = 0;
+  if ($docblock['is_drupal']) {
+    $basename = $docblock['basename'];
+    $matches = array();
+    if (preg_match('|\.([^.]+)\.yml$|', $basename, $matches)) {
+      if ($matches[1] == 'services') {
+        // We want to keep references to 2nd-level keys in services.yml files.
+        $key_level = 2;
+      }
+      elseif ($matches[1] == 'routing' || $matches[1] == 'local_tasks' || $matches[1] == 'contextual_links') {
+        // We want to keep references to 1st-level keys in routing.yml and
+        // related files.
+        $key_level = 1;
+      }
+    }
   }
 
-  $regexp = '/(?<=[\'"\s])(' . implode('|', $newstrings) . ')(?=[\'"\s])/';
-  $code = preg_replace($regexp, '<span class="yaml-reference">$1</span>', $code);
+  $references = _api_find_yaml_references($parsed, $key_level);
+  $docblock['references'] = $references;
+
+  // Now we need to format the source of this file. Start by escaping
+  // HTML tags and entities.
+  $code = $docblock['source'];
+  $code = htmlspecialchars($code, ENT_NOQUOTES, 'UTF-8');
+
+  // Wrap each found callback reference string in a span. We have to use
+  // preg_replace() to do this, because we only want to match whole strings,
+  // enclosed in single quotes, double quotes, or whitespace. And we want to
+  // do the whole thing in one replace, so it matches the longest possible
+  // string in each case. So we also need to sort the strings by length,
+  // longest first, because PHP regular expressions with alternatives take the
+  // first matching one.
+  $references = $references['potential callback'];
+  if (count($references)) {
+    $newstrings = array();
+    usort($references, '_api_length_compare');
+    foreach ($references as $string) {
+      $newstrings[] = preg_quote($string, '/');
+    }
+
+    $regexp = '/(?<=[\'"\s])(' . implode('|', $newstrings) . ')(?=[\'"\s])/';
+    $code = preg_replace($regexp, '<span class="yaml-reference">$1</span>', $code);
+  }
+
+  // Number the lines and put into a code block.
+  $code = api_number_lines($code);
+  $code = '<pre class="php"><code>' . $code . '</code></pre>';
 
   $docblock['code'] = $code;
 
@@ -296,30 +323,45 @@ function _api_length_compare($a, $b) {
 
 /**
  * Recursively finds potential references in a parsed YAML array.
+ *
+ * @param $yaml
+ *   Parsed YAML object.
+ * @param int $key_refs_level
+ *   Store references to the keys on this level, where 1 is the current level.
+ *
+ * @return array
+ *   Array of references suitable for use in $docblock['references'].
  */
-function _api_find_yaml_references($yaml) {
+function _api_find_yaml_references($yaml, $key_refs_level) {
   if (empty($yaml)) {
-    return array();
+    return array('potential callback' => array());
   }
 
   $yaml = (array) $yaml;
-  $references = array();
-  foreach ($yaml as $value) {
+  $references = array('potential callback' => array(), 'yaml string' => array());
+  foreach ($yaml as $key => $value) {
+    if ($key_refs_level == 1 && is_string($key)) {
+      $key = trim($key);
+      if ($key) {
+        $references['yaml string'][$key] = $key;
+      }
+    }
     if (is_string($value)) {
       $matches = array();
       if (preg_match("|^['\"]*(" . API_RE_FUNCTION_IN_TEXT . ")['\"]*$|", $value, $matches)) {
         // Special case the commonly-found TRUE and FALSE.
-        if ($matches[1] != 'TRUE' && $matches[1] != 'FALSE') {
-          $references[] = $matches[1];
+        $val = trim($matches[1]);
+        if ($val && $val != 'TRUE' && $val != 'FALSE' && !is_numeric($val)) {
+          $references['potential callback'][$val] = $val;
         }
       }
     }
     elseif (is_array($value) || is_object($value)) {
-      $references = array_merge($references, _api_find_yaml_references($value));
+      $references = _api_merge_references($references, _api_find_yaml_references($value, $key_refs_level - 1));
     }
   }
 
-  return array_unique($references);
+  return $references;
 }
 
 /**
@@ -473,7 +515,8 @@ function _api_merge_references($master, $new) {
     }
   }
 
-  return array_merge_recursive($master, $new);
+  // Use array_replace_recursive here so we do not get duplicate references.
+  return array_replace_recursive($master, $new);
 }
 
 /**
@@ -956,7 +999,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
   }
 
   // Remove any existing references.
-  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'member-parent', 'member-self', 'member', 'member-class');
+  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'potential file', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string');
 
   db_delete('api_reference_storage')
     ->condition('branch_id', $branch->branch_id)
@@ -1519,9 +1562,16 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
               $references['potential ' . $invoke_type][$newname] = $newname;
             }
           }
-          if ($track_references && preg_match("|^'" . DRUPAL_PHP_FUNCTION_PATTERN . "'$|", $value)) {
-            $newname = str_replace("'", '', $value);
-            $references['potential callback'][$newname] = $newname;
+          if ($track_references) {
+            if (preg_match("|^'" . DRUPAL_PHP_FUNCTION_PATTERN . "'$|", $value)) {
+              $newname = str_replace("'", '', $value);
+              $references['potential callback'][$newname] = $newname;
+            }
+            elseif (preg_match("|^'" . API_RE_FILENAME . "'$|", $value)) {
+              // Some of these may be quite long, so truncate.
+              $newname = str_replace("'", '', drupal_substr($value, 0, 127));
+              $references['potential file'][$newname] = $newname;
+            }
           }
 
           $output .= '<span class="' . $class . '">' . $value . '</span>';
@@ -1771,16 +1821,17 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
  *   Number to start with.
  *
  * @return string
- *   Numbered code. Uses UL list.
+ *   Numbered code. Uses OL list.
  */
 function api_number_lines($code, $number = 1) {
   $start = (is_int($number)) ? $number : 1;
   $lines = explode("\n", $code);
-  $output = '<ol class="code-lines" start="' . $number . '">';
-  foreach ($lines as $line) {
-    $output .= '<li>' . $line . "\n</li>";
+  // If the last line is empty, omit it.
+  $last = array_pop($lines);
+  if ($last) {
+    array_push($lines, $last);
   }
-  $output .= '</ol>';
+  $output = '<ol class="code-lines" start="' . $number . '"><li>' . implode("\n</li><li>", $lines) . "\n</li></ol>";
 
   return $output;
 }
@@ -1826,6 +1877,9 @@ function api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $w
       ->execute()
       ->fetchField();
   }
+
+  // Avoid trying to save really long object names.
+  $to_name = drupal_substr($to_name, 0, 127);
 
   if ($to_type != 'function' || !$is_php_function[$to_name]) {
     if ($wait) {

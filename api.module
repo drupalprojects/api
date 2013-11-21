@@ -52,6 +52,14 @@ define('API_RE_CLASS_NAME_TEXT', '[\\\\a-zA-Z0-9_\x7f-\xff]*[A-Z][\\\\a-zA-Z0-9_
 define('API_RE_DEFINITE_CLASS_NAME_TEXT', '[\\\\a-zA-Z0-9_\x7f-\xff]*[\\\\][\\\\a-zA-Z0-9_\x7f-\xff]*');
 
 /**
+ * Regular expression for matching YAML strings.
+ *
+ * These can contain ., _, letters, and numbers, and are top-level keys
+ * in YAML files.
+ */
+define('API_RE_YAML_STRING', '[a-zA-Z0-9_\.\x7f-\xff]+');
+
+/**
  * Regular expression for starting inline \@tags.
  */
 define('API_RE_TAG_START', '(?<!\\\)@');
@@ -480,6 +488,24 @@ function api_menu() {
     'load arguments' => array(1, 4), // project, branch
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(2, 'theme_invokes'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+  $items['api/%/%api_filename/yml_config'] = array(
+    'title' => 'File',
+    'load arguments' => array(1, 4), // project, branch
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(2, 'yml_config'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+  $items['api/%/%api_filename/yml_keys'] = array(
+    'title' => 'File',
+    'load arguments' => array(1, 4), // project, branch
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(2, 'yml_keys'),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
