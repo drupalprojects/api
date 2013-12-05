@@ -59,6 +59,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
   function testAll() {
     $this->_testBranchesCallingFunctions();
     $this->_testBranchLinks();
+    $this->_testApiS();
   }
 
   /**
@@ -139,7 +140,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->assertNoRaw('Sample::foo', 'Sample method name is not shown');
 
     // Test on a search page.
-    $this->drupalget('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search/samp');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search/samp');
     $this->assertLink('Sample', 0, 'Sample class is found');
     $this->assertLink('sample.php', 0, 'Sample file is found');
     $this->assertLink('sample_function', 0, 'Sample function is found');
@@ -152,6 +153,26 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->assertLink('second_sample_function', 0, 'Second sample function is found');
     $this->assertLink('Search ' . $this->branch_info['title'] . ' for samp', 0, 'Link to other search is found');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
+  }
+
+  /**
+   * Tests that the apis path works.
+   */
+  function _testApiS() {
+    // This should go to the sample_function in the first project.
+    $this->drupalGet('apis/sample_function');
+    $this->assertURLContains('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function', 'First sample_function is found by apis');
+
+    // This should go to the second_sample_function in the second project.
+    $this->drupalGet('apis/second_sample_function');
+    $this->assertURLContains('api/' . $this->branch_info_2['project'] . '/sample2.php/function/second_sample_function', 'second_sample_function is found by apis');
+
+    // This should not find anything.
+    $this->drupalGet('apis/pizza');
+    $this->assertText('Search for pizza', 'Page title is there after unsuccessful search');
+    $this->assertText('No match for', 'Start of message is there');
+    $this->assertText('in the top 10 branches. Try switching to the correct project/branch and searching there', 'End of message is there');
+
   }
 }
 
@@ -236,6 +257,7 @@ class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
     $this->_testPages();
     $this->_testBranchesCallingFunctions();
     $this->_testBranchLinks();
+    $this->_testApiS();
   }
 
   /**
@@ -323,5 +345,28 @@ class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('theme', $this->branch_info_core['project'] . '/drupal.php/function/theme', 'theme link exists', 'theme link went to the right place');
     $this->assertText('sample_function', 'sample_function is there');
     $this->assertNoLink('sample_function', 'sample_function is not a link');
+  }
+
+  /**
+   * Tests that the apis path works.
+   */
+  function _testApiS() {
+    // This should go to the sample_function in the first project.
+    $this->drupalGet('apis/sample_function');
+    $this->assertURLContains('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function', 'First sample_function is found by apis');
+
+    // This should go to the second_sample_function in the second project.
+    $this->drupalGet('apis/second_sample_function');
+    $this->assertURLContains('api/' . $this->branch_info_2['project'] . '/sample2.php/function/second_sample_function', 'second_sample_function is found by apis');
+
+    // This should go to the drupal_alter in the core project.
+    $this->drupalGet('apis/module_invoke_all');
+    $this->assertURLContains('api/' . $this->branch_info_core['project'] . '/drupal.php/function/module_invoke_all', 'module_invoke_all is found by apis');
+
+    // This should not find anything.
+    $this->drupalGet('apis/pizza');
+    $this->assertText('Search for pizza', 'Page title is there after unsuccessful search');
+    $this->assertText('No match for', 'Start of message is there');
+    $this->assertText('in the top 10 branches. Try switching to the correct project/branch and searching there', 'End of message is there');
   }
 }

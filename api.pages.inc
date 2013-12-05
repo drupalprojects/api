@@ -27,18 +27,61 @@ function api_search_redirect() {
     $tail = implode('/', $args);
   }
 
-  // Figure out what branch to search in.
-  $branch = api_get_branch_by_id();
-  if (!isset($branch)) {
-    $branch = api_get_active_branch();
+  // What we want to do is to send the user to the first branch in branch
+  // sorting order that has a match for this search term. But there could be
+  // a lot of branches, so only try a few. This limit can be overridden in
+  // $conf if needed.
+  $branches = api_get_branches();
+  $limit = (int) variable_get('api_apis_branch_limit', 10);
+  $count = 0;
+  foreach ($branches as $branch) {
+    if (api_check_for_search_match($tail, $branch->branch_id)) {
+      $_GET['destination'] = 'api/' . $branch->project . '/' . $branch->branch_name . '/search/' . $tail;
+      drupal_goto();
+    }
+    $count++;
+    if ($count >= $limit) {
+      break;
+    }
   }
-  if (isset($branch)) {
+
+  // If we get here, there wasn't a match. So redirect to a search in the
+  // default branch, assuming there was a default branch.
+  $branch = array_shift($branches);
+  if ($branch) {
+    drupal_set_message(t('No match for %term was found in the top !limit branches. Try switching to the correct project/branch and searching there.', array('%term' => $tail, '!limit' => $limit)));
     $_GET['destination'] = 'api/' . $branch->project . '/' . $branch->branch_name . '/search/' . $tail;
     drupal_goto();
   }
 
   // This is just a stopgap if there is no branch.
   return t('Sorry, @term cannot be found', array('@term' => $tail));
+}
+
+/**
+ * Checks to see if there is at least one search match in a branch.
+ *
+ * @param string $text
+ *   Text to search for (object title).
+ * @param int $branch_id
+ *   Branch to search in.
+ *
+ * @return bool
+ *   TRUE if there is at least one title match for this search; FALSE if not.
+ */
+function api_check_for_search_match($text, $branch_id) {
+  $query = db_select('api_documentation', 'ad');
+  $query
+    ->fields('ad', array('did'))
+    ->condition('branch_id', $branch_id)
+    ->condition('title', $text)
+    ->range(0,1);
+  $results = $query->execute();
+  foreach ($results as $result) {
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 /**
