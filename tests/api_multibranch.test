@@ -163,16 +163,19 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->drupalGet('apis/sample_function');
     $this->assertURLContains('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function', 'First sample_function is found by apis');
 
+    // This should go to a search for sample in the first project.
+    $this->drupalGet('apis/sample');
+    $this->assertURLContains('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search/sample', 'Partial-match search works in apis');
+
     // This should go to the second_sample_function in the second project.
     $this->drupalGet('apis/second_sample_function');
     $this->assertURLContains('api/' . $this->branch_info_2['project'] . '/sample2.php/function/second_sample_function', 'second_sample_function is found by apis');
 
     // This should not find anything.
     $this->drupalGet('apis/pizza');
-    $this->assertText('Search for pizza', 'Page title is there after unsuccessful search');
-    $this->assertText('No match for', 'Start of message is there');
-    $this->assertText('in the top 10 branches. Try switching to the correct project/branch and searching there', 'End of message is there');
-
+    $this->assertText('Sorry', 'Start of message is there');
+    $this->assertText('cannot be found', 'End of message is there');
+    $this->assertText('pizza', 'Search term is displayed');
   }
 }
 
@@ -355,6 +358,10 @@ class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
     $this->drupalGet('apis/sample_function');
     $this->assertURLContains('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function', 'First sample_function is found by apis');
 
+    // This should go to a search for sample in the first project.
+    $this->drupalGet('apis/sample');
+    $this->assertURLContains('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search/sample', 'Partial-match search works in apis');
+
     // This should go to the second_sample_function in the second project.
     $this->drupalGet('apis/second_sample_function');
     $this->assertURLContains('api/' . $this->branch_info_2['project'] . '/sample2.php/function/second_sample_function', 'second_sample_function is found by apis');
@@ -365,8 +372,8 @@ class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
 
     // This should not find anything.
     $this->drupalGet('apis/pizza');
-    $this->assertText('Search for pizza', 'Page title is there after unsuccessful search');
-    $this->assertText('No match for', 'Start of message is there');
-    $this->assertText('in the top 10 branches. Try switching to the correct project/branch and searching there', 'End of message is there');
+    $this->assertText('Sorry', 'Start of message is there');
+    $this->assertText('cannot be found', 'End of message is there');
+    $this->assertText('pizza', 'Search term is displayed');
   }
 }
