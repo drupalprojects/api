@@ -536,12 +536,19 @@ function api_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'extends_did' => array(
+        'description' => 'If this is a class or interface inheritance, the computed did value',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+      ),
     ),
     'indexes' => array(
       'from_did' => array('from_did'),
       'object_name' => array('object_name'),
       'object_type' => array('object_type'),
       'branch_id' => array('branch_id'),
+      'extends_did' => array('extends_did'),
     ),
   );
 
@@ -590,26 +597,6 @@ function api_schema() {
     'indexes' => array(
       'did' => array('did'),
       'class_did' => array('class_did'),
-    ),
-  );
-
-  $schema['api_extends'] = array(
-    'description' => 'Keep track of class parents.',
-    'fields' => array(
-      'did' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'parent_did' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-    'primary key' => array('did'),
-    'indexes' => array(
-      'parent_did' => array('parent_did'),
     ),
   );
 
@@ -955,42 +942,12 @@ function api_update_7107( &$sandbox) {
 }
 
 /**
- * Add new table {api_extends}.
+ * (Removed.)
  */
 function api_update_7108() {
-  db_create_table('api_extends', array(
-    'description' => 'Keep track of class parents.',
-    'fields' => array(
-      'did' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-      'parent_did' => array(
-        'type' => 'int',
-        'not null' => TRUE,
-        'default' => 0,
-      ),
-    ),
-    'primary key' => array('did'),
-    'indexes' => array(
-      'parent_did' => array('parent_did'),
-    ),
-  ));
-
-  // Only save class parents to the table if they are unique names.
-  $select = db_select('api_reference_storage', 'r')
-    ->condition('r.object_type', 'class');
-  $select->innerJoin('api_documentation', 'd', 'd.branch_id = r.branch_id AND d.object_name = r.object_name');
-  $select->condition('d.object_type', 'class');
-  $select->leftJoin('api_documentation', 'd2', 'd2.branch_id = r.branch_id AND d2.object_name = r.object_name AND d2.did <> d.did');
-  $select->isNull('d2.did');
-  $select->addField('r', 'from_did', 'did');
-  $select->addField('d', 'did', 'parent_did');
-
-  db_insert('api_extends')
-    ->from($select)
-    ->execute();
+  // This used to create the api_extends table, but since the table is
+  // removed in a later update, don't bother now (if we are running this
+  // version of the file, we don't need it).
 }
 
 /**
@@ -1633,6 +1590,25 @@ function api_update_7132() {
         'not null' => TRUE,
         'default' => 1,
     ), array('indexes' => array('is_drupal' => array('is_drupal'))));
+}
+
+/**
+ * Add field extends_did to the api_reference_storage table, in place of the
+ * api_extends table.
+ */
+function api_update_7133() {
+  // Add the new field to api_reference_storage.
+  db_add_field('api_reference_storage', 'extends_did', array(
+        'description' => 'If this is a class or interface inheritance, the computed did value',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+    ), array('indexes' => array('extends_did' => array('extends_did'))));
+
+  // Delete the {api_extends} table, if it even exists.
+  if (db_table_exists('api_extends')) {
+    db_drop_table('api_extends');
+  }
 }
 
 // @todo Need to have an update function that reparses again, due to changes

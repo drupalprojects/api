@@ -1280,26 +1280,24 @@ function api_page_class($class) {
   $hierarchy = api_class_hierarchy($class);
   $implements = array();
   if ($class->object_type === 'interface') {
-    // Make a list of all interfaces that extend this one, in this branch only.
-    $to_check = array($class->namespaced_name);
-    $extend_list = array($class->namespaced_name);
+    // Make a list of all interfaces that extend this one in this branch.
+    $to_check = array($class->did);
+    $extend_list = array($class->did);
     while (count($to_check) > 0) {
-      $this_name = array_shift($to_check);
-      $query = db_select('api_reference_storage', 'ars')
+      $this_did = array_shift($to_check);
+      $result = db_select('api_reference_storage', 'ars')
         ->condition('ars.object_type', 'class')
-        ->condition('ars.object_name', $this_name)
-        ->condition('ars.branch_id', $branch->branch_id);
-      $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
-      $result = $query
-        ->fields('ad', array('namespaced_name'))
+        ->condition('ars.extends_did', $this_did)
+        ->condition('ars.branch_id', $branch->branch_id)
+        ->fields('ars', array('from_did'))
         ->execute()
         ->fetchCol();
-      foreach ($result as $new_name) {
-        if (!in_array($new_name, $extend_list)) {
+      foreach ($result as $new_did) {
+        if (!in_array($new_did, $extend_list)) {
           // Avoid loops!
-          $to_check[] = $new_name;
+          $to_check[] = $new_did;
         }
-        $extend_list[] = $new_name;
+        $extend_list[] = $new_did;
       }
     }
 
@@ -1308,7 +1306,7 @@ function api_page_class($class) {
     $query = db_select('api_reference_storage', 'ars');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
     $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
-      ->condition('ars.object_name', $extend_list)
+      ->condition('ars.extends_did', $extend_list)
       ->condition('ars.branch_id', $branch->branch_id)
       ->condition('ars.object_type', 'interface')
       ->orderBy($ad . '.object_name');
@@ -1499,7 +1497,7 @@ function api_class_hierarchy($class, $type = 'ancestors') {
 
     // Query to find the next ancestor.
     $query = db_select('api_reference_storage', 'ars');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.namespaced_name = ars.object_name AND ad.branch_id = ars.branch_id');
+    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.extends_did');
     $query
       ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
       ->condition('ars.from_did', $parent->did)
@@ -1586,8 +1584,7 @@ function api_class_children($class, $current_did = 0) {
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
   $query
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
-    ->condition('ars.object_name', $class->namespaced_name)
-    ->condition('ars.branch_id', $class->branch_id)
+    ->condition('ars.extends_did', $class->did)
     ->condition('ad.object_type', array('class', 'interface'))
     ->condition('ars.object_type', 'class')
     ->orderBy('ad.object_name');
@@ -1620,9 +1617,10 @@ function api_class_hierarchy_line($class, $current_did = 0) {
 
   // See if this class implements any interfaces.
   $interfaces = array();
+
   $query = db_select('api_reference_storage', 'ars');
   $ref_name = $query->addField('ars', 'object_name', 'ref_name');
-  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.namespaced_name = ars.object_name AND ad.branch_id = ars.branch_id AND ad.object_type = ars.object_type');
+  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.did = ars.extends_did');
   $obj_name = $query->addField($ad, 'object_name', 'object_name');
   $query
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
@@ -1636,10 +1634,6 @@ function api_class_hierarchy_line($class, $current_did = 0) {
       if (!isset($interfaces[$object->object_name])) {
         $interfaces[$object->object_name] = l($object->object_name, api_url($object));
       }
-      else {
-        // Duplicate interface name, use a search.
-        $interfaces[$object->object_name] = l(t('Multiple interfaces named @classname', array('@classname' => $object->object_name)), 'api/' . $branch->project . '/' . $branch->branch_name . '/search/' . check_plain($object->object_name));
-      }
     }
     else {
       // This class was declared to implement this interface, but it didn't get
@@ -1651,16 +1645,14 @@ function api_class_hierarchy_line($class, $current_did = 0) {
 
   // See if this class extends another class that isn't defined in our DB.
   $extends = '';
-  $query = db_select('api_reference_storage', 'ars');
-  $ad = $query->leftJoin('api_documentation', 'ad', 'ad.namespaced_name = ars.object_name AND ad.branch_id = ars.branch_id');
-  $query
-    ->fields($ad, array('did'))
+  $query = db_select('api_reference_storage', 'ars')
     ->fields('ars', array('object_name'))
     ->condition('ars.from_did', $class->did)
     ->condition('ars.object_type', 'class')
+    ->condition('ars.extends_did', 0)
     ->range(0, 1);
   $parent = $query->execute()->fetchObject();
-  if (isset($parent) && is_object($parent) && is_null($parent->did)) {
+  if (isset($parent) && is_object($parent)) {
     $extends = ' extends ' . $parent->object_name;
   }
 

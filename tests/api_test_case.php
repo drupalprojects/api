@@ -53,7 +53,6 @@ class ApiTestCase extends DrupalWebTestCase {
         'api_reference_storage' => 0,
         'api_overrides' => 0,
         'api_members' => 0,
-        'api_extends' => 0,
         'api_php_branch' => 1,
         'api_php_documentation' => 0,
       ), 0, 'Immediately after install');
@@ -183,6 +182,7 @@ class ApiTestCase extends DrupalWebTestCase {
    */
   function resetBranchesAndCache() {
     cache_clear_all('variables', 'cache_bootstrap', 'cache');
+    drupal_static_reset();
     variable_initialize();
     api_reset_branches();
   }

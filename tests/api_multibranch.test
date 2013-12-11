@@ -348,6 +348,14 @@ class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('theme', $this->branch_info_core['project'] . '/drupal.php/function/theme', 'theme link exists', 'theme link went to the right place');
     $this->assertText('sample_function', 'sample_function is there');
     $this->assertNoLink('sample_function', 'sample_function is not a link');
+
+    // Check on the class inheritance across branches.
+    $this->drupalGet('api/' . $this->branch_info_2['project'] . '/inheritance.php/class/OtherBranchExtension/' . $this->branch_info_2['branch_name']);
+    $this->assertLink('Sample2::baz', 0, 'Link to inherited function is present');
+    $this->assertText('Implement this API', 'Description of inherited function is present');
+    $this->assertLink('SampleInterface::foo', 0, 'Link to overridden function exists');
+    $this->assertLink('Sample2', 0, 'Link to base class exists');
+    $this->assertLink('SampleInterface', 0, 'Link to interface exists');
   }
 
   /**

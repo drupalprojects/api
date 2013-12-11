@@ -1851,7 +1851,7 @@ function api_filter_documentation_process($text) {
   $arg = arg();
   if ($arg[0] == 'api') {
     $item = menu_get_item();
-    if (isset($item['load_functions'])) {
+    if (isset($item['load_functions']) && is_array($item['load_functions'])) {
       foreach ($item['load_functions'] as $index => $function) {
         if ($function == 'api_item_load' && isset($item['map'][$index]) && is_object($item['map'][$index])) {
           $obj = $item['map'][$index];
@@ -2283,7 +2283,7 @@ function api_branch_sort($a, $b) {
  */
 function api_delete_items($dids, $interactive = TRUE) {
   // Count the cumulative effect of calls in this page request.
-  static $total_count = 0;
+  $total_count = &drupal_static(__FUNCTION__, 0);
 
   // If there's nothing to do, return early.
   $count = count($dids);
@@ -2295,6 +2295,7 @@ function api_delete_items($dids, $interactive = TRUE) {
   // queries can be a problem. This is fast though, so do not worry about
   // batching.
   $done = 0;
+  $to_reparse = array();
   while ($done < $count) {
     $this_batch = array_slice($dids, $done, 100);
     $done += 100;
@@ -2320,23 +2321,67 @@ function api_delete_items($dids, $interactive = TRUE) {
         ->condition('class_did', $this_batch)
       )
       ->execute();
+
+    // For overrides, we want to delete any records for these IDs. But there
+    // could also be overrides information referencing these. We don't want to
+    // lose the records entirely, but we need to mark those items to be
+    // reparsed so the overrides can be recalculated.
     db_delete('api_overrides')
-      ->condition(db_or()
-        ->condition('did', $this_batch)
-        ->condition('overrides_did', $this_batch)
-        ->condition('documented_did', $this_batch)
-      )
+      ->condition('did', $this_batch)
       ->execute();
+
+    $bad_overrides = db_select('api_overrides', 'ao')
+      ->condition('overrides_did', $this_batch)
+      ->fields('ao', array('did'))
+      ->execute()
+      ->fetchCol();
+    if (count($bad_overrides)) {
+      db_update('api_overrides')
+        ->fields(array('overrides_did' => 0))
+        ->condition('did', $bad_overrides)
+        ->execute();
+      $to_reparse = array_merge($to_reparse, $bad_overrides);
+    }
+
+    $bad_overrides = db_select('api_overrides', 'ao')
+      ->condition('documented_did', $this_batch)
+      ->fields('ao', array('did'))
+      ->execute()
+      ->fetchCol();
+    if (count($bad_overrides)) {
+      db_update('api_overrides')
+        ->fields(array('documented_did' => 0))
+        ->condition('did', $bad_overrides)
+        ->execute();
+      $to_reparse = array_merge($to_reparse, $bad_overrides);
+    }
+
+    // We need to do something similar in api_reference_storage with the
+    // extends_did column.
+
     db_delete('api_reference_storage')
       ->condition('from_did', $this_batch)
       ->execute();
-    db_delete('api_extends')
-      ->condition(db_or()
-        ->condition('did', $this_batch)
-        ->condition('parent_did', $this_batch)
-      )
-      ->execute();
+
+    $bad_overrides = db_select('api_reference_storage', 'ars')
+      ->condition('extends_did', $this_batch)
+      ->fields('ars', array('from_did'))
+      ->execute()
+      ->fetchCol();
+    if (count($bad_overrides)) {
+      db_update('api_reference_storage')
+        ->fields(array('extends_did' => 0))
+        ->condition('from_did', $bad_overrides)
+        ->execute();
+      $to_reparse = array_merge($to_reparse, $bad_overrides);
+    }
   }
+
+  // We may have also now found some documentation items whose files need to
+  // be reparsed. But there is no sense trying to reparse items that we just
+  // deleted.
+  $to_reparse = array_unique(array_diff($to_reparse, $dids));
+  api_mark_items_for_reparse($to_reparse);
 
   // The slow part is deleting the nodes. If there are more than 100 to delete
   // during this page request, do them using batch/queue jobs.
@@ -2531,6 +2576,38 @@ function api_get_branch_by_id($id = NULL) {
   }
 
   return NULL;
+}
+
+/**
+ * Attempts to locate a core branch corresponding to the given branch.
+ *
+ * @param $branch
+ *   Branch object to find a core branch for.
+ *
+ * @return
+ *   Branch object for the core branch, if there is one. If not, FALSE.
+ */
+function api_find_core_branch($branch) {
+  if (!$branch) {
+    return FALSE;
+  }
+
+  $query = db_select('api_branch', 'b');
+  $query->innerJoin('api_project', 'p', 'b.project = p.project_name');
+  $query->condition('p.project_type', 'core');
+  $query->condition('b.core_compatibility', $branch->core_compatibility);
+  $query->fields('b');
+  $query->fields('p', array('project_title', 'project_type'));
+  $query->orderBy('b.weight', 'ASC');
+  $result = $query->execute();
+  // There shouldn't be more than one result, so assume that's the case and
+  // return the first result found.
+  foreach ($result as $branch) {
+    api_unpack_branch_data($branch);
+    return $branch;
+  }
+
+  return FALSE;
 }
 
 /**
@@ -2789,6 +2866,55 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
   }
 
   return 0;
+}
+
+/**
+ * Marks the files containing a set of documentation IDs for reparse.
+ *
+ * @param int[] $dids
+ *   Documentation IDs whose files need reparsing.
+ */
+function api_mark_items_for_reparse($dids) {
+  $count = count($dids);
+  if ($count < 1) {
+    return;
+  }
+
+  // Find all the affected file IDs.
+  // Use batches of 200 due to placeholders.
+  $done = 0;
+  $file_ids = array();
+  while ($done < $count) {
+    $this_batch = array_slice($dids, $done, 200);
+    $done += 200;
+
+    $query = db_select('api_documentation', 'ad');
+    $query->innerJoin('api_documentation', 'adf', 'ad.file_name = adf.file_name');
+    $files = $query
+      ->condition('adf.object_type', 'file')
+      ->condition('ad.did', $this_batch)
+      ->fields('adf', array('did'))
+      ->execute()
+      ->fetchCol();
+    $file_ids = array_merge($file_ids, $files);
+  }
+  $file_ids = array_unique($file_ids);
+
+  // Now mark these files for reparse, again in batches.
+  $count = count($file_ids);
+  if ($count < 1) {
+    // We didn't find any files after all.
+    return;
+  }
+  $done = 0;
+  while ($done < $count) {
+    $this_batch = array_slice($file_ids, $done, 200);
+    $done += 200;
+    db_update('api_file')
+      ->fields(array('modified' => 52))
+      ->condition('did', $this_batch)
+      ->execute();
+  }
 }
 
 /**

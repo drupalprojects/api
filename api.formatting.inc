@@ -1425,34 +1425,3 @@ function api_get_namespace_info($file_did = NULL) {
   return $ret;
 }
 
-/**
- * Attempts to locate a core branch corresponding to the given branch.
- *
- * @param $branch
- *   Branch object to find a core branch for.
- *
- * @return
- *   Branch object for the core branch, if there is one. If not, FALSE.
- */
-function api_find_core_branch($branch) {
-  if (!$branch) {
-    return FALSE;
-  }
-
-  $query = db_select('api_branch', 'b');
-  $query->innerJoin('api_project', 'p', 'b.project = p.project_name');
-  $query->condition('p.project_type', 'core');
-  $query->condition('b.core_compatibility', $branch->core_compatibility);
-  $query->fields('b');
-  $query->fields('p', array('project_title', 'project_type'));
-  $query->orderBy('b.weight', 'ASC');
-  $result = $query->execute();
-  // There shouldn't be more than one result, so assume that's the case and
-  // return the first result found.
-  foreach ($result as $branch) {
-    api_unpack_branch_data($branch);
-    return $branch;
-  }
-
-  return FALSE;
-}

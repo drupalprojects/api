@@ -773,16 +773,8 @@ function api_save_documentation($docblocks) {
     // Keep track of class membership
     if ($docblock['object_type'] === 'class' || $docblock['object_type'] === 'interface') {
       $class_dids[$docblock['object_name']] = $docblock['did'];
+      api_touched($docblock['did']);
     }
-
-    // Delete all overrides information we had for this item. We will compute
-    // it again in api_shutdown().
-    db_delete('api_overrides')
-      ->condition(db_or()
-        ->condition('did', $docblock['did'])
-        ->condition('overrides_did', $docblock['did'])
-      )
-      ->execute();
 
     switch ($docblock['object_type']) {
       case 'function':
@@ -1885,13 +1877,14 @@ function api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $w
     if ($wait) {
       if (is_null($query_stored)) {
         $query_stored = db_insert('api_reference_storage')
-          ->fields(array('object_name', 'branch_id', 'object_type', 'from_did'));
+          ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'extends_did'));
       }
       $query_stored->values(array(
           'object_name' => $to_name,
           'branch_id' => $branch->branch_id,
           'object_type' => $to_type,
           'from_did' => $from_did,
+          'extends_did' => 0,
         ));
     }
     else {
@@ -1901,6 +1894,7 @@ function api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $w
             'branch_id' => $branch->branch_id,
             'object_type' => $to_type,
             'from_did' => $from_did,
+            'extends_did' => 0,
           ))
         ->execute();
     }
@@ -1964,7 +1958,7 @@ function api_namespace($file_did, $type = '', $alias = '', $class = '', $wait = 
  * @see api_shutdown()
  */
 function api_schedule_shutdown() {
-  static $scheduled = FALSE;
+  $scheduled = &drupal_static(__FUNCTION__, FALSE);
 
   if (!$scheduled) {
     drupal_register_shutdown_function('api_shutdown');
@@ -1973,238 +1967,167 @@ function api_schedule_shutdown() {
 }
 
 /**
+ * Marks a class as "touched" for shutdown, and/or returns the touched list.
+ *
+ * @param int $class_did
+ *   (optional) Documentation ID of the class that has been touched.
+ *
+ * @return int[]
+ *   Array of the touched class IDs.
+ */
+function api_touched($class_did = 0) {
+  $classes = &drupal_static(__FUNCTION__, array());
+
+  if ($class_did) {
+    $classes[$class_did] = $class_did;
+  }
+
+  return $classes;
+}
+
+/**
  * Cleans up at the end of the cron job.
  *
- * Updates the collected references, updates the JSON object list, and clears
- * the cache.
+ * Figures out class parents, class member lists, class member overrides, and
+ * class member references.
  */
 function api_shutdown() {
-  // We will be re-computing this below.
+  // Figure out which classes and interfaces we need to update.
+  $classes_touched = api_touched();
+
+  // For each of these classes, and any that extend/implement them, we need
+  // to recompute:
+  // - The IDs for extended/implemented classes/interfaces.
+  // - IDs for classes that extend/implement this class/interface.
+  // - The {api_members} table, which figures out all class members including
+  //   inherited members.
+  // - The {api_overrides} table, which figures out for a class member if it
+  //   is overriding another class's member, and where it is documented.
+  // - The "computed-member" information in the {api_reference_storage} table.
+
+  // So, the first step is to recompute class inheritance. This is stored by
+  // name in {api_reference_storage}, and we need to find the actual IDs of
+  // the classes. Do this one by one, since we need to compute some other
+  // stuff anyway as we go.
+  $classes_todo = $classes_touched;
+  $classes_changed = $classes_touched;
+  // Avoid infinite loops by keeping track of which classes we've already
+  // checked.
+  $classes_added = $classes_touched;
+  // Keep track of the IDs of classes that extend/implement others, and the
+  // members of each class.
+  $class_parents = array();
+  $class_members = array();
+  while ($did = array_shift($classes_todo)) {
+    $doc_object = _api_bare_object_load($did);
+    if (!$doc_object) {
+      continue;
+    }
+
+    // We're going to need the direct members of this class. Since methods,
+    // properties, and constants can share names, do each separately.
+    $result = db_select('api_documentation', 'd')
+      ->fields('d', array('did', 'member_name', 'object_type'))
+      ->condition('class_did', $did)
+      ->condition('object_type', array('function', 'property', 'constant'))
+      ->execute();
+    $direct_members = array(
+      'function' => array(),
+      'property' => array(),
+      'constant' => array(),
+    );
+    foreach ($result as $item) {
+      $direct_members[$item->object_type][$item->member_name] = $item->did;
+    }
+    $class_members[$did] = $direct_members;
+
+    // See if this class extends or inherits anything else, and if so, calculate
+    // the IDs of the "parent" classes or interfaces.
+    $parents = array();
+    $results = db_select('api_reference_storage', 'ars')
+      ->fields('ars')
+      ->condition('ars.object_type', array('class', 'interface'))
+      ->condition('ars.from_did', $did)
+      ->execute();
+    foreach ($results as $parent) {
+      // Figure out the ID of this parent.
+      $new_id = api_best_class_id($parent->object_name, $parent->branch_id);
+      $parents[$parent->object_name] = $new_id;
+      // See if it's different from what we already had.
+      if ($new_id != $parent->extends_did) {
+        // Update the reference storage record with this new ID.
+        db_update('api_reference_storage')
+          ->fields(array('extends_did' => $new_id))
+          ->condition('from_did', $did)
+          ->condition('object_type', $parent->object_type)
+          ->condition('object_name', $parent->object_name)
+          ->execute();
+        // This class changed.
+        if (!in_array($did, $classes_changed)) {
+          $classes_changed[] = $did;
+        }
+      }
+
+      // If this class's parent is already marked as "changed", then this
+      // class needs to be marked as "changed" also.
+      if (in_array($new_id, $classes_changed)) {
+        $classes_changed[] = $did;
+      }
+
+      // We also need to get the members of parent classes, so add it to the
+      // to do list.
+      if (($new_id) && !isset($classes_added[$new_id])) {
+        $classes_todo[] = $new_id;
+        $classes_added[$new_id] = $new_id;
+      }
+    }
+    $class_parents[$did] = $parents;
+
+    // See if anything else inherits from this class. If so, we need to check it
+    // too. This could be a class that has already computed this as its
+    // extends_did, or a class in the same core compatibility that extends a
+    // class by this name, but has a blank extends_did because this class hadn't
+    // been parsed yet. We won't worry about the possible edge case of a class
+    // that had found another one previously and this one would now be better.
+    $or = db_or()
+      ->condition('extends_did', $did)
+      ->condition('object_name', $doc_object->namespaced_name);
+    $query = db_select('api_reference_storage', 'ars')
+      ->fields('ars', array('from_did'))
+      ->condition('object_type', array('class', 'interface'))
+      ->condition($or);
+    $query->innerJoin('api_branch', 'b', 'b.branch_id = ars.branch_id');
+    $query->condition('b.core_compatibility', $doc_object->core_compatibility);
+    $results = $query->execute()->fetchCol();
+
+    foreach ($results as $from_did) {
+      if (!is_numeric($from_did)) {
+        continue;
+      }
+      $from_did = (int) $from_did;
+      if (!isset($classes_added[$from_did])) {
+        $classes_todo[] = $from_did;
+        $classes_added[$from_did] = $from_did;
+      }
+    }
+  }
+
+  // OK, at this point we have a list of all the classes that we need to
+  // update member, override, and class parent information for. And we have
+  // in hand a list of the parent IDs and the direct members for each one.
+  // So go through this list and redo the members and overrides tables.
+
+  foreach ($classes_changed as $did) {
+    _api_update_class_reference_info($did, $class_parents, $class_members);
+  }
+
+  // Recompute all member-self and member-parent references.
+  // @todo Maybe this could be moved to _api_update_class_reference_info()
+  // and we could just update references in the affected classes, instead of
+  // globally?
   db_delete('api_reference_storage')
     ->condition('object_type', 'computed-member')
     ->execute();
-
-  // Figure out which class member documentation objects do not have entries in
-  // the {api_overrides} table. These entries are deleted during
-  // api_save_documentation(), so that they can be recomputed here for any
-  // class members that were updated.
-  $query = db_select('api_documentation', 'ad')
-    ->fields('ad', array('did', 'object_type', 'member_name', 'class_did', 'documentation', 'throws', 'var', 'code'));
-  $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = ad.did');
-  $af = $query->leftJoin('api_function', 'af', 'af.did = ad.did');
-  $query->fields('af', array('parameters', 'return_value'))
-    ->condition('ad.class_did', 0, '<>')
-    ->isNull('ao.did');
-  $result = $query->execute();
-
-  // Compute overrides (i.e., if a class member is an override/implementation of
-  // another class/interface's member) for each of the resulting objects, and
-  // keep track of which classes were changed along the way.
-  $changed_classes = array();
-  $overrides_query = NULL;
-  foreach ($result as $object) {
-    $changed_classes[$object->class_did] = TRUE;
-    $override = array(
-      'did' => $object->did,
-      'overrides_did' => 0,
-      'documented_did' => api_has_documentation($object) ? $object->did : 0,
-    );
-    $overrides_did = 0;
-
-    // Go up the parent stack and see if this member overrides a parent member.
-    $classes_to_check = array($object->class_did);
-    $classes_checked = $classes_to_check;
-    while ($class_did = array_shift($classes_to_check)) {
-      // If we have al the information we need here, stop this loop.
-      if ($override['overrides_did'] > 0 && $override['documented_did'] > 0) {
-        break;
-      }
-
-      // Avoid loops.
-      $classes_checked[] = $class_did;
-
-      // Add parents of this class to the class parent stack, but avoid loops.
-      $query = db_select('api_reference_storage', 'ars');
-      $query->innerJoin('api_documentation', 'pd', 'ars.object_name = pd.namespaced_name AND ars.branch_id = pd.branch_id');
-      $query
-        ->condition('ars.object_type', array('class', 'interface'))
-        ->condition('pd.object_type', array('class', 'interface'))
-        ->condition('ars.from_did', $class_did)
-        ->fields('pd', array('did'));
-      $parents = $query->execute()->fetchCol();
-      foreach ($parents as $did) {
-        if (!in_array($did, $classes_checked)) {
-          $classes_to_check[] = $did;
-        }
-      }
-
-      // Skipping the object's own class, see if this class has any members
-      // with the same name/type.
-      if ($class_did != $object->class_did) {
-        $query = db_select('api_documentation', 'd')
-          ->condition('class_did', $class_did)
-          ->fields('d', array('did', 'summary', 'documentation', 'see', 'deprecated', 'throws', 'var', 'class_did'))
-          ->condition('d.object_type', $object->object_type)
-          ->condition('d.member_name', $object->member_name);
-        $query->leftJoin('api_function', 'af', 'af.did = d.did');
-        $query->fields('af', array('parameters', 'return_value'));
-        $result_members = $query->execute();
-        foreach ($result_members as $parent_member) {
-          if (!is_null($parent_member->did)) {
-            // This parent class/interface has a matching member name.
-            if ($override['overrides_did'] === 0) {
-              // This is the first matching member name we've encountered, so
-              // this is the member that $object is overriding.
-              $override['overrides_did'] = $parent_member->did;
-            }
-            if ($override['documented_did'] === 0 && api_has_documentation($parent_member)) {
-              // $object didn't have documentation, but $parent_member does, so
-              // inherit it.
-              $override['documented_did'] = $parent_member->did;
-              $object->summary = $parent_member->summary;
-              drupal_write_record('api_documentation', $object, 'did');
-            }
-          }
-        }
-      }
-    }
-
-    // We are not using the overrides table during this loop, so do all the
-    // inserts together.
-    if (is_null($overrides_query)) {
-      $overrides_query = db_insert('api_overrides')
-        ->fields(array('did', 'overrides_did', 'documented_did'));
-    }
-    $overrides_query->values($override);
-  }
-
-  // Run the saved query to save the overrides.
-  if (!is_null($overrides_query)) {
-    $overrides_query->execute();
-  }
-
-  // Compute and save member list for each changed class/interface. Members can
-  // be on the class/interface itself, or can be inherited from a parent
-  // class/interface.
-  $members_query = NULL;
-  $members_delete = array();
-  $processed_classes = array();
-  while (list($class_did, ) = each($changed_classes)) {
-    // Avoid loops.
-    $processed_classes[] = $class_did;
-
-    // Add current class's implementing/extending classes to the list, because
-    // they need to be recomputed too. But avoid loops.
-    $query = db_select('api_reference_storage', 'ars')
-      ->fields('ars', array('from_did'));
-    $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.namespaced_name AND ars.object_type = ad.object_type AND ars.branch_id = ad.branch_id');
-    $result_children = $query
-      ->condition('ad.did', $class_did)
-      ->condition('ars.from_did', 0, '<>')
-      ->condition('ars.object_type', array('class', 'interface'))
-      ->execute()
-      ->fetchCol();
-    foreach ($result_children as $new_class) {
-      if (!in_array($new_class, $processed_classes)) {
-        $changed_classes[$new_class] = TRUE;
-      }
-    }
-
-    // Walk up the tree to find members. Since methods, properties, and
-    // constants can share names, do each separately.
-    $all_members = array(
-      'function' => array(''),
-      'property' => array(''),
-      'constant' => array(''),
-    );
-    $parents = array($class_did);
-    $processed_parents = array();
-    while ($parent = array_shift($parents)) {
-      // Avoid loops.
-      $processed_parents[] = $parent;
-
-      // Add this class's parents to the list, avoiding loops.
-      $query = db_select('api_reference_storage', 'ars');
-      $doc = $query->innerJoin('api_documentation', 'ad', 'ars.object_name = ad.namespaced_name AND ars.branch_id = ad.branch_id');
-      $result_parents = $query
-        ->condition('ars.object_type', array('class', 'interface'))
-        ->condition('ad.object_type', array('class', 'interface'))
-        ->fields($doc, array('did'))
-        ->condition('from_did', $parent)
-        ->execute()
-        ->fetchCol();
-      foreach ($result_parents as $new_class) {
-        if (!in_array($new_class, $processed_parents)) {
-          $parents[] = $new_class;
-        }
-      }
-
-      // Find members of each type on this parent that haven't yet been added
-      // to the list.
-      foreach ($all_members as $type => $members) {
-        $result_members = db_select('api_documentation', 'd')
-          ->fields('d', array('did', 'member_name'))
-          ->condition('class_did', $parent)
-          ->condition('object_type', $type)
-          ->condition('member_name', array_keys($members), 'NOT IN')
-          ->execute();
-        foreach ($result_members as $member) {
-          $members[$member->member_name] = $member->did;
-        }
-        $all_members[$type] = $members;
-      }
-    }
-
-    // We don't use the {api_members} table in this loop, so store up what
-    // we need to do and do it at the end.
-    $members_delete[] = $class_did;
-    foreach ($all_members as $type => $members) {
-      array_shift($members);
-      foreach ($members as $did) {
-        if (is_null($members_query)) {
-          $members_query = db_insert('api_members')
-            ->fields(array('class_did', 'did'));
-        }
-        $members_query->values(array(
-          'class_did' => $class_did,
-          'did' => $did,
-          ));
-      }
-    }
-  }
-
-  // Run the saved queries for {api_members} table.
-  if (count($members_delete)) {
-    db_delete('api_members')
-      ->condition('class_did', $members_delete)
-      ->execute();
-  }
-  if (!is_null($members_query)) {
-    $members_query->execute();
-  }
-
-  // Compute the parent classes for each changed class. Exclude interfaces,
-  // since they can have multiple inheritance.
-  if (count($changed_classes)) {
-    $todo = array_keys($changed_classes);
-    db_delete('api_extends')
-      ->condition('did', $todo)
-      ->execute();
-
-    $select = db_select('api_reference_storage', 'r')
-      ->condition('r.object_type', 'class')
-      ->condition('r.from_did', $todo);
-    $select->innerJoin('api_documentation', 'd', 'd.branch_id = r.branch_id AND d.namespaced_name = r.object_name');
-    $select->condition('d.object_type', 'class');
-    $select->leftJoin('api_documentation', 'd2', 'd2.branch_id = r.branch_id AND d2.namespaced_name = r.object_name AND d2.did <> d.did');
-    $select->isNull('d2.did');
-    $select->addField('r', 'from_did', 'did');
-    $select->addField('d', 'did', 'parent_did');
-    db_insert('api_extends')
-      ->fields(array('did', 'parent_did'))
-      ->from($select)
-      ->execute();
-  }
 
   // Figure out the member-self references in reference storage. Basically,
   // ChildClass::foo() calls $this->bar(). We need to figure out the full name
@@ -2213,11 +2136,11 @@ function api_shutdown() {
 
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'member-self');
-  $d = $select->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
-  $m = $select->innerJoin('api_members', 'm', 'd.class_did = m.class_did');
-  $dm = $select->innerJoin('api_documentation', 'dm', 'm.did = dm.did AND dm.member_name = r.object_name');
+  $select->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+  $select->innerJoin('api_members', 'm', 'd.class_did = m.class_did');
+  $select->innerJoin('api_documentation', 'dm', 'm.did = dm.did AND dm.member_name = r.object_name');
   $select->condition('dm.object_type', 'function');
-  $select->addField($dm, 'namespaced_name', 'object_name');
+  $select->addField('dm', 'namespaced_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
   $select->addField('r', 'from_did', 'from_did');
   // Note: SelectQuery adds expressions to the query at the end of the field
@@ -2234,13 +2157,16 @@ function api_shutdown() {
 
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'member-parent');
-  $calling_d = $select->innerJoin('api_documentation', 'cd', 'r.from_did = cd.did');
-  $parent = $select->innerJoin('api_extends', 'e', 'e.did = cd.class_did');
-  $parent_m = $select->innerJoin('api_members', 'pm', 'pm.class_did = e.parent_did');
-  $member_d = $select->innerJoin('api_documentation', 'md', 'md.did = pm.did AND md.member_name = r.object_name');
+  $select->innerJoin('api_documentation', 'cd', 'r.from_did = cd.did');
+  $select->innerJoin('api_reference_storage', 'e', 'e.from_did = cd.class_did');
+  $select
+    ->condition('e.object_type', 'class')
+    ->condition('e.extends_did', 0, '>');
+  $select->innerJoin('api_members', 'pm', 'pm.class_did = e.extends_did');
+  $select->innerJoin('api_documentation', 'md', 'md.did = pm.did AND md.member_name = r.object_name');
   $select->condition('md.object_type', 'function');
 
-  $select->addField($member_d, 'namespaced_name', 'object_name');
+  $select->addField('md', 'namespaced_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
   $select->addField('r', 'from_did', 'from_did');
   // Note: SelectQuery adds expressions to the query at the end of the field
@@ -2253,6 +2179,308 @@ function api_shutdown() {
     ->execute();
 
   cache_clear_all();
+}
+
+/**
+ * Calculates the current best guess as to the ID of a class.
+ *
+ * @param string $class_name
+ *   The namespaced class name to find.
+ * @param int $branch_id
+ *   The branch ID this name was referenced in.
+ *
+ * @return int
+ *   The documentation ID of a matching class in the current branch, the core
+ *   branch for this core compatibility, or another branch in this core
+ *   compatibility, or 0 if no match was found. The match has to be unique
+ *   within the scope. If multiple matches are found, 0 will be returned.
+ */
+function api_best_class_id($class_name, $branch_id) {
+  // Check current branch.
+  $found = db_select('api_documentation', 'ad')
+    ->condition('namespaced_name', $class_name)
+    ->condition('branch_id', $branch_id)
+    ->fields('ad', array('did'))
+    ->execute()
+    ->fetchCol();
+
+  if (count($found) == 1) {
+    return (int) array_shift($found);
+  }
+  elseif (count($found) > 1) {
+    return 0;
+  }
+
+  // Check core branch.
+  $branch = api_get_branch_by_id($branch_id);
+  $core = api_find_core_branch($branch);
+  if ($core) {
+    $found = db_select('api_documentation', 'ad')
+      ->condition('namespaced_name', $class_name)
+      ->condition('branch_id', $core->branch_id)
+      ->fields('ad', array('did'))
+      ->execute()
+      ->fetchCol();
+    if (count($found) == 1) {
+      return (int) array_shift($found);
+    }
+    elseif (count($found) > 1) {
+      return 0;
+    }
+  }
+
+  // See if there is a branch with matching core compatibility at least.
+  if ($branch) {
+    $query = db_select('api_documentation', 'ad');
+    $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $found = $query
+      ->condition('ad.namespaced_name', $class_name)
+      ->condition('b.core_compatibility', $branch->core_compatibility)
+      ->fields('ad', array('did'))
+      ->execute()
+      ->fetchCol();
+    if (count($found) == 1) {
+      return (int) array_shift($found);
+    }
+  }
+
+  // Didn't find a unique match.
+  return 0;
+}
+
+/**
+ * Updates all of the class reference information for a class.
+ *
+ * @param int $did
+ *   Documentation ID for the class.
+ * @param array $parent_info
+ *   Array of collected parent information, calculated in api_shutdown().
+ * @param array $member_info
+ *   Array of collected direct member information, calculated in api_shutdown().
+ */
+function _api_update_class_reference_info($did, $parent_info, $member_info) {
+  if (!$did) {
+    return;
+  }
+
+  // Calculate the full list of class members, including inherited, and figure
+  // out what each one is overriding and where each one is documented.
+  $members = _api_calc_class_members($did, $parent_info, $member_info);
+
+  // Save the overrides info, and if we are getting documentation from an
+  // inherited member, update the summary on the main object.
+  $ao_query = db_insert('api_overrides')
+    ->fields(array('did', 'overrides_did', 'documented_did'));
+  $new_dids = array();
+  foreach ($members as $type => $list) {
+    foreach ($list as $member) {
+      $new_dids[] = $member['did'];
+      if ($member['documented_did'] != $member['did']) {
+        db_update('api_documentation')
+          ->condition('did', $member['did'])
+          ->fields(array('summary' => $member['summary']))
+          ->execute();
+      }
+      unset($member['summary']);
+      $ao_query->values($member);
+    }
+  }
+  if (count($new_dids)) {
+    // Delete the old information and insert new.
+    db_delete('api_overrides')
+      ->condition('did', $new_dids)
+      ->execute();
+    $ao_query->execute();
+  }
+
+  // Save the member list.
+  db_delete('api_members')
+    ->condition('class_did', $did)
+    ->execute();
+  $query = db_insert('api_members')
+    ->fields(array('class_did', 'did'));
+  $has_some = FALSE;
+  foreach ($members as $type => $list) {
+    foreach ($list as $member) {
+      $query->values(array('class_did' => $did, 'did' => $member['did']));
+      $has_some = TRUE;
+    }
+  }
+  if ($has_some) {
+    $query->execute();
+  }
+}
+
+/**
+ * Calculates class member information for a class, including inheritance.
+ *
+ * @param int $did
+ *   Documentation ID of the class to calculate.
+ * @param array $parent_info
+ *   Array of collected parent information, calculated in api_shutdown().
+ * @param array $member_info
+ *   Array of collected direct member information, calculated in api_shutdown().
+ */
+function _api_calc_class_members($did, $parent_info, $member_info) {
+  // We will most likely encounter a class multiple times while going up
+  // the hierarchy, so cache results.
+  $cache = &drupal_static(__FUNCTION__, array());
+
+  $members = array(
+    'function' => array(),
+    'property' => array(),
+    'constant' => array(),
+  );
+
+  if (!$did || !isset($member_info[$did])) {
+    return $members;
+  }
+
+  // See if we already calculated members for this class, during another
+  // class traversal.
+  if (isset($cache[$did])) {
+    return $cache[$did];
+  }
+
+  // Add this class's direct members to the list, and put it in the
+  // cache for now, to avoid loops.
+  $members = _api_make_bare_member_list($did, $member_info);
+  $cache[$did] = $members;
+
+  // Add in the parents.
+  if (!isset($parent_info[$did])) {
+    return $members;
+  }
+  foreach ($parent_info[$did] as $parent) {
+    $parent_members = _api_calc_class_members($parent, $parent_info, $member_info);
+    _api_member_list_merge($members, $parent_members);
+  }
+
+  // Save in the cache and return.
+  $cache[$did] = $members;
+  return $members;
+}
+
+/**
+ * Calculates a bare list of this class's direct members.
+ */
+function _api_make_bare_member_list($did, $member_info) {
+  // We will most likely encounter a class multiple times while going up
+  // the hierarchy, so cache results.
+  $cache = &drupal_static(__FUNCTION__, array());
+
+  if (isset($cache[$did])) {
+    return $cache[$did];
+  }
+
+  $members = array(
+    'function' => array(),
+    'property' => array(),
+    'constant' => array(),
+  );
+
+  foreach ($member_info[$did] as $type => $list) {
+    foreach ($list as $member_did) {
+      $item = _api_bare_object_load($member_did, $type);
+      if (!$item) {
+        continue;
+      }
+      $has_docs = _api_has_documentation($item);
+      $member_name = $item->member_name;
+      $members[$type][$member_name] = array(
+        'did' => $item->did,
+        'overrides_did' => 0,
+        'documented_did' => ($has_docs) ? $item->did : 0,
+        'summary' => $item->summary,
+      );
+    }
+  }
+
+  $cache[$did] = $members;
+  return $members;
+}
+
+/**
+ * Merges a member list with parent member list.
+ *
+ * @param array $members
+ *   List of member information, modified by reference.
+ * @praam arary $parent_members
+ *   List of parent member information to merge in.
+ */
+function _api_member_list_merge(&$members, $parent_members) {
+  foreach ($parent_members as $type => $new_type_list) {
+    foreach ($new_type_list as $member_name => $info) {
+      if (isset($members[$type][$member_name])) {
+        // We already knew about this member. Save override info, if new.
+        if (!$members[$type][$member_name]['overrides_did']) {
+          // We just found what the known member is overriding.
+          $members[$type][$member_name]['overrides_did'] = $info['did'];
+        }
+        if (!$members[$type][$member_name]['documented_did']) {
+          // The old member didn't have documentation, maybe this one does.
+          $members[$type][$member_name]['documented_did'] = $info['documented_did'];
+        }
+        if (!$members[$type][$member_name]['summary']) {
+          $members[$type][$member_name]['summary'] = $info['summary'];
+        }
+      }
+      else {
+        // It's a new member, add it in.
+        $members[$type][$member_name] = $info;
+      }
+    }
+  }
+}
+
+/**
+ * Loads a bare documentation object, without overrides.
+ *
+ * @param int $did
+ *   Documentation ID.
+ * @param string|array $type
+ *   Object type.
+ *
+ * @return object|null
+ *   Documentation object, or NULL if not found.
+ */
+function _api_bare_object_load($did, $type = '') {
+  $cache = &drupal_static(__FUNCTION__, array());
+
+  if (!is_numeric($did)) {
+    return NULL;
+  }
+  $did = (int) $did;
+  if (!$did) {
+    return NULL;
+  }
+
+  if (isset($cache[$did])) {
+    return $cache[$did];
+  }
+
+  $query = db_select('api_documentation', 'ad');
+  $query->fields('ad');
+  $query->condition('ad.did', $did);
+  if ($type == 'function') {
+    $query->leftJoin('api_function', 'afunc', 'afunc.did = ad.did');
+    $query->fields('afunc', array('signature', 'parameters', 'return_value'));
+  }
+  else  if ($type == 'file') {
+    $query->leftJoin('api_file', 'afile', 'afile.did = ad.did');
+    $query->fields('afile', array('modified', 'queued'));
+  }
+  $query->leftJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+  $query->fields('b', array('project', 'core_compatibility'));
+
+  $query->leftJoin('api_documentation', 'adfile', "adfile.file_name = ad.file_name AND adfile.object_type = 'file' AND adfile.branch_id = ad.branch_id");
+  $query->addField('adfile', 'did', 'file_did');
+  $query = $query->range(0, 1);
+  $result = $query->execute()->fetchObject();
+
+  $cache[$did] = $result;
+
+  return $result;
 }
 
 /**
@@ -2270,7 +2498,7 @@ function api_shutdown() {
  *   - throws
  *   - var
  */
-function api_has_documentation($object) {
+function _api_has_documentation($object) {
   foreach (array('documentation', 'parameters', 'return_value', 'see', 'deprecated', 'throws', 'var') as $member) {
     if (!empty($object->$member)) {
       return TRUE;
@@ -2538,6 +2766,7 @@ function api_update_branch_files($branch) {
     $files[$file->object_name] = $file;
   }
 
+  // Check all the files. If they need an update, add them to the queue.
   foreach ($files_to_scan as $path => $file_name) {
     preg_match('!\.([a-z]*)$!', $file_name, $matches);
     if (isset($matches[1]) && isset($parse_functions[$matches[1]])) {
@@ -2594,7 +2823,6 @@ function api_update_branch_files($branch) {
       ->execute()
       ->fetchCol();
     api_delete_items($dids, FALSE);
-    api_schedule_shutdown();
   }
 
   // Mark the branch as having been updated.

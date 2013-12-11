@@ -212,7 +212,6 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
       'api_function' => 0,
       'api_members' => 0,
       'api_overrides' => 0,
-      'api_extends' => 0,
       'api_file' => 0,
       'api_namespace' => 0,
       'node' => 1,
@@ -246,7 +245,6 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_file'] = 8;
     $counts['api_members'] = 12;
     $counts['api_overrides'] = 11;
-    $counts['api_extends'] = 1;
     $counts['api_namespace'] = 8;
     $this->verifyCounts($counts, 0, 'Parse the branch');
 
@@ -261,7 +259,6 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
     $counts['node'] = 1;
     $counts['api_members'] = 0;
     $counts['api_overrides'] = 0;
-    $counts['api_extends'] = 0;
     $counts['api_namespace'] = 0;
     $this->verifyCounts($counts, 0, 'Branch deleted');
 
