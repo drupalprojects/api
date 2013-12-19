@@ -510,6 +510,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText(t('Plugin annotation'), 'Plugin annotation header is there');
     $this->assertText('A great plugin title', 'Plugin title is there');
     $this->assertLink('foo_sample_name', 0, 'Link to function name in plugin annotation is there');
+    $this->assertLink('SubSample', 0, 'Link to class in plugin annotation is there');
 
     // Click the links on the page and verify.
     $this->assertLinkURLSubstring('classes.php', $this->branch_info['project'] . '/classes.php', 'classes.php link exists', 'classes.php link went to the right place');

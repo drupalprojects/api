@@ -28,10 +28,10 @@
  */
 function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_drupal = TRUE) {
   if ($is_drupal) {
-    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'yaml reference', 'code global', 'code class');
+    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class');
   }
   else {
-    $steps = array('code function', 'code member', 'code string', 'yaml reference', 'code global', 'code class');
+    $steps = array('code function', 'code member', 'code string', 'yaml reference', 'annotation string', 'code global', 'code class');
   }
 
   return _api_link_documentation($code, $branch, $file_did, $class_did, $steps);
@@ -74,10 +74,10 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
   if ($is_drupal) {
-    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
   }
   else {
-    $stages = array('code function', 'code member', 'code string', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code function', 'code member', 'code string', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
   }
 
   if ($aggressive_topics) {
@@ -224,6 +224,16 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
       $type = 'yaml_file';
+      break;
+
+    case 'annotation string':
+      // Find potential function, method, and class strings in annotations.
+      $pattern = '!<span class="php-string">&quot;(' . API_RE_FUNCTION_IN_TEXT . ')&quot;</span>!';
+      $prepend = '<span class="php-function-or-constant">"';
+      $append = '"</span>';
+      $prepend_if_not_found = '<span class="php-string">"';
+      $type = 'function_or_constant';
+      $continue_matching = TRUE;
       break;
 
     case 'yaml reference':
