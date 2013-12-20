@@ -1611,8 +1611,13 @@ function api_update_7133() {
   }
 }
 
-// @todo Need to have an update function that reparses again, due to changes
-// in parsing code. Wait until this round of changes is done though!
+/**
+ * Mark all files for reparse, due to some updates to the parsing code.
+ */
+function api_update_7134() {
+  $count = api_update_mark_for_reparse();
+  return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
 
 /**
  * Remove variables and other data on uninstall.
