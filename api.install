@@ -1637,6 +1637,8 @@ function api_uninstall() {
   $names[] = 'comment_api';
   $names[] = 'api_default_core_compatibility';
   $names[] = 'api_default_project';
+  $names[] = 'api_opensearch_name';
+  $names[] = 'api_opensearch_description';
   foreach ($names as $name) {
     variable_del($name);
   }

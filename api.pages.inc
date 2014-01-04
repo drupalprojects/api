@@ -62,38 +62,23 @@ function api_search_redirect() {
 }
 
 /**
- * Page callback: Prints out OpenSearch plugin XML output.
- *
- * @param $project
- *   Name of the project to search.
- * @param $branch_name
- *   Name of the branch to search.
+ * Page callback: Prints out OpenSearch plugin discovery XML output.
  *
  * @see https://developer.mozilla.org/en/Creating_OpenSearch_plugins_for_Firefox
  * @see api_menu()
  */
-function api_opensearch($project, $branch_name) {
-  $branch = api_get_branch_by_name($project, $branch_name);
-  if (!isset($branch)) {
-    return drupal_not_found();
-  }
-  $branch_id = $branch->branch_id;
-
+function api_opensearch() {
   drupal_add_http_header('Content-Type', 'text/xml; charset=utf-8');
 
-  $short_name = check_plain($branch->title);
-  $description = t('Drupal API documentation for @branch', array('@branch' => $branch->title));
-  $search_url = url('api/' . $branch->project . '/' . $branch->branch_name . '/search', array('absolute' => TRUE)) . '/{searchTerms}';
-  $suggest_url = url('api/suggest/' . $branch->project . '/' . $branch->branch_name, array('absolute' => TRUE)) . '/{searchTerms}';
+  $short_name = variable_get('api_opensearch_name', t('Drupal API'));
+  $description = variable_get('api_opensearch_description', t('Drupal API documentation'));
+  $search_url = url('apis', array('absolute' => TRUE)) . '/{searchTerms}';
+  $suggest_url = url('api/suggest', array('absolute' => TRUE)) . '/{searchTerms}';
   $self_url = url($_GET['q'], array('absolute' => TRUE));
 
   // We need to use a theme function, so initialize the theme system.
   drupal_theme_initialize();
-  if ($image = theme_get_setting('favicon')) {
-    // Get rid of base_path that theme_get_setting() added.
-    $image = substr($image, strlen(base_path()));
-  }
-  else {
+  if (!($image = theme_get_setting('favicon'))) {
     // Fall back on default favicon if the theme didn't provide one.
     $image = 'misc/favicon.ico';
   }
@@ -115,26 +100,16 @@ EOD;
 /**
  * Page callback: Prints JSON-formatted potential matches for OpenSearch.
  *
- * @param $project
- *   Name of the project to list.
- * @param $branch
- *   Name of the branch to list.
- * @param ...
+ * @param $search
  *   The string to search for.
  *
  * @see http://www.opensearch.org/Specifications/OpenSearch/Extensions/Suggestions/1.0
  * @see api_menu()
  */
-function api_suggest($project, $branch) {
-  $search = func_get_args();
-  array_shift($search);
-  array_shift($search);
+function api_suggest($search = '') {
   $query = db_select('api_documentation', 'd')
     ->fields('d', array('title'));
-  $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
-  $matches = $query->condition('d.title', '%' . implode('/', str_replace('_', '\_', $search)) . '%', 'LIKE')
-    ->condition('b.branch_name', $branch)
-    ->condition('b.project', $project)
+  $matches = $query->condition('d.title', '%' . db_like($search) . '%', 'LIKE')
     ->range(0, 10)
     ->execute()
     ->fetchCol();

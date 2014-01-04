@@ -142,6 +142,18 @@ function api_page_admin_form($form, &$form_state) {
     '#description' => t('Name of the default project to display if none is given in a URL. This may be overridden by the API module if a corresponding branch does not exist.'),
   );
 
+  $form['api_opensearch_name'] = array(
+    '#type' => 'textfield',
+    '#default_value' => variable_get('api_opensearch_name', t('Drupal API')),
+    '#title' => t('Name of site for OpenSearch'),
+  );
+
+  $form['api_opensearch_description'] = array(
+    '#type' => 'textfield',
+    '#default_value' => variable_get('api_opensearch_description', t('Drupal API documentation')),
+    '#title' => t('Description of site for OpenSearch'),
+  );
+
   $form = system_settings_form($form);
   $form['#submit'][] = 'api_reset_branches';
 

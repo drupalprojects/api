@@ -224,11 +224,11 @@ class ApiURLPatternsTest extends ApiTestCase {
 
       // Check menu callbacks.
       array(
-        'url' => 'api/opensearch/' . $project_name . '/' . $branch_name,
-        'text' => array('Drupal API documentation', $branch_title, $branch_name, 'API documentation'),
+        'url' => 'api/opensearch/',
+        'text' => array('Drupal API documentation'),
       ),
       array(
-        'url' => 'api/suggest/' . $project_name . '/' . $branch_name . '/duplicate',
+        'url' => 'api/suggest/duplicate',
         'text' => array('duplicate', 'duplicates.php', 'duplicate_function', 'DUPLICATE_CONSTANT'),
       ),
       array(

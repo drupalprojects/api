@@ -118,6 +118,7 @@ function api_help($path, $arg) {
         '<li>' . t('Branch update queue: scans branches for files that have been updated or removed, and adds jobs to the file parse and node cleanup queues.') . '</li>' .
         '<li>' . t('Node cleanup queue: deletes nodes for removed files.') . '</li>' .
         '<li>' . t('Reset the file parse queue: remove existing jobs and mark files as not queued for parsing. Next time each branch is scanned, files will be re-added to the queue as needed.') . '</li>' .
+        '<li>' . t('OpenSearch: This module provides an OpenSearch discovery link in the HTML header, which needs a name and description. See <a href="http://en.wikipedia.org/wiki/OpenSearch">OpenSearch on Wikipedia</a> for more information.') . '</li>' .
         '</ul>';
 
     case 'admin/config/development/api/projects':
@@ -430,19 +431,17 @@ function api_menu() {
   );
 
   // OpenSearch metadata callback.
-  $items['api/opensearch/%/%'] = array(
+  $items['api/opensearch'] = array(
     'page callback' => 'api_opensearch',
-    'page arguments' => array(2, 3),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
 
   // OpenSearch suggestions callback.
-  $items['api/suggest/%/%/%menu_tail'] = array(
+  $items['api/suggest/%'] = array(
     'page callback' => 'api_suggest',
-    'page arguments' => array(2, 3, 4),
-    'load arguments' => array('%map', '%index'),
+    'page arguments' => array(2),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
@@ -1570,7 +1569,7 @@ function api_set_html_page_title($title = NULL) {
  * Implements hook_init().
  *
  * Adds CSS and JavaScript for the search auto-complete. Adds OpenSearch
- * autodiscovery links. Redirects nodes of type 'api' to the correct URL.
+ * autodiscovery link. Redirects nodes of type 'api' to the correct URL.
  */
 function api_init() {
   $branch = api_get_active_branch();
@@ -1586,23 +1585,20 @@ function api_init() {
     drupal_goto(api_url($result));
   }
 
-  // Add OpenSearch autodiscovery links.
+  // Add OpenSearch autodiscovery link.
+  $title = variable_get('api_opensearch_name', t('Drupal API'));
+  $url = url('api/opensearch', array('absolute' => TRUE));
   $weight = 100;
-  foreach (api_get_branches() as $branch) {
-    $title = t('Drupal API @branch', array('@branch' => $branch->title));
-    $url = url('api/opensearch/' . $branch->project . '/' . $branch->branch_name, array('absolute' => TRUE));
-    drupal_add_html_head(array(
-        '#tag' => 'link',
-        '#weight' => $weight,
-        '#attributes' => array(
-          'href' => $url,
-          'title' => $title,
-          'rel' => 'search',
-          'type' => 'application/opensearchdescription+xml',
-        ),
-      ), $title);
-    $weight++;
-  }
+  drupal_add_html_head(array(
+      '#tag' => 'link',
+      '#weight' => $weight,
+      '#attributes' => array(
+        'href' => $url,
+        'title' => $title,
+        'rel' => 'search',
+        'type' => 'application/opensearchdescription+xml',
+      ),
+    ), $title);
 }
 
 /**
