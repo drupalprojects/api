@@ -3087,7 +3087,7 @@ function api_project_autocomplete($string = '') {
  */
 function api_search_autocomplete($branch_id, $string = '') {
   $matches = array();
-
+  $string = trim($string);
   if ($string) {
     $result = db_select('api_documentation', 'ad')
       ->fields('ad', array('title'))

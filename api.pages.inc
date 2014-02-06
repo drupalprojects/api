@@ -27,6 +27,8 @@ function api_search_redirect() {
     $tail = implode('/', $args);
   }
 
+  $tail = trim($tail);
+
   // Find the first branch with an exact match to this term.
   $query = db_select('api_documentation', 'ad');
   $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
@@ -211,7 +213,7 @@ function api_search_listing($branch) {
   // Read the search text from the ... part of the arguments.
   $search_text = func_get_args();
   array_shift($search_text);
-  $search_text = implode('/', $search_text);
+  $search_text = trim(implode('/', $search_text));
 
   // If there is exactly one exact match, go directly to that page.
   $query = db_select('api_documentation', 'ad');
