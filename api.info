@@ -24,6 +24,7 @@ files[] = tests/api_namespaces.test
 files[] = tests/api_node_access.test
 files[] = tests/api_objects.test
 files[] = tests/api_queue.test
+files[] = tests/api_search_integration.test
 files[] = tests/api_special_files.test
 files[] = tests/api_test_case.php
 files[] = tests/api_url_patterns.test

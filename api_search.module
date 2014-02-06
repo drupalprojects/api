@@ -1,0 +1,135 @@
+<?php
+
+/**
+ * @file
+ * Search integration for the API module.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function api_search_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#api_search':
+      return t('The API Search Integration module provides search integration (Drupal Core search and Solr search with project https://drupal.org/project/apachesolr) for the API module.');
+  }
+}
+
+/**
+ * Implements hook_node_view().
+ *
+ * Sets up API documentation "nodes" so that they can be viewed with
+ * node_view(), which hopefully only would be invoked during search indexing
+ * and search results.
+ */
+function api_search_node_view($node, $view_mode, $langcode) {
+  if ($node->type != 'api') {
+    return;
+  }
+
+  // Load by documentation (node) ID. Try to load as a function if possible.
+  $did = (int) $node->nid;
+  if ($did <= 0) {
+    return;
+  }
+  $doc = api_object_load($did, NULL, 'function');
+  if (!$doc || !$doc->branch_id) {
+    return;
+  }
+
+  // Load the branch too.
+  $branch = api_get_branch_by_id($doc->branch_id);
+  if (!$branch || !$branch->branch_id) {
+    return;
+  }
+
+  // Override the node title.
+  $title = array($branch->title);
+  if ($doc->object_type !== 'file') {
+    $title[] = basename($doc->file_name);
+  }
+  if ($doc->object_type != 'group' && $doc->object_type != 'file') {
+    $title[] = trim($doc->modifiers . ' ' . $doc->object_type);
+  }
+  $title[] = $doc->title;
+
+  $node->title = implode(' | ', array_reverse($title));
+
+  // Add extra fields of information.
+  $fields = array('namespaced_name', 'modifiers', 'object_type', 'summary', 'documentation', 'var', 'parameters', 'return_value', 'throws');
+
+  foreach ($fields as $field) {
+    if (isset($doc->$field) && trim($doc->$field)) {
+      $node->content['api_' . $field] = array(
+        '#markup' => '<div>' . $doc->$field . '</div>',
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_api_updated().
+ *
+ * Notifies the Solr module when a documentation "node" has been updated and
+ * needs to be reparsed. Same for Core search/node module searching.
+ */
+function api_search_api_updated($dids) {
+  $dosolr = module_exists('apachesolr');
+  $docore = module_exists('search');
+  foreach ($dids as $did) {
+    if ($dosolr) {
+      apachesolr_mark_entity('node', $did);
+    }
+    if ($docore) {
+      search_touch_node($did);
+    }
+  }
+}
+
+/**
+ * Implements hook_url_outbound_alter().
+ *
+ * Alters node/* URLs pointing to fake API docs nodes so that they instead
+ * go to the API module's URL for the documentation item.
+ */
+function api_search_url_outbound_alter(&$path, &$options, $original_path) {
+  $matches = array();
+  if (preg_match('|^node/(\d+)$|', $path, $matches)) {
+    $nid = (int) $matches[1];
+    if ($nid > 0) {
+      $doc = api_object_load($nid);
+      if ($doc) {
+        $path = api_url($doc);
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_api_ignore_node_access().
+ */
+function api_search_api_ignore_node_access($query) {
+  // Skip processing if this is a search query from the Core Search module or
+  // Apache Solr search module. But only if the current user has
+  // "access api reference" permissions.
+  if (!user_access('access API reference')) {
+    return FALSE;
+  }
+
+  // There isn't a great way to test for it being a core Search query,
+  // unfortunately. There's supposed to be a tag but it's added too late due
+  // to a core bug. So, see if the first table is {search_index}.
+  $tables = $query->getTables();
+  $first = reset($tables);
+  if (is_array($first) && isset($first['table']) && $first['table'] == 'search_index') {
+    return TRUE;
+  }
+
+  // For Apache Solr, the query should be a subclass of
+  // DrupalSolrQueryInterface.
+  if ($query instanceof DrupalSolrQueryInterface) {
+    return TRUE;
+  }
+
+  return FALSE;
+}

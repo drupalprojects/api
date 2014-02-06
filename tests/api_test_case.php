@@ -5,6 +5,11 @@
  * Base classes for tests for the API module.
  */
 
+// Some functions in these files are called directly in methods below.
+module_load_include('inc', 'api', 'api.admin');
+module_load_include('inc', 'api', 'parser');
+
+
 /**
  * Provides a base class for testing the API module.
  */
@@ -56,9 +61,6 @@ class ApiTestCase extends DrupalWebTestCase {
         'api_php_branch' => 1,
         'api_php_documentation' => 0,
       ), 0, 'Immediately after install');
-
-    module_load_include('inc', 'api', 'api.admin');
-    module_load_include('inc', 'api', 'parser');
 
     // Set up a super-user.
     $this->super_user = $this->drupalCreateUser(array(

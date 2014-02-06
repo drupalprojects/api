@@ -846,6 +846,12 @@ function api_save_documentation($docblocks) {
     $function_insert_query->execute();
   }
 
+  // Invoke hook_api_updated for doc objects that have been updated.
+  $changed_dids = array_intersect($dids, $old_dids);
+  if (count($changed_dids)) {
+    module_invoke_all('api_updated', $changed_dids);
+  }
+
   // Clean out all of the doc objects from this file that no longer exist.
   $old_dids = array_diff($old_dids, $dids);
   api_delete_items($old_dids, FALSE);

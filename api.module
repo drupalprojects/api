@@ -1615,6 +1615,14 @@ function api_query_node_access_alter($query) {
     return;
   }
 
+  // Skip processing if another module asks us to.
+  foreach (module_implements('api_ignore_node_access') as $module) {
+    $function = $module . '_api_ignore_node_access';
+    if ($function($query)) {
+      return;
+    }
+  }
+
   // Skip this processing on the comment admin page.
   $arg = arg();
   if (count($arg) >= 3 && $arg[0] == 'admin' && $arg[1] == 'content' && $arg[2] == 'comment') {
