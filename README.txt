@@ -47,3 +47,23 @@ INSTALLATION AND SETUP
 
 See http://drupal.org/node/1516558 for information on how to install and set up
 this module.
+
+SEARCH AND VIEWS INTEGRATION
+
+If you enable the included "API Search Integration" module (machine name:
+api_search), as well as either the Drupal Core "Search" module or the
+contributed Apache Solr search module, you can perform full-text searches
+on API documentation, just like your regular site content.
+
+Note: If you already had Search and the API module installed and running on a
+site, and then enabled the "API Search Integration" module, you will either
+need to run a reparse of the API documentation, or a reindex of Search, in
+order to get the full text of the API documentation into the search index.
+But if you already had Search but not API, or API and not Search, and then
+enable the other one plus the search integration module at the same time,
+the API documentation will automatically be indexed for you over the next
+cron runs.
+
+The API documentation is also integrated with Views. Actually, most of the
+listing pages for the API module use Views, and you should be able to clone
+and modify these pages to make your own views if you want something different.
