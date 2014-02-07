@@ -37,23 +37,12 @@ function api_search_node_view($node, $view_mode, $langcode) {
     return;
   }
 
-  // Load the branch too.
-  $branch = api_get_branch_by_id($doc->branch_id);
-  if (!$branch || !$branch->branch_id) {
+  $title = api_search_make_node_title($doc);
+  if (!$title) {
     return;
   }
 
-  // Override the node title.
-  $title = array($branch->title);
-  if ($doc->object_type !== 'file') {
-    $title[] = basename($doc->file_name);
-  }
-  if ($doc->object_type != 'group' && $doc->object_type != 'file') {
-    $title[] = trim($doc->modifiers . ' ' . $doc->object_type);
-  }
-  $title[] = $doc->title;
-
-  $node->title = implode(' | ', array_reverse($title));
+  $node->title = $title;
 
   // Add extra fields of information.
   $fields = array('namespaced_name', 'modifiers', 'object_type', 'summary', 'documentation', 'var', 'parameters', 'return_value', 'throws');
@@ -132,4 +121,77 @@ function api_search_api_ignore_node_access($query) {
   }
 
   return FALSE;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for apachesolr_index_config_form().
+ *
+ * Makes the API fake node type appear as an indexable bundle in the checkbox
+ * list.
+ */
+function api_search_form_apachesolr_index_config_form_alter(&$form, &$form_state, $form_id) {
+  if (isset($form['config']['entities']['node'])) {
+    $options = $form['config']['entities']['node']['#options'];
+    $options['api'] = t('API reference entries');
+    asort($options);
+    $form['config']['entities']['node']['#options'] = $options;
+  }
+}
+
+/**
+ * Implements hook_apachesolr_index_document_build().
+ *
+ * Node title is set in the Solr indexing document earlier than the call to
+ * node_view(), so we have to fix it after the fact.
+ */
+function api_search_apachesolr_index_document_build(ApacheSolrDocument $document, $entity, $entity_type, $env_id) {
+  if ($entity_type != 'node' || $entity->type != 'api') {
+    return;
+  }
+
+  $did = (int) $entity->nid;
+  if ($did <= 0) {
+    return;
+  }
+  $doc = api_object_load($did, NULL, 'function');
+  if (!$doc || !$doc->branch_id) {
+    return;
+  }
+  $title = api_search_make_node_title($doc);
+  if ($title) {
+    $document->label = $title;
+  }
+}
+
+/**
+ * Makes a "node" title for an API documentation item.
+ *
+ * @param $doc
+ *   Loaded documentation object.
+ *
+ * @return string
+ *   Title, or an empty string if one could not be generated.
+ */
+function api_search_make_node_title($doc) {
+  // Load the branch.
+  $branch = api_get_branch_by_id($doc->branch_id);
+  if (!$branch || !$branch->branch_id) {
+    return '';
+  }
+
+  $title = array();
+
+  $title[] = $doc->title;
+
+  if ($doc->object_type != 'group' && $doc->object_type != 'file') {
+    $title[] = trim($doc->modifiers . ' ' . $doc->object_type);
+  }
+
+  if ($doc->object_type !== 'file') {
+    $title[] = basename($doc->file_name);
+  }
+
+  $title[] = $branch->title;
+
+  return implode(' | ', $title);
 }
