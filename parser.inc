@@ -57,15 +57,32 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
 }
 
 /**
+ * Saves contents of a Twig file as API documentation.
+ *
+ * Callback for api_parse_file().
+ *
+ * @param array $docblock
+ *   Array from api_parse_file() containing the file contents and information
+ *   about the file, branch, etc.
+ */
+function api_parse_twig_file($docblock) {
+  // Use the text file function, but escape HTML characters.
+  api_parse_text_file($docblock, TRUE);
+}
+
+/**
  * Saves contents of a file as a single piece of text documentation.
  *
  * Callback for api_parse_file().
  *
- * @param $docblock
+ * @param array $docblock
  *   Array from api_parse_file() containing the file contents and information
  *   about the file, branch, etc.
+ * @param bool $escape_html
+ *   If TRUE, escpae HTML characters in the source code listing (for Twig
+ *   files).
  */
-function api_parse_text_file($docblock) {
+function api_parse_text_file($docblock, $escape_html = FALSE) {
   // See if the file contains an @file block, and use that for the
   // documentation if so; otherwise, just use the file as a whole. This is
   // probably only present for Twig files.
@@ -83,8 +100,12 @@ function api_parse_text_file($docblock) {
     $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE);
   }
 
-  // Number the lines.
-  $output = api_number_lines($docblock['source']);
+  // Escape HTML and number the lines.
+  $output = $docblock['source'];
+  if ($escape_html) {
+    $output = htmlspecialchars($docblock['source']);
+  }
+  $output = api_number_lines($output);
   $output = '<pre class="php"><code>' . $output . '</code></pre>';
   $docblock['code'] = $output;
 
@@ -2725,7 +2746,7 @@ function api_parse_functions() {
     'info' => 'api_parse_text_file',
     'css' => 'api_parse_text_file',
     'sh' => 'api_parse_text_file',
-    'twig' => 'api_parse_text_file',
+    'twig' => 'api_parse_twig_file',
 
     'htm' => 'api_parse_html_file',
     'html' => 'api_parse_html_file',
