@@ -530,7 +530,7 @@ function _api_merge_references($master, $new) {
   if (isset($new['use_alias']) && isset($master['use_alias'])) {
     foreach ($new['use_alias'] as $alias => $class) {
       if (isset($master['use_alias'][$alias]) && $master['use_alias'][$alias] != $class) {
-        watchdog('api', 'Conflicting use declarations for %name found in file. Only first is used.', array('%name' => $usealias), WATCHDOG_WARNING);
+        watchdog('api', 'Conflicting use declarations for %name found in file. Only first is used.', array('%name' => $alias), WATCHDOG_WARNING);
         unset($new['use_alias'][$alias]);
       }
     }
