@@ -2589,13 +2589,15 @@ function api_update_branch_php($branch) {
   $response = drupal_http_request($branch->summary);
   if ($response->code === '200') {
     $docblocks = array();
-    preg_match_all('!^[a-zA-Z0-9_]* (' . DRUPAL_PHP_FUNCTION_PATTERN . ')\(.*\n.*$!m', $response->data, $function_matches, PREG_SET_ORDER);
-    foreach ($function_matches as $function_match) {
+    // Note that drupal_json_decode() passes TRUE to json_decode(), so that all
+    // returned data is associative arrays and not objects.
+    $data = drupal_json_decode($response->data);
+    foreach ($data as $name => $item) {
       $docblocks[] = array(
         'branch_id' => $branch->branch_id,
         'object_type' => 'function',
-        'object_name' => $function_match[1],
-        'documentation' => $function_match[0],
+        'object_name' => $name,
+        'documentation' => $item['prototype'] . "\n  " . $item['purpose'],
         'member_name' => '',
       );
     }

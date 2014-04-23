@@ -591,7 +591,7 @@ function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#title' => t('Function list'),
     '#default_value' => $branch->summary,
     '#required' => TRUE,
-    '#description' => t('The URL of the PHP function summary list.'),
+    '#description' => t('The URL of the JSON-formatted PHP function summary list.'),
   );
 
   $form['data']['path'] = array(

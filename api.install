@@ -667,7 +667,7 @@ function api_enable() {
     $branch->title = 'PHP functions';
     $branch->update_time = 604800;
     $branch->data = array(
-      'summary' => 'http://svn.php.net/repository/phpdoc/doc-base/trunk/funcsummary.txt',
+      'summary' => 'http://doc.php.net/downloads/json/php_manual_en.json',
       'path' => 'http://php.net/!function',
     );
     api_save_php_branch($branch);
@@ -1617,6 +1617,13 @@ function api_update_7133() {
 function api_update_7134() {
   $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
+}
+
+/**
+ * Warn users about funcsummary.txt.
+ */
+function api_update_7135() {
+  return 'php.net reference branches have changed. If you are using a funcsummary.txt URL in a PHP reference branch, you need to point it to http://doc.php.net/downloads/json/php_manual_en.json instead. You should also update infrequently (weekly).';
 }
 
 /**

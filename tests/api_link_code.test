@@ -83,7 +83,7 @@ class ApiLinkCodeTest extends ApiTestCase {
       array(
         'message' => 'Linking to a PHP function',
         'data' => '<span class="php-function-or-constant">strpos</span>',
-        'expected' => '<span class="php-function-or-constant"><a href="http://php.net/strpos" title="int strpos(string $haystack, mixed $needle [, int $offset = &#039;&#039;]) Find position of first occurrence of a string" class="php-manual">strpos</a></span>',
+        'expected' => '<span class="php-function-or-constant"><a href="http://php.net/strpos" title="mixed strpos(string $haystack, mixed $needle [, int $offset = &#039;&#039;]) Find the position of the first occurrence of a substring in a string" class="php-manual">strpos</a></span>',
       ),
       array(
         'message' => 'Marked-up global linking',
