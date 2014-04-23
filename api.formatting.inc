@@ -28,7 +28,7 @@
  */
 function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_drupal = TRUE) {
   if ($is_drupal) {
-    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class');
+    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class');
   }
   else {
     $steps = array('code function', 'code member', 'code string', 'yaml reference', 'annotation string', 'code global', 'code class');
@@ -74,7 +74,7 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
   if ($is_drupal) {
-    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
   }
   else {
     $stages = array('code function', 'code member', 'code string', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
@@ -204,6 +204,18 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
       $type = 'function';
+      $continue_matching = TRUE;
+      break;
+
+    case 'code string theme':
+      // Find potential theme hook names as strings in marked-up code.
+      // Works like 'code string', but looks for theme hook names and links
+      // to the theme template or function.
+      $pattern = '!<span class="php-string">\'(' . DRUPAL_PHP_FUNCTION_PATTERN . ')\'</span>!';
+      $prepend = '<span class="php-function-or-constant">\'';
+      $append = '\'</span>';
+      $prepend_if_not_found = '<span class="php-string">\'';
+      $type = 'theme';
       $continue_matching = TRUE;
       break;
 

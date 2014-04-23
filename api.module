@@ -491,6 +491,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%api_filename/theme_references'] = array(
+    'title' => 'File',
+    'load arguments' => array(1, 4), // project, branch
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(2, 'theme_references'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%api_filename/yml_config'] = array(
     'title' => 'File',
     'load arguments' => array(1, 4), // project, branch
@@ -562,6 +571,15 @@ function api_menu() {
     'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'theme_invokes'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+  $items['api/%/%/function/theme_references/%api_item'] = array(
+    'title' => 'Theme invokes',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(5, 'theme_references'),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',

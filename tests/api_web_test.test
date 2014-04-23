@@ -333,7 +333,16 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_in_code_links');
     $this->clickLink('sample_two');
     $this->assertRaw('1 theme call to sample-two.tpl.php', 'Theme calls text is present');
+    $this->assertRaw('2 string references to the theme hook from sample-two.tpl.php', 'Theme references text is present');
     $this->assertLink('sample_in_code_links', 0, 'Link to theme calling function is present');
+    $this->assertLink('sample_function', 0, 'Link to theme string reference function is present');
+
+    // Also test the theme invokes page from the same-hook function.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/theme_sample_two');
+    $this->assertRaw('1 theme call to theme_sample_two()', 'Theme calls text is present');
+    $this->assertRaw('2 string references to the theme hook from theme_sample_two()', 'Theme references text is present');
+    $this->assertLink('sample_in_code_links', 0, 'Link to theme calling function is present');
+    $this->assertLink('sample_function', 0, 'Link to theme string reference function is present');
 
     // Try the other duplicate_function() page, and verify the calling
     // functions are there too.
