@@ -28,10 +28,10 @@
  */
 function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_drupal = TRUE) {
   if ($is_drupal) {
-    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class');
+    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class');
   }
   else {
-    $steps = array('code function', 'code member', 'code string', 'yaml reference', 'annotation string', 'code global', 'code class');
+    $steps = array('code function', 'code function declared', 'code member', 'code string', 'yaml reference', 'annotation string', 'code global', 'code class');
   }
 
   return _api_link_documentation($code, $branch, $file_did, $class_did, $steps);
@@ -74,10 +74,10 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
   if ($is_drupal) {
-    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
   }
   else {
-    $stages = array('code function', 'code member', 'code string', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code function', 'code function declared', 'code member', 'code string', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
   }
 
   if ($aggressive_topics) {
@@ -178,9 +178,20 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $continue_matching = TRUE;
       break;
 
+    case 'code function declared':
+      // Find function names in marked-up code, but this is a declaration,
+      // so skip checking built-in PHP functions.
+      $pattern = '!<span class="php-function-or-constant-declared">(' . DRUPAL_PHP_FUNCTION_PATTERN . ')</span>!';
+      $prepend = '<span class="php-function-or-constant">';
+      $append = '</span>';
+      $type = 'function_or_constant';
+      $use_php = FALSE;
+      $continue_matching = TRUE;
+      break;
+
     case 'code class':
       // Find class names in marked-up code, as constructors.
-      $pattern = '!<span class="php-function-or-constant">(' . API_RE_CLASS_NAME_TEXT . ')</span>!';
+      $pattern = '!<span class="(?:php-function-or-constant|php-function-or-constant-declared)">(' . API_RE_CLASS_NAME_TEXT . ')</span>!';
       $prepend = '<span class="php-function-or-constant">';
       $append = '</span>';
       $type = 'class';
@@ -290,7 +301,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
     case 'code member':
       // Works like 'code hook name' above, but for class members.
       $callback_match = 'api_link_member_name';
-      $pattern = '!(<span class="(?:php-function-or-constant|php-variable) [^"]+ member-of-[^"]+">\$*' . DRUPAL_PHP_FUNCTION_PATTERN . '</span>)!';
+      $pattern = '!(<span class="(?:php-function-or-constant|php-function-or-constant-declared|php-variable) [^"]+ member-of-[^"]+">\$*' . DRUPAL_PHP_FUNCTION_PATTERN . '</span>)!';
       break;
 
     case 'file':
@@ -1024,7 +1035,7 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $file
   // The pattern matched to get here contains the entire span with all of its
   // classes. Parse it out.
   $matches = array();
-  preg_match('!<span class="(?:php-function-or-constant|php-variable) ([^"]+) member-of-([^"]+)">(\$*' . DRUPAL_PHP_FUNCTION_PATTERN . ')</span>!', $text, $matches);
+  preg_match('!<span class="(?:php-function-or-constant|php-function-or-constant-declared|php-variable) ([^"]+) member-of-([^"]+)">(\$*' . DRUPAL_PHP_FUNCTION_PATTERN . ')</span>!', $text, $matches);
   $name = $matches[3];
   $member_type = $matches[2];
   $object_type = $matches[1];

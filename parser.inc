@@ -1415,6 +1415,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
   // Keep track of:
   // - Are we in a double-quoted string?
   // - Are we in the parameters for a hook or theme invocation?
+  // - Are we in process of declaring a function, class, etc.?
   // - How many PHP start/end tags we found (will remove at end if there is
   //   only one set).
   // - Class members: $foo->bar or Foo::bar.
@@ -1454,6 +1455,9 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
   $open_size = 0;
   $close_size = 0;
 
+  // In process of declaring something.
+  $declaring = FALSE;
+
   // Class members.
   $in_member = FALSE;
   $member_of = '';
@@ -1469,6 +1473,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
     // Take care of double-quoted strings.
     if ($in_string) {
+      $declaring = FALSE;
       $in_member = FALSE;
       $member_of = '';
       $in_namespace = FALSE;
@@ -1489,6 +1494,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
       $member_of = '';
       $in_namespace = FALSE;
       $full_namespaced_name = '';
+      $declaring = FALSE;
       continue;
     }
 
@@ -1498,6 +1504,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
       switch ($type) {
         case T_OPEN_TAG:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
@@ -1514,6 +1521,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_CLOSE_TAG:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
@@ -1530,6 +1538,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_COMMENT:
         case T_ML_COMMENT:
         case T_DOC_COMMENT:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
@@ -1559,6 +1568,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
               $class .= ' member-of-variable';
             }
           }
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = $value;
           $in_namespace = FALSE;
@@ -1567,6 +1577,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_CONSTANT_ENCAPSED_STRING:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
@@ -1597,6 +1608,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_INLINE_HTML:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
@@ -1628,6 +1640,9 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           }
 
           $class = 'php-function-or-constant';
+          if ($declaring) {
+            $class .= '-declared';
+          }
           $reference_type = 'function';
           $reference = $value;
 
@@ -1667,8 +1682,9 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
           $output .= '<span class="' . $class . '">' . $value . '</span>';
 
-          // Save references -- only for functions.
-          if ($track_references && $is_function) {
+          // Save references -- only for functions and only if they're not
+          // being declared.
+          if ($track_references && $is_function && !$declaring) {
             $references[$reference_type][$value] = $reference;
           }
 
@@ -1684,6 +1700,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
             $member_of = $value;
           }
           $in_member = FALSE;
+          $declaring = FALSE;
 
           // Save $invoke_type state.
           if ($is_drupal) {
@@ -1704,6 +1721,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_NS_SEPARATOR:
+          $declaring = FALSE;
           $in_namespace = TRUE;
           $full_namespaced_name .= $value;
           $in_member = FALSE;
@@ -1712,11 +1730,29 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
         case T_LNUMBER:
         case T_DNUMBER:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
           $full_namespaced_name = '';
           $output .= '<span class="php-constant">' . $value . '</span>';
+          break;
+
+        case T_CLASS:
+        case T_INTERFACE:
+        case T_TRAIT:
+        case T_FUNCTION:
+        case T_CONST:
+        case T_PRIVATE:
+        case T_PUBLIC:
+        case T_PROTECTED:
+        case T_ABSTRACT:
+          $declaring = TRUE;
+          $in_member = FALSE;
+          $member_of = '';
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
+          $output .= '<span class="php-keyword">' . $value . '</span>';
           break;
 
         case T_ARRAY_CAST:
@@ -1725,8 +1761,6 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_BOOL_CAST:
         case T_BREAK:
         case T_CASE:
-        case T_CLASS:
-        case T_CONST:
         case T_CONTINUE:
         case T_DECLARE:
         case T_DEFAULT:
@@ -1747,7 +1781,6 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_EXTENDS:
         case T_FOR:
         case T_FOREACH:
-        case T_FUNCTION:
         case T_GLOBAL:
         case T_IF:
         case T_INCLUDE_ONCE:
@@ -1769,6 +1802,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_USE:
         case T_VAR:
         case T_WHILE:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
@@ -1778,13 +1812,21 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
         case T_OBJECT_OPERATOR:
         case T_DOUBLE_COLON:
+          $declaring = FALSE;
           $output .= $value;
           $in_member = TRUE;
           $in_namespace = FALSE;
           $full_namespaced_name = '';
           break;
 
+        case T_WHITESPACE:
+          $in_namespace = FALSE;
+          $full_namespaced_name = '';
+          $output .= $value;
+          break;
+
         default:
+          $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
           $in_namespace = FALSE;
@@ -1794,6 +1836,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
     }
     else {
       // Non-array (simple) tokens.
+      $declaring = FALSE;
       $in_member = FALSE;
       $member_of = '';
       $in_namespace = FALSE;
