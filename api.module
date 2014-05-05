@@ -657,6 +657,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%/trait/%api_item'] = array(
+    'title' => 'Trait',
+    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_class',
+    'page arguments' => array(4),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%/interface/hierarchy/%api_item'] = array(
     'title' => 'Class hierarchy',
     'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
@@ -816,7 +825,7 @@ function api_menu() {
 
     if ($is_default) {
       $items['api/' . $branch->project . '/classes'] = array(
-        'title' => 'Classes and interfaces',
+        'title' => 'Classes, traits, and interfaces',
         'page callback' => 'api_page_listing',
         'access arguments' => array('access API reference'),
         'page arguments' => array($branch, 'class'),
@@ -1183,7 +1192,7 @@ function api_legacy_1_2_listing_load($branch_name, $type = NULL) {
  */
 function api_item_load($object_name, $project, $branch_name, $file_name, $type) {
   // Check type
-  if (!in_array($type, array('function', 'constant', 'global', 'property', 'class', 'interface', 'group'))) {
+  if (!in_array($type, array('function', 'constant', 'global', 'property', 'class', 'interface', 'trait', 'group'))) {
     return FALSE;
   }
 
@@ -1793,7 +1802,7 @@ function api_listing_counts($branch) {
 
   $query = db_select('api_documentation', 'ad')
     ->condition('branch_id', $branch->branch_id)
-    ->condition('object_type', array('class', 'interface'))
+    ->condition('object_type', array('class', 'interface', 'trait'))
     ->condition('class_did', 0)
     ->groupBy('branch_id');
   $query->addExpression('COUNT(*)', 'num');
@@ -3040,7 +3049,7 @@ function api_reset_parse_queue() {
 }
 
 /**
- * Verifies that the required libraries are loaded.
+ * Verifies that the required libraries are loaded for parsing.
  *
  * @param $watchdog
  *   TRUE to log an error if the library is not loaded (first time only).
@@ -3063,9 +3072,12 @@ function api_libraries_loaded($watchdog = TRUE) {
   }
 
   $library = libraries_load('grammar_parser');
-  $loaded = !empty($library['loaded']);
-  if ($watchdog && !$loaded) {
-    watchdog('api', 'Grammar Parser library is not loaded. Unable to parse files.', array(), WATCHDOG_ERROR);
+  if (empty($library['loaded'])) {
+    if ($watchdog) {
+      watchdog('api', 'Grammar Parser library is not loaded. Unable to parse files.', array(), WATCHDOG_ERROR);
+    }
+    $loaded = FALSE;
+    return FALSE;
   }
 
   if (!function_exists('mb_check_encoding')) {
@@ -3076,7 +3088,17 @@ function api_libraries_loaded($watchdog = TRUE) {
     return FALSE;
   }
 
-  return $loaded;
+  $version = explode('.', PHP_VERSION);
+  if ($version[0] < 5 || $version[1] < 4) {
+    if ($watchdog) {
+      watchdog('api', 'This version of the API module requires PHP 5.4 or later for parsing', WATCHDOG_ERROR);
+    }
+    $loaded = FALSE;
+    return FALSE;
+  }
+
+  $loaded = TRUE;
+  return TRUE;
 }
 
 /**

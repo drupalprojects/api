@@ -383,6 +383,7 @@ function api_page_file($file) {
     'global' => t('Globals'),
     'class' => t('Classes'),
     'interface' => t('Interfaces'),
+    'trait' => t('Traits'),
   );
 
   $objects = array();
@@ -468,7 +469,7 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
     drupal_set_breadcrumb($breadcrumb);
 
     $titles = array(
-      'class' => t('Classes and interfaces'),
+      'class' => t('Classes, traits, and interfaces'),
       'constant' => t('Constants'),
       'file' => t('Files'),
       'function' => t('Functions'),
@@ -679,7 +680,7 @@ function api_page_function($function) {
 
     // Add the class name, if there is one. This is not part of the signature.
     if ($signature->class_did !== '0') {
-      $class = api_object_load((int) $signature->class_did, $signature_branch, array('interface', 'class'), $signature->file_name);
+      $class = api_object_load((int) $signature->class_did, $signature_branch, array('interface', 'class', 'trait'), $signature->file_name);
       if (isset($class)) {
         $name .= l($class->object_name, api_url($class)) . '::';
       }
@@ -1263,9 +1264,10 @@ function api_page_class($class) {
   $see = api_link_documentation($class->see, $branch, $class->file_did, $class->did, TRUE, TRUE, $class->is_drupal);
   $deprecated = api_link_documentation($class->deprecated, $branch, $class->file_did, $class->did, TRUE, FALSE, $class->is_drupal);
 
-  // Figure out the class hierarchy, and what classes implement if this is
-  // an interface.
+  // Figure out the class hierarchy.
   $hierarchy = api_class_hierarchy($class);
+
+  // Figure out what classes implement if this is an interface.
   $implements = array();
   if ($class->object_type === 'interface') {
     // Make a list of all interfaces that extend this one in this branch.
@@ -1355,6 +1357,7 @@ function api_page_group($group) {
     'global' => t('Globals'),
     'class' => t('Classes'),
     'interface' => t('Interfaces'),
+    'trait' => t('Traits'),
     'file' => t('Files'),
   );
 
@@ -1424,7 +1427,7 @@ function api_object_title_and_breadcrumb($branch, $object, $title = NULL, $objec
   }
   if (!empty($object->class_did)) {
     $branch = api_get_branch_by_id($object->branch_id);
-    $class = api_object_load((int) $object->class_did, $branch, array('interface', 'class'), $object->file_name);
+    $class = api_object_load((int) $object->class_did, $branch, array('interface', 'class', 'trait'), $object->file_name);
     if (isset($class)) {
       $breadcrumb[] = l($class->object_name, api_url($class));
     }
@@ -1547,7 +1550,7 @@ function api_class_hierarchy($class, $type = 'ancestors') {
 
   $output = theme('item_list', array('items' => array($parent . $child_output)));
 
-  if ($type != 'full') {
+  if ($type != 'full' && $class->object_type != 'trait') {
     $output .= '<p>' . theme('api_function_reference_link', array('type' => 'hierarchy', 'count' => 0, 'function' => $class)) . '</p>';
   }
 
@@ -1603,8 +1606,9 @@ function api_class_hierarchy_line($class, $current_did = 0) {
     $classes[] = 'active';
   }
 
-  // See if this class implements any interfaces.
+  // See if this class implements any interfaces or uses traits.
   $interfaces = array();
+  $traits = array();
 
   $query = db_select('api_reference_storage', 'ars');
   $ref_name = $query->addField('ars', 'object_name', 'ref_name');
@@ -1613,21 +1617,34 @@ function api_class_hierarchy_line($class, $current_did = 0) {
   $query
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
     ->condition('ars.from_did', $class->did)
-    ->condition('ars.object_type', 'interface')
+    ->condition('ars.object_type', array('interface', 'trait'))
     ->orderBy('ad.object_name');
+  $query->addField('ars', 'object_type', 'ars_object_type');
   $result = $query->execute();
   foreach ($result as $object) {
     if (isset($object->did) && $object->did) {
-      // Interface exists as an object in the database, make a link.
-      if (!isset($interfaces[$object->object_name])) {
-        $interfaces[$object->object_name] = l($object->object_name, api_url($object));
+      // Interface/trait exists as an object in the database, make a link.
+      if ($object->ars_object_type == 'interface') {
+        if (!isset($interfaces[$object->object_name])) {
+          $interfaces[$object->object_name] = l($object->object_name, api_url($object));
+        }
+      }
+      else {
+        if (!isset($traits[$object->object_name])) {
+          $traits[$object->object_name] = l($object->object_name, api_url($object));
+        }
       }
     }
     else {
-      // This class was declared to implement this interface, but it didn't get
-      // defined (probably a built-in PHP interface or from another project).
-      // So just display the name.
-      $interfaces[] = $object->ref_name;
+      // This class was declared to implement this interface, or use this
+      // trait, but it didn't get defined (probably a built-in PHP object
+      // or from another project). So just display the name.
+      if ($object->ars_object_type == 'interface') {
+        $interfaces[] = $object->ref_name;
+      }
+      else {
+        $traits[] = $object->ref_name;
+      }
     }
   }
 
@@ -1647,6 +1664,9 @@ function api_class_hierarchy_line($class, $current_did = 0) {
   $output = $class->object_type . ' ' . l($class->object_name, api_url($class), array('attributes' => array('class' => $classes))) . $extends;
   if (count($interfaces) > 0) {
     $output .= ' implements ' . implode(', ', $interfaces);
+  }
+  if (count($traits) > 0) {
+    $output .= ' uses ' . implode(', ', $traits);
   }
 
   return $output;
@@ -1790,7 +1810,7 @@ function api_class_section($item, $branch) {
     return FALSE;
   }
 
-  $class = api_object_load((int) $item->class_did, $branch, array('class', 'interface'));
+  $class = api_object_load((int) $item->class_did, $branch, array('class', 'interface', 'trait'));
 
   if (is_null($class)) {
     return FALSE;

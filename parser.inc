@@ -431,7 +431,14 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         break;
 
       case T_USE:
-        $references = array('use_alias' => $statement->aliasesToArray());
+        // See if this is a use statement for the file, or a use statement
+        // indicating using a trait inside a class/trait.
+        if (!empty($default_block['class'])) {
+          $references = array('use_trait' => $statement->aliasesToArray());
+        }
+        else {
+          $references = array('use_alias' => $statement->aliasesToArray());
+        }
         $all_references = _api_merge_references($all_references, $references);
         break;
 
@@ -440,6 +447,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
           break;
         } // Explicit fallthrough.
       case T_INTERFACE:
+      case T_TRAIT:
       case T_CLASS:
       case T_FUNCTION:
       case T_DEFINE:
@@ -472,10 +480,12 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
           $docblock['references'] = $references;
           $all_references = _api_merge_references($all_references, $references);
         }
-        elseif ($statement->type == T_CLASS || $statement->type == T_INTERFACE) {
+        elseif ($statement->type == T_CLASS || $statement->type == T_INTERFACE || $statement->type == T_TRAIT) {
           $docblock['extends'] = is_object($statement->extends) ? explode(', ', $statement->extends->toString()) : array();
           $docblock['implements'] = is_object($statement->implements) ? explode(', ', $statement->implements->toString()) : array();
+          $docblock['references'] = $references;
         }
+
         $docblocks[] = $docblock;
         break;
 
@@ -487,16 +497,26 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         break;
     }
 
-    // Additional recursive processing on statements with bodies.
+
+    // Additional recursive processing on statements with bodies that can
+    // contain other doc objects.
     switch ($type) {
+      case T_TRAIT:
       case T_INTERFACE:
       case T_CLASS:
         if (!empty($statement->body)) {
+          // We need to find all the additional things in here (methods, etc.),
+          // which will add items to the $docblocks array. And then we need to
+          // add the references found to the parent docblock. So keep track of
+          // which docblock we are adding to.
+          $last_index = count($docblocks) - 1;
           $references = api_documentation_loop($statement->body, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
           $all_references = _api_merge_references($all_references, $references);
+          $docblocks[$last_index]['references'] = $references;
         }
         break;
     }
+
     $current = $current->next;
   }
 
@@ -607,7 +627,6 @@ function api_save_documentation($docblocks) {
       $use_aliases = array_merge($docblock['references']['use_alias'], $use_aliases);
     }
 
-
     // Change @Annotation to @ingroup annotation.
     if ($docblock['is_drupal']) {
       $docblock['content'] = preg_replace('/' . API_RE_TAG_START . 'Annotation' . API_RE_WORD_BOUNDARY_END . '/', "\n@ingroup annotation\n", $docblock['content']);
@@ -616,7 +635,7 @@ function api_save_documentation($docblocks) {
     // Deal with @mainpage.
     if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $docblock['content'])) {
       preg_match('/' . API_RE_TAG_START . 'mainpage (.*?)\n/', $docblock['content'], $mainpage_matches);
-      $docblock['title'] = $mainpage_matches[1];
+      $docblock['title'] = (isset($mainpage_matches[1]) ? $mainpage_matches[1] : '');
       $docblock['content'] = preg_replace('/' . API_RE_TAG_START . 'mainpage.*?\n/', '', $docblock['content']);
       $docblock['object_type'] = 'mainpage';
       $docblock['object_name'] = $docblocks[0]['branch']->branch_name;
@@ -792,7 +811,7 @@ function api_save_documentation($docblocks) {
     }
 
     // Keep track of class membership
-    if ($docblock['object_type'] === 'class' || $docblock['object_type'] === 'interface') {
+    if ($docblock['object_type'] === 'class' || $docblock['object_type'] === 'interface' || $docblock['object_type'] == 'trait') {
       $class_dids[$docblock['object_name']] = $docblock['did'];
       api_touched($docblock['did']);
     }
@@ -826,9 +845,10 @@ function api_save_documentation($docblocks) {
 
       case 'interface':
       case 'class':
+      case 'trait':
         db_delete('api_reference_storage')
           ->condition('branch_id', $docblocks[0]['branch']->branch_id)
-          ->condition('object_type', array('class', 'interface'))
+          ->condition('object_type', array('class', 'interface', 'trait'))
           ->condition('from_did', $docblock['did'])
           ->execute();
         foreach ($docblock['extends'] as $extend) {
@@ -838,6 +858,15 @@ function api_save_documentation($docblocks) {
         foreach ($docblock['implements'] as $implement) {
           $refname = api_full_classname($implement, $namespace, $use_aliases);
           api_reference($docblocks[0]['branch'], 'interface', $refname, $docblock['did']);
+        }
+        if (isset($docblock['references']['use_trait'])) {
+          foreach ($docblock['references']['use_trait'] as $alias => $class) {
+            if ($alias != $class) {
+              watchdog('api', 'Aliases for use statements for traits are not supported in %filename', array('%filename' => $docblock['file_name']), WATCHDOG_WARNING);
+            }
+            $refname = api_full_classname($class, $namespace, $use_aliases);
+            api_reference($docblocks[0]['branch'], 'trait', $refname, $docblock['did']);
+          }
         }
         break;
     }
@@ -2069,6 +2098,7 @@ function api_shutdown() {
   // to recompute:
   // - The IDs for extended/implemented classes/interfaces.
   // - IDs for classes that extend/implement this class/interface.
+  // - For traits, the traits and classes that use them.
   // - The {api_members} table, which figures out all class members including
   //   inherited members.
   // - The {api_overrides} table, which figures out for a class member if it
@@ -2111,15 +2141,26 @@ function api_shutdown() {
     }
     $class_members[$did] = $direct_members;
 
-    // See if this class extends or inherits anything else, and if so, calculate
-    // the IDs of the "parent" classes or interfaces.
+    // See if this class extends or inherits anything else, or uses traits,
+    // and if so, calculate the IDs of the "parent" classes, traits, or
+    // interfaces. Do this in the right order for inheritance: traits
+    // trump class extends, and class extends trump interfaces.
     $parents = array();
-    $results = db_select('api_reference_storage', 'ars')
-      ->fields('ars')
-      ->condition('ars.object_type', array('class', 'interface'))
-      ->condition('ars.from_did', $did)
-      ->execute();
-    foreach ($results as $parent) {
+    $parents_to_check = array();
+    $types = array('trait', 'class', 'interface');
+    foreach ($types as $type) {
+      $results = db_select('api_reference_storage', 'ars')
+        ->fields('ars')
+        ->condition('ars.object_type', $type)
+        ->condition('ars.from_did', $did)
+        ->execute();
+      if ($results) {
+        foreach ($results as $result) {
+          $parents_to_check[] = $result;
+        }
+      }
+    }
+    foreach ($parents_to_check as $parent) {
       // Figure out the ID of this parent.
       $new_id = api_best_class_id($parent->object_name, $parent->branch_id);
       $parents[$parent->object_name] = $new_id;
@@ -2164,7 +2205,7 @@ function api_shutdown() {
       ->condition('object_name', $doc_object->namespaced_name);
     $query = db_select('api_reference_storage', 'ars')
       ->fields('ars', array('from_did'))
-      ->condition('object_type', array('class', 'interface'))
+      ->condition('object_type', array('class', 'interface', 'trait'))
       ->condition($or);
     $query->innerJoin('api_branch', 'b', 'b.branch_id = ars.branch_id');
     $query->condition('b.core_compatibility', $doc_object->core_compatibility);

@@ -35,29 +35,33 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
   }
 
   /**
-   * Tests that the namespace pages work fine.
+   * Tests that the namespace pages and namespaced objects work fine.
    */
   function testNamespacePages() {
+    // Test namespaces page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/namespaces');
-
     $this->assertLink('api\\test1', 0, 'First namespace link is there');
     $this->assertLink('api\\test2', 0, 'Second namespace link is there');
 
+    // Test contents of namespace page.
     $this->clickLink('api\\test1');
     $this->assertLink('ClassA', 0, 'ClassA is on first namespace page');
     $this->assertLink('InterfaceD', 0, 'InterfaceD is on first namespace page');
     $this->assertText('InterfaceD.php', 'Right InterfaceD file is on first namespace page');
     $this->assertNoLink('ClassB', 'ClassB is not on first namespace page');
     $this->assertText('Sample class in a namespace.', 'ClassA description is on first namespace page');
+    $this->assertLink('TraitF', 0, 'TraitF is on first namespace page');
+    $this->assertText('A sample trait.', 'Trait description is on namespace page');
 
+    // Test that namespace link is on class page.
     $this->clickLink('ClassA');
     $this->assertText('Namespace', 'Namespace header is on class page');
     $this->assertLink('api\\test1', 0, 'Namespace link is on class page');
+
     // Test linking in docs to some functions etc.
     $this->assertLink('MyClassB::bMethod', 0, 'Link to aliased class method is made');
     $this->assertLink('another_function', 0, 'Link to non namespaced function is made');
     $this->assertLink('InterfaceD::dMethod', 0, 'Link to interface method in same namespace is made');
-
     $this->clickLink('api\\test1');
     $this->assertLink('InterfaceD', 0, 'Link went back to namespace page');
 
@@ -66,6 +70,7 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('InterfaceD::dMethod');
     $this->assertLink('\\api\\test2\\InterfaceC', 0, 'Link to param type is there');
 
+    // Test contents of second namespace page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/namespaces');
     $this->clickLink('api\\test2');
     $this->assertLink('ClassB', 0, 'ClassB is on second namespace page');
@@ -80,12 +85,14 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('ClassE::$foobar');
     $this->assertLink('\\api\\test1\\InterfaceD', 0, 'Link to type of member variable is there');
 
+    // Verify namespace links on file pages.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassA.php');
     $this->assertText('Namespace', 'Namespace header is on file page');
     $this->assertLink('api\\test1', 0, 'Namespace link is on file page');
     $this->clickLink('api\\test1');
     $this->assertLink('InterfaceD', 0, 'Link went back to namespace page');
 
+    // Verify lack of namespace links on no-namespace files.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/no_namespace.php');
     $this->assertNoText('Namespace', 'Namespace header is not on non-namespaced file page');
     $this->assertNoLink('api\\test1', 'Namespace link is not on non-namespaced file page');
@@ -99,6 +106,28 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassB.php/class/ClassB');
     $this->assertText('1 file declares its use of ClassB', 'Reference text is on class page');
     $this->assertLink('ClassA.php', 0, 'Link to file using class is present');
+
+    // Verify trait page.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/TraitF.php/trait/TraitF');
+    $this->assertText('A sample trait.', 'Trait summary is there.');
+    $this->assertText('Longer description of the trait', 'Trait description is there');
+    $this->assertLink('api\test1', 0, 'Namespace link is present on trait page');
+    $this->assertLink('TraitF::$fvar', 0, 'Trait property link is present on trait page');
+    $this->assertLink('TraitF::xyz', 0, 'Trait method link is present on trait page');
+    $this->assertLink('ClassE.php', 0, 'Link to file using trait is present on trait page');
+
+    // Verify page for class using trait.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassE.php/class/ClassE');
+    $this->assertLink('TraitF::$fvar', 0, 'Trait property link is present on using class page');
+    $this->assertLink('TraitF::xyz', 0, 'Trait method link is present on using class page');
+    $this->assertLink('TraitF', 0, 'Link to used trait is present on class page');
+
+    // Verify links in code for class using trait.
+    $this->clickLink('ClassE::eMethod');
+    $this->assertLink('fvar', 0, 'Property from trait turns into link');
+    $this->assertLink('xyz', 0, 'Method from trait turns into link');
+    $this->clickLink('xyz');
+    $this->assertText('Method to inherit', 'Clicked through to method page');
   }
 
   /**
@@ -230,22 +259,22 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
     // Run the branch update function and verify counts. There should be
     // records for each file.
     $this->updateBranches();
-    $counts['node'] = 9;
-    $counts['api_documentation'] = 8;
-    $counts['api_file'] = 8;
-    $this->verifyCounts($counts, 8, 'Add and update branch');
+    $counts['node'] = 10;
+    $counts['api_documentation'] = 9;
+    $counts['api_file'] = 9;
+    $this->verifyCounts($counts, 9, 'Add and update branch');
 
     // Parse everything and verify counts.
     $this->checkAndClearLog();
     $this->updateBranches();
     $this->processApiParseQueue();
-    $counts['node'] = 28;
-    $counts['api_documentation'] = 27;
-    $counts['api_function'] = 11;
-    $counts['api_file'] = 8;
-    $counts['api_members'] = 12;
-    $counts['api_overrides'] = 11;
-    $counts['api_namespace'] = 8;
+    $counts['node'] = 32;
+    $counts['api_documentation'] = 31;
+    $counts['api_function'] = 12;
+    $counts['api_file'] = 9;
+    $counts['api_members'] = 16;
+    $counts['api_overrides'] = 13;
+    $counts['api_namespace'] = 10;
     $this->verifyCounts($counts, 0, 'Parse the branch');
 
     // Delete the branch, and verify counts.

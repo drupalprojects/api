@@ -55,12 +55,12 @@ class ApiURLPatternsTest extends ApiTestCase {
       ),
       array(
         'url' => 'api/' . $project_name . '/classes',
-        'text' => array(t('Classes and interfaces'), 'Sample class', 'Sample interface'),
+        'text' => array(t('Classes, traits, and interfaces'), 'Sample class', 'Sample interface'),
         'links' => array('Sample', 'SampleInterface'),
       ),
       array(
         'url' => 'api/' . $project_name . '/classes/' . $branch_name,
-        'text' => array(t('Classes and interfaces'), 'Sample class', 'Sample interface', 'subdirectory'),
+        'text' => array(t('Classes, traits, and interfaces'), 'Sample class', 'Sample interface', 'subdirectory'),
         'links' => array('Sample', 'SampleInterface', 'classes.php'),
       ),
       array(

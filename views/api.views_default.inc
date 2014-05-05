@@ -522,6 +522,12 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type_1']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type_1']['value'] = 'interface';
   $handler->display->display_options['filters']['object_type_1']['group'] = 2;
+  /* Filter criterion: API documentation: Object type */
+  $handler->display->display_options['filters']['object_type_2']['id'] = 'object_type_2';
+  $handler->display->display_options['filters']['object_type_2']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['object_type_2']['field'] = 'object_type';
+  $handler->display->display_options['filters']['object_type_2']['value'] = 'trait';
+  $handler->display->display_options['filters']['object_type_2']['group'] = 2;
 
   /* Display: Topic List Block */
   $handler = $view->new_display('block', 'Topic List Block', 'block_groups');
@@ -1166,7 +1172,12 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type_1']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type_1']['value'] = 'interface';
   $handler->display->display_options['filters']['object_type_1']['group'] = 1;
-
+  /* Filter criterion: API documentation: Object type */
+  $handler->display->display_options['filters']['object_type_2']['id'] = 'object_type_2';
+  $handler->display->display_options['filters']['object_type_2']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['object_type_2']['field'] = 'object_type';
+  $handler->display->display_options['filters']['object_type_2']['value'] = 'trait';
+  $handler->display->display_options['filters']['object_type_2']['group'] = 1;
   $views[$view->name] = $view;
 
   // API Members view.

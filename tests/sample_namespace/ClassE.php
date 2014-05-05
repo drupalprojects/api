@@ -6,10 +6,15 @@
 
 namespace api\test2;
 
+use api\test1\TraitF;
+
 /**
  * Still another sample class in a namespace.
  */
 class ClassE {
+
+  use TraitF;
+
   /**
    * A class variable to test linking to the type class.
    *
@@ -21,6 +26,7 @@ class ClassE {
    * A really exciting method.
    */
   function eMethod() {
+    $this->fvar = $this->xyz();
   }
 
   /**
