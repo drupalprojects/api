@@ -934,9 +934,16 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // _ has to be escaped in this query. Limit this to Drupal functions.
     if (strpos($name, 'hook_') === 0) {
       $hook_name = substr($name, 5);
+      // If the hook has an UPPER_CASE_SECTION, allow that to match anything,
+      // for cases like hook_update_N() and hook_form_FORM_ID_alter(). Note
+      // that the upper-case section could be in the middle or end.
+      $hook_name = preg_replace('/_[A-Z][A-Z_]*_/', '\_%\_', $hook_name);
+      $hook_name = preg_replace('/_[A-Z][A-Z_]*$/', '\_%', $hook_name);
       $base_query = db_select('api_documentation', 'd')
         ->condition('d.object_name', '%\_' . $hook_name, 'LIKE')
         ->condition('d.object_name', '\_%', 'NOT LIKE')
+        ->condition('d.object_name', 'hook\_%', 'NOT LIKE')
+        ->condition('d.object_type', 'function')
         ->condition('d.branch_id', $branch_id)
         ->condition('d.did', $exclude_did, '<>')
         ->condition('d.is_drupal', 1);
