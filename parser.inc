@@ -97,7 +97,8 @@ function api_parse_text_file($docblock, $escape_html = FALSE) {
     $docblock['content'] = $editor->commentToString(array('value' => $matches[0]));
   }
   else {
-    $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE);
+    $tmp = array();
+    $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE, $tmp);
   }
 
   // Escape HTML and number the lines.
@@ -628,8 +629,13 @@ function api_save_documentation($docblocks) {
     }
 
     // Change @Annotation to @ingroup annotation.
-    if ($docblock['is_drupal']) {
-      $docblock['content'] = preg_replace('/' . API_RE_TAG_START . 'Annotation' . API_RE_WORD_BOUNDARY_END . '/', "\n@ingroup annotation\n", $docblock['content']);
+    $annotation_matches = array();
+    $docblock['annotation_class'] = FALSE;
+    if (preg_match('/' . API_RE_TAG_START . 'Annotation' . API_RE_WORD_BOUNDARY_END . '/', $docblock['content'], $annotation_matches)) {
+      if ($docblock['is_drupal']) {
+        $docblock['content'] = str_replace($annotation_matches[0], "\n@ingroup annotation\n", $docblock['content']);
+      }
+      $docblock['annotation_class'] = TRUE;
     }
 
     // Deal with @mainpage.
@@ -727,7 +733,8 @@ function api_save_documentation($docblocks) {
         $params .= "\n\n" . $this_param;
       }
       // Format and then replace our fake tags with real ones.
-      $params = api_format_documentation($params);
+      $tmp = array();
+      $params = api_format_documentation($params, TRUE, $tmp);
       $params = str_replace('[strong]', '<strong>', $params);
       $params = str_replace('[/strong]', '</strong>', $params);
       $docblock['parameters'] = $params;
@@ -739,7 +746,7 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($return_match[0], '', $docblock['content']);
         $docblock['return_value'] .= "\n\n" . $return_match[1];
       }
-      $docblock['return_value'] = api_format_documentation($docblock['return_value']);
+      $docblock['return_value'] = api_format_documentation($docblock['return_value'], TRUE, $tmp);
 
       // Find @see lines.
       $docblock['see'] = '';
@@ -747,7 +754,7 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
         $docblock['see'] .= "\n\n" . $match[1];
       }
-      $docblock['see'] = api_format_documentation($docblock['see']);
+      $docblock['see'] = api_format_documentation($docblock['see'], TRUE, $tmp);
 
       // Find @var, a class or variable type name.
       $docblock['var'] = '';
@@ -762,7 +769,7 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
         $docblock['throws'] .= "\n\n" . $match[1];
       }
-      $docblock['throws'] = api_format_documentation($docblock['throws']);
+      $docblock['throws'] = api_format_documentation($docblock['throws'], TRUE, $tmp);
 
       // Find @deprecated, a paragraph (could be more than one).
       $docblock['deprecated'] = '';
@@ -770,10 +777,10 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
         $docblock['deprecated'] .= "\n\n" . $match[1];
       }
-      $docblock['deprecated'] = api_format_documentation($docblock['deprecated']);
+      $docblock['deprecated'] = api_format_documentation($docblock['deprecated'], TRUE, $tmp);
 
       // Format everything remaining as the main documentation.
-      $docblock['documentation'] = api_format_documentation($docblock['content']);
+      $docblock['documentation'] = api_format_documentation($docblock['content'], TRUE, $docblock['references']);
     }
 
     // Grab the first line as a summary, unless already provided.
@@ -848,7 +855,7 @@ function api_save_documentation($docblocks) {
       case 'trait':
         db_delete('api_reference_storage')
           ->condition('branch_id', $docblocks[0]['branch']->branch_id)
-          ->condition('object_type', array('class', 'interface', 'trait'))
+          ->condition('object_type', array('class', 'interface', 'trait', 'annotation_class', 'annotation'))
           ->condition('from_did', $docblock['did'])
           ->execute();
         foreach ($docblock['extends'] as $extend) {
@@ -868,6 +875,15 @@ function api_save_documentation($docblocks) {
             api_reference($docblocks[0]['branch'], 'trait', $refname, $docblock['did']);
           }
         }
+        if (isset($docblock['references']['annotation'])) {
+          foreach($docblock['references']['annotation'] as $class) {
+            api_reference($docblocks[0]['branch'], 'annotation', $class, $docblock['did']);
+          }
+        }
+        if ($docblock['annotation_class']) {
+          api_reference($docblocks[0]['branch'], 'annotation_class', $docblock['object_name'], $docblock['did']);
+        }
+
         break;
     }
 
@@ -1138,11 +1154,14 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
  * @param bool $auto_p
  *   TRUE (default) to convert to paragraphs. FALSE to skip this conversion and
  *   put the documentation in PRE tags.
+ * @param array $references
+ *   Array of references. If this function finds references (only for plugin
+ *   annotation), this array may be added to.
  *
  * @return string
  *   Formatted documentation.
  */
-function api_format_documentation($documentation, $auto_p = TRUE) {
+function api_format_documentation($documentation, $auto_p = TRUE, &$references) {
   // Don't do processing on empty text (so we don't end up with empty paragraphs).
   if (empty($documentation)) {
     return '';
@@ -1198,8 +1217,13 @@ function api_format_documentation($documentation, $auto_p = TRUE) {
   $documentation = preg_replace('/' . API_RE_TAG_START . '[{}]/', '', $documentation);
 
   // Change @Plugin and other annotation sections into @code. They have to be
-  // at the very end of the documentation block.
-  $documentation = preg_replace('/' . API_RE_TAG_START . '(' . API_RE_FUNCTION_CHARACTERS . '\(.*\))$/s', '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . '$1' . "\n@endcode", $documentation);
+  // at the very end of the documentation block. And add a reference.
+  $annotation_matches = array();
+  if (preg_match('/' . API_RE_TAG_START . '(' . API_RE_FUNCTION_CHARACTERS . ')(\(.*\))$/s', $documentation, $annotation_matches)) {
+    $class = $annotation_matches[1];
+    $references['annotation'][$class] = $class;
+    $documentation = str_replace($annotation_matches[0], '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . $annotation_matches[1] . $annotation_matches[2]. "\n@endcode", $documentation);
+  }
 
   // Process the @code @endcode tags.
   $documentation = preg_replace_callback('/' . API_RE_TAG_START . 'code(.+?)' . API_RE_TAG_START . 'endcode/s', 'api_format_embedded_php', $documentation);
@@ -1449,6 +1473,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
   //   only one set).
   // - Class members: $foo->bar or Foo::bar.
   // - Are we building up a namespaced class name?
+  // - Was the previous token @ (for annotation classes)?
 
   // Double-quoted strings.
   $in_string = FALSE;
@@ -1491,9 +1516,10 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
   $in_member = FALSE;
   $member_of = '';
 
-  // Namespaces.
+  // Namespaces and annotations.
   $in_namespace = FALSE;
   $full_namespaced_name = '';
+  $in_annotation = FALSE;
 
   // Split the code into tokens.
   $tokens = token_get_all($code);
@@ -1524,6 +1550,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
       $in_namespace = FALSE;
       $full_namespaced_name = '';
       $declaring = FALSE;
+      $in_annotation = FALSE;
       continue;
     }
 
@@ -1533,6 +1560,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
       switch ($type) {
         case T_OPEN_TAG:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1550,6 +1578,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_CLOSE_TAG:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1567,6 +1596,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_COMMENT:
         case T_ML_COMMENT:
         case T_DOC_COMMENT:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1597,6 +1627,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
               $class .= ' member-of-variable';
             }
           }
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = $value;
@@ -1606,6 +1637,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_CONSTANT_ENCAPSED_STRING:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1637,6 +1669,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_INLINE_HTML:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1672,12 +1705,18 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           if ($declaring) {
             $class .= '-declared';
           }
-          $reference_type = 'function';
-          $reference = $value;
+          if ($in_annotation) {
+            $class = 'class-annotation';
+            $reference_type = NULL;
+          }
+          else {
+            $reference_type = 'function';
+            $reference = $value;
+          }
 
           // See if this is a function call or not, by looking ahead to the
           // next token and seeing if it is an open paren.
-          $is_function = (isset($tokens[$array_index + 1]) && !is_array($tokens[$array_index + 1]) && $tokens[$array_index + 1] == '(');
+          $is_function = (!$in_annotation && isset($tokens[$array_index + 1]) && !is_array($tokens[$array_index + 1]) && $tokens[$array_index + 1] == '(');
 
           if ($in_member) {
             if ($is_function) {
@@ -1713,7 +1752,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
           // Save references -- only for functions and only if they're not
           // being declared.
-          if ($track_references && $is_function && !$declaring) {
+          if ($track_references && $is_function && !$declaring && $reference_type) {
             $references[$reference_type][$value] = $reference;
           }
 
@@ -1747,9 +1786,11 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
             }
           }
 
+          $in_annotation = FALSE;
           break;
 
         case T_NS_SEPARATOR:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_namespace = TRUE;
           $full_namespaced_name .= $value;
@@ -1759,6 +1800,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
         case T_LNUMBER:
         case T_DNUMBER:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1776,6 +1818,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_PUBLIC:
         case T_PROTECTED:
         case T_ABSTRACT:
+          $in_annotation = FALSE;
           $declaring = TRUE;
           $in_member = FALSE;
           $member_of = '';
@@ -1831,6 +1874,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         case T_USE:
         case T_VAR:
         case T_WHILE:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1841,6 +1885,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
         case T_OBJECT_OPERATOR:
         case T_DOUBLE_COLON:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $output .= $value;
           $in_member = TRUE;
@@ -1849,12 +1894,14 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           break;
 
         case T_WHITESPACE:
+          $in_annotation = FALSE;
           $in_namespace = FALSE;
           $full_namespaced_name = '';
           $output .= $value;
           break;
 
         default:
+          $in_annotation = FALSE;
           $declaring = FALSE;
           $in_member = FALSE;
           $member_of = '';
@@ -1870,6 +1917,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
       $member_of = '';
       $in_namespace = FALSE;
       $full_namespaced_name = '';
+      $in_annotation = FALSE;
 
       // Keep track of parentheses for whether we are in a hook/theme/alter
       // call.
@@ -1882,6 +1930,9 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
         if ($paren_count < $target_paren_count) {
           $invoke_type = '';
         }
+      }
+      elseif ($token == '@') {
+        $in_annotation = TRUE;
       }
 
       $output .= $token;

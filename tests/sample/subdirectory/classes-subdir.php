@@ -11,6 +11,8 @@
 
 /**
  * Sample class in a subdirectory.
+ *
+ * @Annotation
  */
 class SampleInSubDir implements SampleInterface {
   /**

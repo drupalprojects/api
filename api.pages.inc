@@ -810,6 +810,8 @@ function api_page_function($function) {
  *   - 'overrides': $exclude_did is the ID of a method, find overriding methods.
  *   - 'uses': $name is the fully-namespaced name of a class, find files that
  *     have use declarations.
+ *   - 'annotations': $exclude_did is the ID of an annotation class. Find
+ *     classes using it as annotation.
  *   - 'yml_config': $name is a YML config file name, find string references
  *     to the file name without .yml.
  *   - 'yml_keys': $name is a YML config file name, and $exclude_did is its
@@ -896,6 +898,20 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     else {
       $base_query->condition('r.object_name', $name);
     }
+  }
+  elseif ($type == 'annotations') {
+    // In this case, $exclude_did is the documentation ID of a class, presumably
+    // with an 'annotation_class' reference in the table. Find other classes
+    // that annotated with this same class name, which will have 'annotation'
+    // references.
+    $base_query = db_select('api_reference_storage', 'r_annotation')
+      ->condition('r_annotation.from_did', $exclude_did)
+      ->condition('r_annotation.object_type', 'annotation_class');
+    $base_query->innerJoin('api_reference_storage', 'r_uses', "r_annotation.object_name = r_uses.object_name AND r_uses.object_type = 'annotation'");
+    $base_query->innerJoin('api_documentation', 'd', 'r_uses.from_did = d.did');
+    $base_query
+      ->condition('d.branch_id', $branch_id);
+    $group = TRUE;
   }
   elseif ($type == 'yml_keys') {
     // In this case, $exclude_did is the documentation ID of a file. We
@@ -1329,7 +1345,11 @@ function api_page_class($class) {
 
   $objects = drupal_render($objects);
 
-  $links = api_build_references(array('uses', 'references'), $class, $branch);
+  $reference_types = array('uses', 'references');
+  if ($class->object_type == 'class') {
+    $reference_types[] = 'annotations';
+  }
+  $links = api_build_references($reference_types, $class, $branch);
 
   // Put it all together.
   $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'call_links' => $links));
@@ -1790,6 +1810,9 @@ function api_reference_text($type, $count, $function) {
   }
   if ($type == 'references') {
     return format_plural($count, '1 string reference to !name', '@count string references to !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'annotations') {
+    return format_plural($count, '1 class is annotated with !name', '@count classes are annotated with !name', array('!name' => $name_to_use));
   }
   if ($type == 'yml_keys') {
     return format_plural($count, '1 string reference to YAML keys in !name', '@count string references to YAML keys in !name', array('!name' => $name_to_use));

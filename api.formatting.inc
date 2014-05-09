@@ -28,10 +28,10 @@
  */
 function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_drupal = TRUE) {
   if ($is_drupal) {
-    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class');
+    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class', 'annotation class');
   }
   else {
-    $steps = array('code function', 'code function declared', 'code member', 'code string', 'yaml reference', 'annotation string', 'code global', 'code class');
+    $steps = array('code function', 'code function declared', 'code member', 'code string', 'yaml reference', 'annotation string', 'code global', 'code class', 'annotation class');
   }
 
   return _api_link_documentation($code, $branch, $file_did, $class_did, $steps);
@@ -74,10 +74,10 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
   if ($is_drupal) {
-    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'annotation class', 'tags', 'link', 'function');
   }
   else {
-    $stages = array('code function', 'code function declared', 'code member', 'code string', 'annotation string', 'code global', 'code class', 'tags', 'link', 'function');
+    $stages = array('code function', 'code function declared', 'code member', 'code string', 'annotation string', 'code global', 'code class', 'annotation class', 'tags', 'link', 'function');
   }
 
   if ($aggressive_topics) {
@@ -195,6 +195,15 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $prepend = '<span class="php-function-or-constant">';
       $append = '</span>';
       $type = 'class';
+      break;
+
+    case 'annotation class':
+      // Find annotation class names in marked-up code.
+      $pattern = '!<span class="class-annotation">(' . API_RE_CLASS_NAME_TEXT . ')</span>!';
+      $prepend = '<span class="php-function-or-constant">';
+      $append = '</span>';
+      $type = 'annotation';
+      $use_php = FALSE;
       break;
 
     case 'code global':
@@ -485,6 +494,7 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   - 'function': $name is specifically a function ('file', 'constant', etc.
  *     also are supported).
  *   - 'function_or_constant': $name is either a function, constant, or class.
+ *   - 'annotation': $name is an annotation class name.
  *   - 'group': $name is a group/topic identifier.
  *   - 'global': $name is a global variable.
  *   - 'yaml_reference': $name is the possibly namespaced name of a function or
@@ -681,7 +691,14 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     }
   }
 
-  // Deal with namespaces.
+  // Deal with namespaces and annotations.
+  if ($type == 'annotation') {
+    // We are looking for an annotation class.
+    $query->innerJoin('api_reference_storage', 'r_annotation', 'ad.did = r_annotation.from_did' );
+    $query->condition('r_annotation.object_type', 'annotation_class');
+    $query->condition('ad.object_type', 'class');
+  }
+
   if (in_array($type, array('function', 'function_or_constant', 'class'))) {
     $original_name = $name;
     $name = $namespaced_name;
@@ -854,6 +871,7 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
       // check_plained at parse time. Don't double-encode it!
       $options['html'] = TRUE;
     }
+
     return l($text, $url, $options);
   }
 

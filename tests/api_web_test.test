@@ -520,6 +520,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('A great plugin title', 'Plugin title is there');
     $this->assertLink('foo_sample_name', 0, 'Link to function name in plugin annotation is there');
     $this->assertLink('SubSample', 0, 'Link to class in plugin annotation is there');
+    $this->assertLink('SampleInSubDir', 0, 'Link to annotation class is there');
 
     // Click the links on the page and verify.
     $this->assertLinkURLSubstring('classes.php', $this->branch_info['project'] . '/classes.php', 'classes.php link exists', 'classes.php link went to the right place');
@@ -606,6 +607,10 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('classes-subdir.php', 0, 'classes-subdir.php file name is on subdirectory class page');
     $this->assertLinkURLSubstring('SampleInSubDir::$foo', 'classes-subdir.php/property/SampleInSubDir', 'foo property link is present', 'foo property link goes to right place');
     $this->assertLinkURLSubstring('SampleInSubDir::foo', 'classes-subdir.php/function/SampleInSubDir', 'foo function link is present', 'foo function link goes to right place');
+    // Check on annotation.
+    $this->assertText('1 class is annotated with SampleInSubDir', 'Annotation section is present');
+    $this->assertLink('Sample', 0, 'Link to annotated class is present');
+
     $this->clickLink('classes-subdir.php');
     $this->assertText('Classes in a subdirectory test', 'Classes file link went to right place');
     $this->assertText('Another Sample interface in a subdirectory.', 'Classes file link went to right place');

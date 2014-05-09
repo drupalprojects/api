@@ -18,7 +18,7 @@
  * This example now includes some annotation for testing, including a function
  * name and a class name that should turn into links in the code section.
  *
- * @Plugin(
+ * @SampleInSubDir(
  *   id = "samplefoo",
  *   title = @Translation("A great plugin title"),
  *   description = @Translation("A very descriptive plugin description."),

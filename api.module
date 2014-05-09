@@ -648,6 +648,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%/class/annotations/%api_item'] = array(
+    'title' => 'Class annotations',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(5, 'annotations'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%/interface/%api_item'] = array(
     'title' => 'Interface',
     'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
