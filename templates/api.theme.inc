@@ -18,7 +18,7 @@ function api_preprocess_api_defined(&$variables) {
 
   $variables['file_summary'] = '';
   if (isset($file_info)) {
-    $variables['file_summary'] = $file_info->summary;
+    $variables['file_summary'] = api_link_documentation($file_info->summary, $branch, $object->file_did, NULL, FALSE, FALSE, FALSE);
   }
 }
 
@@ -31,7 +31,7 @@ function api_preprocess_api_class_section(&$variables) {
   $class = $variables['class'];
   $branch = $variables['branch'];
   $variables['class_link'] = l($class->title, api_url($class));
-  $variables['class_info'] = $class->summary;
+  $variables['class_info'] = api_link_documentation($class->summary, $branch, $class->file_did, $class->class_did, FALSE, FALSE, $class->is_drupal);
 }
 
 /**
