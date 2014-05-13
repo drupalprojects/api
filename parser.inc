@@ -2920,9 +2920,9 @@ function api_update_branch_files($branch) {
   // List all documented files for the branch.
   $files = array();
   $query = db_select('api_documentation', 'd')
-    ->fields('d', array('object_name'));
-  $f = $query->innerJoin('api_file', 'f', 'd.did = f.did');
-  $query->fields($f, array('did', 'modified', 'queued'))
+    ->fields('d', array('object_name', 'did'));
+  $f = $query->leftJoin('api_file', 'f', 'd.did = f.did');
+  $query->fields($f, array('modified', 'queued'))
     ->condition('d.branch_id', $branch->branch_id)
     ->condition('d.object_type', 'file');
   $result = $query->execute();
@@ -2979,7 +2979,7 @@ function api_update_branch_files($branch) {
 
   // Remove outdated files.
   foreach (array_keys($files) as $file_name) {
-    watchdog('api', 'Removing %file.', array('%file' => $file_name));
+    watchdog('api', 'Removing %file from branch %branch.', array('%file' => $file_name, '%branch' => $branch->branch_name));
     $dids = db_select('api_documentation', 'ad')
       ->fields('ad', array('did'))
       ->condition('file_name', $file_name)

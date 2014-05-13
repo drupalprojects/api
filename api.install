@@ -1627,6 +1627,33 @@ function api_update_7135() {
 }
 
 /**
+ * Repair database for missing file records.
+ */
+function api_update_7136() {
+  // Find file records in api_documentation without records in api_file.
+  // These cause the API module to repeatedly parse the same file. There should
+  // not be any, but there may be a few.
+  $query = db_select('api_documentation', 'd');
+  $query->leftJoin('api_file', 'f', 'd.did = f.did');
+  $query
+    ->fields('d', array('did', 'file_name'))
+    ->isNull('f.basename')
+    ->condition('d.object_type', 'file');
+  $results = $query->execute();
+  foreach ($results as $file) {
+    $info = pathinfo($file->file_name);
+    db_insert('api_file')
+      ->fields(array(
+          'did' => $file->did,
+          'basename' => $info['basename'],
+          'modified' => 0,
+          'queued' => 0,
+        ))
+      ->execute();
+  }
+}
+
+/**
  * Remove variables and other data on uninstall.
  */
 function api_uninstall() {
