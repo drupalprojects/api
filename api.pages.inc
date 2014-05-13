@@ -1315,15 +1315,19 @@ function api_page_class($class) {
     }
 
     // Now find which classes implement either the base interface or
-    // any that extend it.
+    // any that extend it. Use DISTINCT on the query, because some results
+    // could be for the same class, due to somewhere in its extends hierarchy,
+    // implementing this interface twice.
     $query = db_select('api_reference_storage', 'ars');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
     $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
       ->condition('ars.extends_did', $extend_list)
       ->condition('ars.branch_id', $branch->branch_id)
       ->condition('ars.object_type', 'interface')
-      ->orderBy($ad . '.object_name');
+      ->orderBy($ad . '.object_name')
+      ->distinct();
     $result = $query->execute();
+
     foreach ($result as $object) {
       $implements[] = l($object->object_name, api_url($object));
     }
