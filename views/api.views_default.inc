@@ -748,6 +748,64 @@ function api_views_default_views() {
     3 => 0,
   );
 
+  /* Display: Services Block */
+  $handler = $view->new_display('block', 'Services Block', 'block_services');
+  $handler->display->display_options['display_description'] = 'Block for listing services';
+  $handler->display->display_options['defaults']['hide_admin_links'] = FALSE;
+  $handler->display->display_options['defaults']['relationships'] = FALSE;
+  $handler->display->display_options['defaults']['fields'] = FALSE;
+  /* Field: API documentation: Title */
+  $handler->display->display_options['fields']['title']['id'] = 'title';
+  $handler->display->display_options['fields']['title']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['title']['field'] = 'title';
+  $handler->display->display_options['fields']['title']['label'] = 'Name';
+  $handler->display->display_options['fields']['title']['link_to_docs'] = 'object';
+  /* Field: API documentation: File name */
+  $handler->display->display_options['fields']['file_name']['id'] = 'file_name';
+  $handler->display->display_options['fields']['file_name']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['file_name']['field'] = 'file_name';
+  $handler->display->display_options['fields']['file_name']['label'] = 'File';
+  $handler->display->display_options['fields']['file_name']['link_to_docs'] = 'file_base';
+  /* Field: API documentation: Summary */
+  $handler->display->display_options['fields']['summary']['id'] = 'summary';
+  $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['summary']['field'] = 'summary';
+  $handler->display->display_options['fields']['summary']['label'] = 'Class';
+  $handler->display->display_options['defaults']['arguments'] = FALSE;
+  /* Contextual filter: API documentation: Branch */
+  $handler->display->display_options['arguments']['branch_id']['id'] = 'branch_id';
+  $handler->display->display_options['arguments']['branch_id']['table'] = 'api_documentation';
+  $handler->display->display_options['arguments']['branch_id']['field'] = 'branch_id';
+  $handler->display->display_options['arguments']['branch_id']['default_action'] = 'not found';
+  $handler->display->display_options['arguments']['branch_id']['default_argument_type'] = 'fixed';
+  $handler->display->display_options['arguments']['branch_id']['summary']['number_of_records'] = '0';
+  $handler->display->display_options['arguments']['branch_id']['summary']['format'] = 'default_summary';
+  $handler->display->display_options['arguments']['branch_id']['summary_options']['items_per_page'] = '25';
+  $handler->display->display_options['defaults']['filter_groups'] = FALSE;
+  $handler->display->display_options['defaults']['filters'] = FALSE;
+  /* Filter criterion: API documentation: Object name */
+  $handler->display->display_options['filters']['object_name']['id'] = 'object_name';
+  $handler->display->display_options['filters']['object_name']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['object_name']['field'] = 'object_name';
+  $handler->display->display_options['filters']['object_name']['operator'] = 'contains';
+  $handler->display->display_options['filters']['object_name']['group'] = 1;
+  $handler->display->display_options['filters']['object_name']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['object_name']['expose']['operator_id'] = 'object_name_op';
+  $handler->display->display_options['filters']['object_name']['expose']['label'] = 'Name contains';
+  $handler->display->display_options['filters']['object_name']['expose']['description'] = 'Contains filters are case sensitive';
+  $handler->display->display_options['filters']['object_name']['expose']['operator'] = 'object_name_op';
+  $handler->display->display_options['filters']['object_name']['expose']['identifier'] = 'object_name';
+  $handler->display->display_options['filters']['object_name']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
+  /* Filter criterion: API documentation: Object type */
+  $handler->display->display_options['filters']['object_type']['id'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
+  $handler->display->display_options['filters']['object_type']['value'] = 'service';
+
   $views[$view->name] = $view;
 
   // API Projects view.

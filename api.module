@@ -693,6 +693,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%/service/%api_item'] = array(
+    'title' => 'Service',
+    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_service',
+    'page arguments' => array(4),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%/group/%api_item'] = array(
     'title' => 'Group',
     'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
@@ -903,6 +912,25 @@ function api_menu() {
       'title' => $branch->title,
       'page callback' => 'api_page_listing',
       'page arguments' => array($branch, 'deprecated'),
+      'access arguments' => array('access API reference'),
+      'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
+      'file' => 'api.pages.inc',
+    );
+
+    if ($is_default) {
+      $items['api/' . $branch->project . '/services'] = array(
+        'title' => 'Services',
+        'page callback' => 'api_page_listing',
+        'access arguments' => array('access API reference'),
+        'page arguments' => array($branch, 'service'),
+        'type' => MENU_SUGGESTED_ITEM,
+        'file' => 'api.pages.inc',
+      );
+    }
+    $items['api/' . $branch->project . '/services/' . $branch->branch_name] = array(
+      'title' => $branch->title,
+      'page callback' => 'api_page_listing',
+      'page arguments' => array($branch, 'service'),
       'access arguments' => array('access API reference'),
       'type' => $is_default ? MENU_DEFAULT_LOCAL_TASK : MENU_LOCAL_TASK,
       'file' => 'api.pages.inc',
@@ -1201,7 +1229,7 @@ function api_legacy_1_2_listing_load($branch_name, $type = NULL) {
  */
 function api_item_load($object_name, $project, $branch_name, $file_name, $type) {
   // Check type
-  if (!in_array($type, array('function', 'constant', 'global', 'property', 'class', 'interface', 'trait', 'group'))) {
+  if (!in_array($type, array('function', 'constant', 'global', 'property', 'class', 'interface', 'trait', 'group', 'service'))) {
     return FALSE;
   }
 
@@ -1500,6 +1528,19 @@ function api_theme() {
       'template' => 'api-class-page',
       'file' => 'api.theme.inc',
     ),
+    'api_service_page' => array(
+      'variables' => array(
+        'branch' => NULL,
+        'object' => NULL,
+        'class' => NULL,
+        'code' => NULL,
+        'tags' => NULL,
+      ),
+      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'path' => drupal_get_path('module', 'api') . '/templates',
+      'template' => 'api-service-page',
+      'file' => 'api.theme.inc',
+    ),
     'api_file_page' => array(
       'variables' => array(
         'object' => NULL,
@@ -1740,6 +1781,9 @@ function api_block_view($delta) {
         if ($counts['namespaces'] > 0) {
           $links[] = l(t('Namespaces'), 'api/' . $branch->project . '/namespaces' . $suffix);
         }
+        if ($counts['services'] > 0) {
+          $links[] = l(t('Services'), 'api/' . $branch->project . '/services' . $suffix);
+        }
         if ($counts['constants'] > 0) {
           $links[] = l(t('Constants'), 'api/' . $branch->project . '/constants' . $suffix);
         }
@@ -1788,6 +1832,7 @@ function api_listing_counts($branch) {
     'files' => 0,
     'namespaces' => 0,
     'deprecated' => 0,
+    'services' => 0,
   );
 
   // These queries mirror what is done in the views used by api_page_listing().
@@ -1828,7 +1873,7 @@ function api_listing_counts($branch) {
     ->execute()
     ->fetchField();
 
-  foreach (array('function', 'constant', 'global', 'file') as $type) {
+  foreach (array('function', 'constant', 'global', 'file', 'service') as $type) {
     $query = db_select('api_documentation', 'ad')
       ->condition('branch_id', $branch->branch_id)
       ->condition('object_type', $type)

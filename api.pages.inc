@@ -384,6 +384,7 @@ function api_page_file($file) {
     'class' => t('Classes'),
     'interface' => t('Interfaces'),
     'trait' => t('Traits'),
+    'service' => t('Services'),
   );
 
   $objects = array();
@@ -477,6 +478,7 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
       'group' => t('Topics'),
       'namespace' => t('Namespaces'),
       'deprecated' => t('Deprecated'),
+      'service' => t('Services'),
     );
     $title = $titles[$object_type];
     drupal_set_title($title);
@@ -501,6 +503,12 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_groups', array($branch->branch_id)),
+    );
+  }
+  elseif ($object_type === 'service' ) {
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_listings', 'block_services', array($branch->branch_id)),
     );
   }
   elseif ( $object_type === 'file') {
@@ -1358,6 +1366,48 @@ function api_page_class($class) {
   // Put it all together.
   $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'call_links' => $links));
   $output .= _api_add_comments($class);
+
+  return $output;
+}
+
+/**
+ * Page callback: Displays documentation for a service.
+ *
+ * @param $service
+ *   Documentation object representing the service to display.
+ *
+ * @return
+ *   HTML output for the page.
+ *
+ * @see api_menu()
+ */
+function api_page_service($service) {
+  $branch = api_get_branch_by_id($service->branch_id);
+
+  api_object_title_and_breadcrumb($branch, $service);
+
+  // The class name (if there is one), or some other information is stored
+  // in the documentation field.
+  $class = api_link_documentation($service->documentation, $branch, $service->file_did, 0, TRUE, FALSE, $service->is_drupal);
+  $code = api_link_code($service->code, $branch, $service->file_did, $service->did, $service->is_drupal);
+
+  // Make a list of the service tags. These are in the api_references table.
+  $results = db_select('api_reference_storage', 'r')
+    ->condition('r.object_type', 'service_tag')
+    ->condition('r.from_did', $service->did)
+    ->fields('r', array('object_name'))
+    ->execute()
+    ->fetchCol();
+  if (count($results)) {
+    $tags = theme('item_list', array('items' => $results));
+  }
+  else {
+    $tags = FALSE;
+  }
+
+  // Put it all together.
+  $output = theme('api_service_page', array('branch' => $branch, 'object' => $service, 'class' => $class, 'code' => $code, 'tags' => $tags));
+  $output .= _api_add_comments($service);
 
   return $output;
 }

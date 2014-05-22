@@ -30,7 +30,15 @@
 ?>
 <p class="api-defined">
 <dl>
-  <dt><?php print t('!file, line @start_line', array('!file' => $file_link, '@start_line' => (($startline = $object->start_line) == NULL ? 0 : $startline) ) ); ?></dt>
+   <dt><?php
+    $startline = $object->start_line;
+    if ($startline) {
+      print t('!file, line @start_line', array('!file' => $file_link, '@start_line' => $startline));
+    }
+    else {
+      print $file_link;
+    }
+?></dt>
   <dd><?php print $file_summary; ?></dd>
 </dl>
 </p>

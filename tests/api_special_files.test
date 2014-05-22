@@ -129,4 +129,37 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->assertURLContains('dup_names.php/constant/SAMPLE_FUNCTION', 'Got to constant page with upper-case search');
 
   }
+
+  /**
+   * Tests services YAML file parsing and display.
+   */
+  function testYamlServices() {
+    // Test the Services listing page.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/services/');
+    $this->assertLink('cache_context.url', 0, 'Service is linked');
+    $this->assertLink('test.services.yml', 0, 'Services file is linked');
+    $this->assertText('Alias of config.storage.active', 'Alias doc is there');
+    $this->assertText('Abstract', 'Abstract doc is there');
+    $this->assertText('CacheArray', 'Class is there');
+
+    // Test individual services pages.
+    $this->clickLink('route_enhancer.param_conversion');
+    $this->assertText('Tags', 'Tags header is there');
+    $this->assertText('event_subscriber', 'Tag is listed');
+    $this->assertText('ParamConversionEnhancer', 'Class is listed');
+
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/container.trait');
+    $this->assertNoText('Tags', 'Tags header is not there');
+    $this->assertText('Abstract', 'Listed as abstract');
+
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/config.storage');
+    $this->assertNoText('Tags', 'Tags header is not there');
+    $this->assertText('Alias of', 'Listed as alias');
+
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/cache_context.url');
+    $this->assertLink('CacheArray', 0, 'Class is linked');
+    $this->assertLink('test.services.yml', 0, 'File is linked');
+    $this->assertText('@request', 'Source is listed');
+
+  }
 }

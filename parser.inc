@@ -253,6 +253,7 @@ function api_parse_php_file($docblock) {
 function api_parse_yaml_file($docblock) {
   // Just use the file name as the documentation, since the file contents
   // are not good documentation.
+  $bare_docblock = $docblock;
   $docblock['documentation'] = $docblock['file_name'];
 
   // Parse the YAML in the file.
@@ -277,6 +278,7 @@ function api_parse_yaml_file($docblock) {
   // level of keys we want depends on (a) if it's a Drupal file, and (b) the
   // file extension.
   $key_level = 0;
+  $is_services = FALSE;
   if ($docblock['is_drupal']) {
     $basename = $docblock['basename'];
     $matches = array();
@@ -284,6 +286,7 @@ function api_parse_yaml_file($docblock) {
       if ($matches[1] == 'services') {
         // We want to keep references to 2nd-level keys in services.yml files.
         $key_level = 2;
+        $is_services = TRUE;
       }
       elseif ($matches[1] == 'routing' || $matches[1] == 'local_tasks' || $matches[1] == 'contextual_links') {
         // We want to keep references to 1st-level keys in routing.yml and
@@ -308,11 +311,11 @@ function api_parse_yaml_file($docblock) {
   // string in each case. So we also need to sort the strings by length,
   // longest first, because PHP regular expressions with alternatives take the
   // first matching one.
-  $references = $references['potential callback'];
-  if (count($references)) {
+  $callbacks = $references['potential callback'];
+  if (count($callbacks)) {
     $newstrings = array();
-    usort($references, '_api_length_compare');
-    foreach ($references as $string) {
+    usort($callbacks, '_api_length_compare');
+    foreach ($callbacks as $string) {
       $newstrings[] = preg_quote($string, '/');
     }
 
@@ -323,10 +326,66 @@ function api_parse_yaml_file($docblock) {
   // Number the lines and put into a code block.
   $code = api_number_lines($code);
   $code = '<pre class="php"><code>' . $code . '</code></pre>';
-
   $docblock['code'] = $code;
 
-  api_save_documentation(array($docblock));
+  $docblocks = array($docblock);
+
+  // For services files, make docblocks for each service.
+  if ($is_services && isset($parsed['services'])) {
+    module_load_include('php', 'api', 'yaml/Dumper');
+    module_load_include('php', 'api', 'yaml/Escaper');
+    $dumper = new \Symfony\Component\Yaml\Dumper();
+    $dumper->setIndentation(2);
+
+    foreach ($parsed['services'] as $name => $info) {
+      try {
+        $code = $dumper->dump($info, 2);
+      }
+      catch (Exception $e) {
+        // We should be able to dump, but just in case, fall back to printing,
+        // which is better than nothing.
+        $code = print_r($info, TRUE);
+      }
+      $code = htmlspecialchars($code, ENT_NOQUOTES, 'UTF-8');
+      if (count($callbacks)) {
+        $code = preg_replace($regexp, '<span class="yaml-reference">$1</span>', $code);
+      }
+      $code = api_number_lines($code);
+      $code = '<pre class="php"><code>' . $code . '</code></pre>';
+
+      $references = array('service_tag' => array());
+      $class = '';
+      if (isset($info['class']) && $info['class']) {
+        $class = $info['class'];
+        $references['service_class'] = array($class);
+      }
+      $alias = (isset($info['alias']) && $info['alias']) ? $info['alias'] : '';
+      $abstract = (isset($info['abstract']) && $info['abstract']);
+
+      if (isset($info['tags'])) {
+        foreach ($info['tags'] as $tag) {
+          $tag_name = $tag['name'];
+          if ($tag_name) {
+            $references['service_tag'][$tag_name] = $tag_name;
+          }
+        }
+      }
+
+      $service = array(
+        'object_name' => $name,
+        'title' => $name,
+        'object_type' => 'service',
+        'code' => $code,
+        'source' => '',
+        'documentation' => $class ? $class : ($alias ? t('Alias of %alias', array('%alias' => $alias)) : ($abstract ? t('Abstract') : '')),
+        'references' => $references,
+      ) + $bare_docblock;
+
+      $docblocks[] = $service;
+    }
+  }
+
+  api_save_documentation($docblocks);
 }
 
 /**
@@ -843,6 +902,10 @@ function api_save_documentation($docblocks) {
         api_replace_references($docblocks[0]['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
         break;
 
+      case 'service':
+        api_replace_references($docblock['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
+        break;
+
       case 'file':
         // Note that this will set the 'queued' field back to zero, since
         // $docblock['queued'] is set to 0 up at the top of api_parse_file().
@@ -1063,7 +1126,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
   }
 
   // Remove any existing references.
-  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'potential file', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string');
+  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'potential file', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string', 'service_tag', 'service_class');
 
   db_delete('api_reference_storage')
     ->condition('branch_id', $branch->branch_id)
