@@ -769,7 +769,8 @@ function api_page_function($function) {
       $signature .= $info['other'][$key];
     }
     $signature .= ')';
-    $signatures[$info['branch_label']] = array(
+    $signatures[$n] = array(
+      'label' => $info['branch_label'],
       'signature' => $signature,
       'active' => $info['active'],
       'url' => api_url($info['object']),
