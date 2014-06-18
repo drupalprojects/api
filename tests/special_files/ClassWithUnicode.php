@@ -40,5 +40,7 @@ abstract class CacheArray implements ArrayAccess {
    */
   protected function persist($offset, $persist = TRUE) {
     $this->keysToPersist[$offset] = $persist;
+    // Use a service.
+    $this->get('container.trait');
   }
 }

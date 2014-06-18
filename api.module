@@ -720,6 +720,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%/service/use/%api_item'] = array(
+    'title' => 'Service uses',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(5, 'use'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%/group/%api_item'] = array(
     'title' => 'Group',
     'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
@@ -1553,6 +1562,7 @@ function api_theme() {
         'class' => NULL,
         'code' => NULL,
         'tags' => NULL,
+        'call_links' => array(),
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
       'path' => drupal_get_path('module', 'api') . '/templates',

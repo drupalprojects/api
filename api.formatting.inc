@@ -28,10 +28,10 @@
  */
 function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_drupal = TRUE) {
   if ($is_drupal) {
-    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class', 'annotation class');
+    $steps = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'service', 'yaml file', 'yaml reference', 'annotation string', 'code global', 'code class', 'annotation class');
   }
   else {
-    $steps = array('code function', 'code function declared', 'code member', 'code string', 'yaml reference', 'annotation string', 'code global', 'code class', 'annotation class');
+    $steps = array('code function', 'code function declared', 'code member', 'code string', 'service', 'yaml reference', 'annotation string', 'code global', 'code class', 'annotation class');
   }
 
   return _api_link_documentation($code, $branch, $file_did, $class_did, $steps);
@@ -74,10 +74,10 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
   // Start with the code-related stages, for the @code sections. Follow with
   // the basic documentation stages.
   if ($is_drupal) {
-    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'yaml file', 'annotation string', 'code global', 'code class', 'annotation class', 'tags', 'link', 'function');
+    $stages = array('code hook name', 'code alter hook name', 'code theme hook name', 'code function', 'code function declared', 'code member', 'code string', 'code string theme', 'yaml string', 'service', 'yaml file', 'annotation string', 'code global', 'code class', 'annotation class', 'tags', 'link', 'function');
   }
   else {
-    $stages = array('code function', 'code function declared', 'code member', 'code string', 'annotation string', 'code global', 'code class', 'annotation class', 'tags', 'link', 'function');
+    $stages = array('code function', 'code function declared', 'code member', 'code string', 'service', 'annotation string', 'code global', 'code class', 'annotation class', 'tags', 'link', 'function');
   }
 
   if ($aggressive_topics) {
@@ -246,6 +246,16 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
       $append = '\'</span>';
       $prepend_if_not_found = '<span class="php-string">\'';
       $type = 'yaml_string';
+      $continue_matching = TRUE;
+      break;
+
+    case 'service':
+      // Find potential service names in marked-up code.
+      $pattern = '!<span class="php-string">\'(' . API_RE_YAML_STRING . ')\'</span>!';
+      $prepend = '<span class="php-function-or-constant">\'';
+      $append = '\'</span>';
+      $prepend_if_not_found = '<span class="php-string">\'';
+      $type = 'service';
       $continue_matching = TRUE;
       break;
 
@@ -502,6 +512,7 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  *   - 'yaml_string': $name is a string that could be a 'yaml string' reference.
  *   - 'yaml_file': $name is possibly the name of a YAML config file (missing
  *     the .yml extension).
+ *   - 'service': $name is the name of a service.
  *
  * @return
  *   The text as a link to the object page.
@@ -759,6 +770,9 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
   }
   elseif ($type == 'function') {
     $query->condition('ad.object_type', 'function');
+  }
+  elseif ($type == 'service') {
+    $query->condition('ad.object_type', 'service');
   }
   elseif ($type == 'global') {
     $query->condition('ad.object_type', 'global');

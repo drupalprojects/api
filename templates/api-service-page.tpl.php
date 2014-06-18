@@ -11,6 +11,7 @@
  * - $tags: List of tags for this service.
  * - $branch: Object with information about the branch.
  * - $object: Object with information about the service.
+ * - $call_links: Links to references.
  *
  * Available variables in the $branch object:
  * - $branch->project: The machine name of the branch.
@@ -45,6 +46,11 @@
      print $tags;
   }
 ?>
+
+<?php
+foreach ($call_links as $link) {
+  print $link;
+} ?>
 
 <h3><?php print t('File'); ?></h3>
 <?php print $defined; ?>

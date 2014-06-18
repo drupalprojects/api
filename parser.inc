@@ -297,6 +297,11 @@ function api_parse_yaml_file($docblock) {
   }
 
   $references = _api_find_yaml_references($parsed, $key_level);
+  // For services files, we do not want the YML strings references, because
+  // really only the services are relevant.
+  if ($is_services) {
+    unset($references['yaml string']);
+  }
   $docblock['references'] = $references;
 
   // Now we need to format the source of this file. Start by escaping

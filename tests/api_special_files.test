@@ -165,5 +165,15 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('CacheArray');
     $this->assertText('1 service uses CacheArray', 'Service reference text is there');
     $this->assertLink('cache_context.url', 0, 'Service is linked');
+
+    // Test that in the method page, there is a link to the service it
+    // references.
+    $this->clickLink('CacheArray::persist');
+    $this->assertLinkURLSubstring('container.trait', 'test.services.yml/service/container.trait', 'Link to service name exists', 'Link goes to right place');
+
+    // Test that the service page shows references.
+    $this->clickLink('container.trait');
+    $this->assertText('1 string reference to container.trait', 'Reference text is there');
+    $this->assertLink('CacheArray::persist', 0, 'Link to referencing method is there');
   }
 }

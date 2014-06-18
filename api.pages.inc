@@ -826,6 +826,7 @@ function api_page_function($function) {
  *   - 'yml_keys': $name is a YML config file name, and $exclude_did is its
  *     documentation ID. Find references to keys in this file.
  *   - 'services': $name is a class, find services that reference it.
+ *   - 'use': $name is a service, find functions that reference its name.
  * @param $count
  *   If TRUE (default), return a count. If FALSE, return an array.
  * @param $exclude_did
@@ -908,6 +909,17 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     else {
       $base_query->condition('r.object_name', $name);
     }
+  }
+  elseif ($type == 'use') {
+    // Use reference storage to find functions that reference a service. It
+    // could have a . in it, so it is either stored as 'potential file' or
+    // 'potential callback'.
+    $base_query = db_select('api_reference_storage', 'r');
+    $d = $base_query->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
+    $base_query->condition($d . '.branch_id', $branch_id)
+      ->condition($d . '.did', $exclude_did, '<>')
+      ->condition('r.object_type', array('potential file', 'potential callback'));
+    $base_query->condition('r.object_name', $name);
   }
   if ($type == 'services') {
     // Use reference storage to find services using this class.
@@ -1416,8 +1428,10 @@ function api_page_service($service) {
     $tags = FALSE;
   }
 
+  $links = api_build_references(array('use'), $service, $branch);
+
   // Put it all together.
-  $output = theme('api_service_page', array('branch' => $branch, 'object' => $service, 'class' => $class, 'code' => $code, 'tags' => $tags));
+  $output = theme('api_service_page', array('branch' => $branch, 'object' => $service, 'class' => $class, 'code' => $code, 'tags' => $tags, 'call_links' => $links));
   $output .= _api_add_comments($service);
 
   return $output;
@@ -1873,7 +1887,7 @@ function api_reference_text($type, $count, $function) {
   if ($type == 'invokes') {
     return format_plural($count, '1 invocation of !name', '@count invocations of !name', array('!name' => $name_to_use));
   }
-  if ($type == 'references') {
+  if ($type == 'references' || $type == 'use') {
     return format_plural($count, '1 string reference to !name', '@count string references to !name', array('!name' => $name_to_use));
   }
   if ($type == 'annotations') {
