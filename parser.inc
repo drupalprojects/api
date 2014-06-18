@@ -357,7 +357,14 @@ function api_parse_yaml_file($docblock) {
       $class = '';
       if (isset($info['class']) && $info['class']) {
         $class = $info['class'];
-        $references['service_class'] = array($class);
+        // Make sure the class name starts with a backslash.
+        $ref = $class;
+        $pos = strpos($ref, '\\');
+        if ($pos !== 0) {
+          $ref = '\\' . $ref;
+        }
+
+        $references['service_class'] = array($ref);
       }
       $alias = (isset($info['alias']) && $info['alias']) ? $info['alias'] : '';
       $abstract = (isset($info['abstract']) && $info['abstract']);

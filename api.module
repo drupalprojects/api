@@ -657,6 +657,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%/class/services/%api_item'] = array(
+    'title' => 'Class services',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(5, 'services'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%/interface/%api_item'] = array(
     'title' => 'Interface',
     'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
@@ -689,6 +698,15 @@ function api_menu() {
     'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'uses'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+  $items['api/%/%/interface/services/%api_item'] = array(
+    'title' => 'Class services',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(5, 'services'),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',

@@ -825,6 +825,7 @@ function api_page_function($function) {
  *     to the file name without .yml.
  *   - 'yml_keys': $name is a YML config file name, and $exclude_did is its
  *     documentation ID. Find references to keys in this file.
+ *   - 'services': $name is a class, find services that reference it.
  * @param $count
  *   If TRUE (default), return a count. If FALSE, return an array.
  * @param $exclude_did
@@ -854,7 +855,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     // In a few cases, we want to look for either the base name or the
     // namespaced name.
     $altname = $obj->namespaced_name;
-    if ($type == 'uses') {
+    if ($type == 'uses' || $type == 'services') {
       $name = $altname;
     }
   }
@@ -907,6 +908,15 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     else {
       $base_query->condition('r.object_name', $name);
     }
+  }
+  if ($type == 'services') {
+    // Use reference storage to find services using this class.
+    $base_query = db_select('api_reference_storage', 'r');
+    $d = $base_query->leftJoin('api_documentation', 'd', 'r.from_did = d.did');
+    $base_query->condition('d.branch_id', $branch_id)
+      ->condition('d.did', $exclude_did, '<>')
+      ->condition('r.object_type', array('service_class'))
+      ->condition('r.object_name', $name);
   }
   elseif ($type == 'annotations') {
     // In this case, $exclude_did is the documentation ID of a class, presumably
@@ -1358,7 +1368,7 @@ function api_page_class($class) {
 
   $objects = drupal_render($objects);
 
-  $reference_types = array('uses', 'references');
+  $reference_types = array('uses', 'references', 'services');
   if ($class->object_type == 'class') {
     $reference_types[] = 'annotations';
   }
@@ -1868,6 +1878,9 @@ function api_reference_text($type, $count, $function) {
   }
   if ($type == 'annotations') {
     return format_plural($count, '1 class is annotated with !name', '@count classes are annotated with !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'services') {
+    return format_plural($count, '1 service uses !name', '@count services use !name', array('!name' => $name_to_use));
   }
   if ($type == 'yml_keys') {
     return format_plural($count, '1 string reference to YAML keys in !name', '@count string references to YAML keys in !name', array('!name' => $name_to_use));
