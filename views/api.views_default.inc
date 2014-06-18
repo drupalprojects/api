@@ -771,6 +771,11 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['summary']['table'] = 'api_documentation';
   $handler->display->display_options['fields']['summary']['field'] = 'summary';
   $handler->display->display_options['fields']['summary']['label'] = 'Class';
+  /* Field: API documentation: All service tags */
+  $handler->display->display_options['fields']['all_service_tags_1']['id'] = 'all_service_tags_1';
+  $handler->display->display_options['fields']['all_service_tags_1']['table'] = 'api_documentation';
+  $handler->display->display_options['fields']['all_service_tags_1']['field'] = 'all_service_tags';
+  $handler->display->display_options['fields']['all_service_tags_1']['label'] = 'Tags';
   $handler->display->display_options['defaults']['arguments'] = FALSE;
   /* Contextual filter: API documentation: Branch */
   $handler->display->display_options['arguments']['branch_id']['id'] = 'branch_id';
@@ -805,6 +810,21 @@ function api_views_default_views() {
   $handler->display->display_options['filters']['object_type']['table'] = 'api_documentation';
   $handler->display->display_options['filters']['object_type']['field'] = 'object_type';
   $handler->display->display_options['filters']['object_type']['value'] = 'service';
+  /* Filter criterion: API documentation: Service tag */
+  $handler->display->display_options['filters']['all_service_tags']['id'] = 'all_service_tags';
+  $handler->display->display_options['filters']['all_service_tags']['table'] = 'api_documentation';
+  $handler->display->display_options['filters']['all_service_tags']['field'] = 'all_service_tags';
+  $handler->display->display_options['filters']['all_service_tags']['operator'] = 'contains';
+  $handler->display->display_options['filters']['all_service_tags']['exposed'] = TRUE;
+  $handler->display->display_options['filters']['all_service_tags']['expose']['operator_id'] = 'all_service_tags_op';
+  $handler->display->display_options['filters']['all_service_tags']['expose']['label'] = 'Tag contains';
+  $handler->display->display_options['filters']['all_service_tags']['expose']['operator'] = 'all_service_tags_op';
+  $handler->display->display_options['filters']['all_service_tags']['expose']['identifier'] = 'tag';
+  $handler->display->display_options['filters']['all_service_tags']['expose']['remember_roles'] = array(
+    2 => '2',
+    1 => 0,
+    3 => 0,
+  );
 
   $views[$view->name] = $view;
 

@@ -87,9 +87,23 @@ function api_views_data() {
         'base field' => 'from_did',
         'field' => 'did',
         'handler' => 'views_handler_relationship',
-        'label' => t('All references to this item'),
-        'title' => t('All references to this item'),
-        'help' => t('All references to this item. This will create duplicate records, unless you filter.'),
+        'label' => t('All references this item has'),
+        'title' => t('All references this item has'),
+        'help' => t('All references that were found in the code for this item. This will create duplicate records, unless you filter.'),
+      ),
+    ),
+
+    'all_service_tags' => array(
+      'title' => t('Service tag'),
+      'field' => array(
+        'title' => t('All service tags'),
+        'help' => t('Display all tags for a service item.'),
+        'handler' => 'api_views_handler_field_api_service_tags',
+        'no group by' => TRUE,
+      ),
+      'filter' => array(
+        'help' => t('Filter on service tags for a service item'),
+        'handler' => 'api_views_handler_filter_service_tag',
       ),
     ),
 
