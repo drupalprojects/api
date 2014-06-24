@@ -1289,6 +1289,7 @@ function api_views_default_views() {
     'object_type' => 'object_type',
     'summary' => 'summary',
     'title_1' => 'summary',
+    'member_alias' => 'summary',
   );
   $handler->display->display_options['style_options']['default'] = 'title';
   $handler->display->display_options['style_options']['info'] = array(
@@ -1399,6 +1400,15 @@ function api_views_default_views() {
   $handler->display->display_options['fields']['title_1']['link_to_docs'] = 'object';
   $handler->display->display_options['fields']['title_1']['prefix'] = '<em class="api-inheritance-source">Overrides ';
   $handler->display->display_options['fields']['title_1']['suffix'] = '</em>';
+  /* Field: API documentation: Alias of member */
+  $handler->display->display_options['fields']['member_alias']['id'] = 'member_alias';
+  $handler->display->display_options['fields']['member_alias']['table'] = 'api_members';
+  $handler->display->display_options['fields']['member_alias']['field'] = 'member_alias';
+  $handler->display->display_options['fields']['member_alias']['label'] = '';
+  $handler->display->display_options['fields']['member_alias']['alter']['alter_text'] = TRUE;
+  $handler->display->display_options['fields']['member_alias']['alter']['text'] = '<em class="api-inheritance-source">Aliased as: [member_alias]</em>';
+  $handler->display->display_options['fields']['member_alias']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['member_alias']['hide_empty'] = TRUE;
   /* Contextual filter: API documentation: Documentation ID of class for members */
   $handler->display->display_options['arguments']['class_did']['id'] = 'class_did';
   $handler->display->display_options['arguments']['class_did']['table'] = 'api_members';

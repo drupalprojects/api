@@ -506,10 +506,22 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         // See if this is a use statement for the file, or a use statement
         // indicating using a trait inside a class/trait.
         if (!empty($default_block['class'])) {
-          $references = array('use_trait' => $statement->aliasesToArray());
+          // This is inside a file, so it's a trait use statement.
+          $trait_info = $statement->valuesToArray('alias');
+          foreach ($trait_info as $key => $value) {
+            // Should be only one array element...
+            $trait_alias = $key;
+            $trait_class = $value;
+          }
+
+          $details = array();
+          if (!empty($statement->body)) {
+            $details = $statement->bodyValuesToArray();
+          }
+          $references = array('use_trait' => array($trait_alias => array('class' => $trait_class, 'details' => $details)));
         }
         else {
-          $references = array('use_alias' => $statement->aliasesToArray());
+          $references = array('use_alias' => $statement->valuesToArray('alias'));
         }
         $all_references = _api_merge_references($all_references, $references);
         break;
@@ -933,6 +945,11 @@ function api_save_documentation($docblocks) {
           ->condition('object_type', array('class', 'interface', 'trait', 'annotation_class', 'annotation'))
           ->condition('from_did', $docblock['did'])
           ->execute();
+        db_delete('api_namespace')
+          ->condition('did', $docblock['did'])
+          ->condition('object_type', array('trait_instead', 'trait_alias'))
+          ->execute();
+
         foreach ($docblock['extends'] as $extend) {
           $refname = api_full_classname($extend, $namespace, $use_aliases);
           api_reference($docblocks[0]['branch'], 'class', $refname, $docblock['did']);
@@ -941,13 +958,26 @@ function api_save_documentation($docblocks) {
           $refname = api_full_classname($implement, $namespace, $use_aliases);
           api_reference($docblocks[0]['branch'], 'interface', $refname, $docblock['did']);
         }
+
         if (isset($docblock['references']['use_trait'])) {
-          foreach ($docblock['references']['use_trait'] as $alias => $class) {
-            if ($alias != $class) {
-              watchdog('api', 'Aliases for use statements for traits are not supported in %filename', array('%filename' => $docblock['file_name']), WATCHDOG_WARNING);
-            }
+          foreach ($docblock['references']['use_trait'] as $alias => $info) {
+            $class = $info['class'];
             $refname = api_full_classname($class, $namespace, $use_aliases);
+            $refalias = api_full_classname($alias, $namespace, $use_aliases);
+            if ($refname != $refalias) {
+              watchdog('api', 'Aliases for use statements for traits are not supported in %filename for %alias, %class', array('%filename' => $docblock['file_name'], '%alias' => $alias, '%class' => $class), WATCHDOG_WARNING);
+            }
             api_reference($docblocks[0]['branch'], 'trait', $refname, $docblock['did']);
+            // If there are insteadof/alias details for this trait, save them
+            // in the namespaces table (because it has the right columns).
+            if (isset($info['details'])) {
+              foreach ($info['details'] as $type => $list) {
+                foreach ($list as $name => $item) {
+                  api_namespace($docblock['did'], 'trait_' . $type,
+                    $name, $refname . '::' . $item);
+                }
+              }
+            }
           }
         }
         if (isset($docblock['references']['annotation'])) {
@@ -2369,14 +2399,15 @@ function api_shutdown() {
   // Figure out the member-self references in reference storage. Basically,
   // ChildClass::foo() calls $this->bar(). We need to figure out the full name
   // of $this->bar(), which could be ChildClass::bar() or
-  // SomeParentClass::bar(). The {api_methods} table keeps track of this.
-
+  // SomeParentClass::bar(). The {api_members} table keeps track of this.
+  // Do not allow aliases here.
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'member-self');
   $select->innerJoin('api_documentation', 'd', 'r.from_did = d.did');
   $select->innerJoin('api_members', 'm', 'd.class_did = m.class_did');
   $select->innerJoin('api_documentation', 'dm', 'm.did = dm.did AND dm.member_name = r.object_name');
   $select->condition('dm.object_type', 'function');
+  $select->isNull('m.member_alias');
   $select->addField('dm', 'namespaced_name', 'object_name');
   $select->addField('r', 'branch_id', 'branch_id');
   $select->addField('r', 'from_did', 'from_did');
@@ -2391,7 +2422,7 @@ function api_shutdown() {
 
   // Do the same for member-parent references, where ChildClass::foo() calls
   // parent::bar() -- figure out the full name of the parent member.
-
+  // Do not allow aliases.
   $select = db_select('api_reference_storage', 'r')
     ->condition('r.object_type', 'member-parent');
   $select->innerJoin('api_documentation', 'cd', 'r.from_did = cd.did');
@@ -2400,6 +2431,7 @@ function api_shutdown() {
     ->condition('e.object_type', 'class')
     ->condition('e.extends_did', 0, '>');
   $select->innerJoin('api_members', 'pm', 'pm.class_did = e.extends_did');
+  $select->isNull('pm.member_alias');
   $select->innerJoin('api_documentation', 'md', 'md.did = pm.did AND md.member_name = r.object_name');
   $select->condition('md.object_type', 'function');
 
@@ -2535,11 +2567,11 @@ function _api_update_class_reference_info($did, $parent_info, $member_info) {
     ->condition('class_did', $did)
     ->execute();
   $query = db_insert('api_members')
-    ->fields(array('class_did', 'did'));
+    ->fields(array('class_did', 'did', 'member_alias'));
   $has_some = FALSE;
   foreach ($members as $type => $list) {
     foreach ($list as $member) {
-      $query->values(array('class_did' => $did, 'did' => $member['did']));
+      $query->values(array('class_did' => $did, 'did' => $member['did'], 'member_alias' => ($member['alias'] != $member['member_name']) ? $member['alias'] : NULL));
       $has_some = TRUE;
     }
   }
@@ -2588,14 +2620,44 @@ function _api_calc_class_members($did, $parent_info, $member_info) {
   if (!isset($parent_info[$did])) {
     return $members;
   }
-  foreach ($parent_info[$did] as $parent) {
+  // See if there are any aliases for trait members.
+  $aliases = _api_find_trait_aliases($did);
+
+  foreach ($parent_info[$did] as $parent_name => $parent) {
     $parent_members = _api_calc_class_members($parent, $parent_info, $member_info);
-    _api_member_list_merge($members, $parent_members);
+    _api_member_list_merge($members, $parent_members, isset($aliases[$parent_name]) ? $aliases[$parent_name] : array());
   }
 
   // Save in the cache and return.
   $cache[$did] = $members;
   return $members;
+}
+
+/**
+ * Reads trait method aliases from the database.
+ */
+function _api_find_trait_aliases($did) {
+  $results = db_select('api_namespace', 'an')
+    ->condition('did', $did)
+    ->condition('object_type', array('trait_alias'))
+    ->fields('an', array('class_alias', 'class_name'))
+    ->execute();
+
+  // @todo Consider the possibility of insteadof in traits -- right now Core
+  // does not use this -- but it would mean excluding some trait methods.
+  $return = array();
+  foreach ($results as $item) {
+    $alias = $item->class_alias;
+    $name = $item->class_name;
+    $pos = strpos($name, '::');
+    if ($pos >= 1) {
+      $class = substr($name, 0, $pos);
+      $member = substr($name, $pos + 2);
+      $return[$class][$member] = $alias;
+    }
+  }
+
+  return $return;
 }
 
 /**
@@ -2629,6 +2691,8 @@ function _api_make_bare_member_list($did, $member_info) {
         'overrides_did' => 0,
         'documented_did' => ($has_docs) ? $item->did : 0,
         'summary' => $item->summary,
+        'alias' => $member_name,
+        'member_name' => $member_name,
       );
     }
   }
@@ -2642,29 +2706,33 @@ function _api_make_bare_member_list($did, $member_info) {
  *
  * @param array $members
  *   List of member information, modified by reference.
- * @praam arary $parent_members
+ * @param array $parent_members
  *   List of parent member information to merge in.
+ * @param array $aliases
+ *   List of aliases for member names (functions only)
  */
-function _api_member_list_merge(&$members, $parent_members) {
+function _api_member_list_merge(&$members, $parent_members, $aliases) {
   foreach ($parent_members as $type => $new_type_list) {
     foreach ($new_type_list as $member_name => $info) {
-      if (isset($members[$type][$member_name])) {
+      $alias = (isset($aliases[$member_name]) && $type == 'function') ? $aliases[$member_name] : $member_name;
+      if (isset($members[$type][$alias])) {
         // We already knew about this member. Save override info, if new.
-        if (!$members[$type][$member_name]['overrides_did']) {
+        if (!$members[$type][$alias]['overrides_did']) {
           // We just found what the known member is overriding.
-          $members[$type][$member_name]['overrides_did'] = $info['did'];
+          $members[$type][$alias]['overrides_did'] = $info['did'];
         }
-        if (!$members[$type][$member_name]['documented_did']) {
+        if (!$members[$type][$alias]['documented_did']) {
           // The old member didn't have documentation, maybe this one does.
-          $members[$type][$member_name]['documented_did'] = $info['documented_did'];
+          $members[$type][$alias]['documented_did'] = $info['documented_did'];
         }
-        if (!$members[$type][$member_name]['summary']) {
-          $members[$type][$member_name]['summary'] = $info['summary'];
+        if (!$members[$type][$alias]['summary']) {
+          $members[$type][$alias]['summary'] = $info['summary'];
         }
       }
       else {
         // It's a new member, add it in.
-        $members[$type][$member_name] = $info;
+        $info['alias'] = $alias;
+        $members[$type][$alias] = $info;
       }
     }
   }

@@ -593,6 +593,13 @@ function api_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
+      'member_alias' => array(
+        'description' => 'Alias of the member, for trait inheritance',
+        'type' => 'varchar',
+        'length' => 127,
+        'not null' => FALSE,
+        'default' => NULL,
+      ),
     ),
     'indexes' => array(
       'did' => array('did'),
@@ -1651,6 +1658,19 @@ function api_update_7136() {
         ))
       ->execute();
   }
+}
+
+/**
+ * Add alias field to api_members table.
+ */
+function api_update_7137() {
+  db_add_field('api_members', 'member_alias', array(
+      'description' => 'Alias of the member, for trait inheritance',
+      'type' => 'varchar',
+      'length' => 127,
+      'not null' => FALSE,
+      'default' => NULL,
+    ));
 }
 
 /**

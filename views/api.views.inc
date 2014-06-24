@@ -654,6 +654,24 @@ function api_views_data() {
         'handler' => 'views_handler_argument_numeric',
       ),
     ),
+
+    'member_alias' => array(
+      'title' => t('Alias of member'),
+      'help' => t('Alias (for trait) of member item'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
   );
 
   $data['api_overrides'] = array(

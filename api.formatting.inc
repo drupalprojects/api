@@ -1272,8 +1272,9 @@ function _api_make_match_link_class_member($name, $namespace_info, $member_type,
     // Looking for a member of a particular class, or one of several classes,
     // whose documentation ID we have already located. Use the {api_members}
     // table to find the right method, since it includes members inherited from
-    // parent classes.
+    // parent classes. Do not support inherited aliases on members.
     $query = db_select('api_members', 'am');
+    $query->isNull('am.member_alias');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
     $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
     $query
