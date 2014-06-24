@@ -93,6 +93,10 @@ function api_parse_text_file($docblock, $escape_html = FALSE) {
     if (!api_libraries_loaded()) {
       return;
     }
+    // Avoid timeouts in Grammar Parser, but do not run forever in case it
+    // has a major problem. 10 minutes should be plenty. Drupal cron normally
+    // has a limit of 4 minutes. This will reset timing counter to 0 also.
+    drupal_set_time_limit(600);
     $editor = PGPEditor::getInstance();
     $docblock['content'] = $editor->commentToString(array('value' => $matches[0]));
   }
@@ -158,6 +162,10 @@ function api_parse_php_file($docblock) {
   }
 
   // Build grammar statements.
+  // Avoid timeouts in Grammar Parser, but do not run forever in case it
+  // has a major problem. 10 minutes should be plenty. Drupal cron normally
+  // has a limit of 4 minutes. This will reset timing counter to 0 also.
+  drupal_set_time_limit(600);
   $editor = PGPEditor::getInstance();
   $reader = $editor->getReader();
   $reader->setPreserveWhitespace(FALSE);
