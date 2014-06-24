@@ -1272,16 +1272,27 @@ function _api_make_match_link_class_member($name, $namespace_info, $member_type,
     // Looking for a member of a particular class, or one of several classes,
     // whose documentation ID we have already located. Use the {api_members}
     // table to find the right method, since it includes members inherited from
-    // parent classes. Do not support inherited aliases on members.
+    // parent classes.
     $query = db_select('api_members', 'am');
-    $query->isNull('am.member_alias');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
     $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
     $query
       ->fields('ad', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did', 'member_name'))
       ->fields('b', array('branch_name', 'project'))
-      ->condition('am.class_did', $class_did)
-      ->condition('ad.member_name', $name);
+      ->fields('am', array('member_alias'))
+      ->condition('am.class_did', $class_did);
+    // The method name could be a straight match or it could have an alias
+    // from a trait.
+    $or = db_or();
+    // First possibility: straight match.
+    $and = db_and()
+      ->condition('ad.member_name', $name)
+      ->isNull('am.member_alias');
+    $or->condition($and);
+    // Second possibility: alias.
+    $or->condition('am.member_alias', $name);
+    // Add this to the query.
+    $query->condition($or);
 
     if ($object_type == 'function') {
       $query->condition('ad.object_type', 'function');
@@ -1289,7 +1300,6 @@ function _api_make_match_link_class_member($name, $namespace_info, $member_type,
     else {
       $query->condition('ad.object_type', 'function', '<>');
     }
-
     $result = $query->execute();
   }
   elseif ($member_type == 'variable') {
@@ -1335,7 +1345,9 @@ function _api_make_match_link_class_member($name, $namespace_info, $member_type,
   if (isset($result)) {
     foreach ($result as $object) {
       // MySQL is not case-sensitive, so check the match for exact string.
-      if ($object->member_name != $name) {
+      // Could be a match for the name or the alias, but only some queries
+      // have aliases.
+      if ($object->member_name != $name && (!isset($object->member_alias) || $object->member_alias != $name)) {
         continue;
       }
       $matches[] = $object;

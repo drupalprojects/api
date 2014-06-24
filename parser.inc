@@ -973,8 +973,17 @@ function api_save_documentation($docblocks) {
             if (isset($info['details'])) {
               foreach ($info['details'] as $type => $list) {
                 foreach ($list as $name => $item) {
-                  api_namespace($docblock['did'], 'trait_' . $type,
-                    $name, $refname . '::' . $item);
+                  if ($type == 'insteadof') {
+                    // @todo We could support insteadof here; see other todo
+                    // for where it would be used.
+                    watchdog('api', 'Trait inheritance with insteadof statements are not supported in %filename for %item', array('%filename' => $docblock['file_name'], '%item' => $name), WATCHDOG_WARNING);
+                  }
+                  elseif (in_array($name, array('public', 'protected', 'private'))) {
+                    watchdog('api', 'Trait inheritance that changes visibility is not supported in %filename for %item', array('%filename' => $docblock['file_name'], '%item' => $item), WATCHDOG_WARNING);
+                  }
+                  else {
+                    api_namespace($docblock['did'], 'trait_' . $type, $name, $refname . '::' . $item);
+                  }
                 }
               }
             }

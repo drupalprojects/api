@@ -128,6 +128,18 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('xyz', 0, 'Method from trait turns into link');
     $this->clickLink('xyz');
     $this->assertText('Method to inherit', 'Clicked through to method page');
+
+    // Test traits with aliases.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassA.php/class/ClassA');
+    $this->assertLink('TraitF::$fvar', 0, 'Trait property link is present on using class page');
+    $this->assertLink('TraitF::xyz', 0, 'Trait method link is present on using class page');
+    $this->assertText('Aliased as: pdq', 'Trait alias text is present on using class page');
+
+    // Click through to method that uses aliased method and check.
+    $this->clickLink('ClassA::cMethod');
+    $this->assertLinkURLSubstring('pdq', $this->branch_info['project'] . '/TraitF.php/function/TraitF', 'Aliased trait method link exists', 'Aliased trait method link went to the right place');
+    $this->clickLink('pdq');
+    $this->assertText('Method to inherit', 'Clicking to trait method page went to right place');
   }
 
   /**
@@ -272,9 +284,9 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_documentation'] = 31;
     $counts['api_function'] = 12;
     $counts['api_file'] = 9;
-    $counts['api_members'] = 16;
+    $counts['api_members'] = 18;
     $counts['api_overrides'] = 13;
-    $counts['api_namespace'] = 10;
+    $counts['api_namespace'] = 12;
     $this->verifyCounts($counts, 0, 'Parse the branch');
 
     // Delete the branch, and verify counts.
