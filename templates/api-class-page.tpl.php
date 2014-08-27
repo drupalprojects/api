@@ -45,10 +45,15 @@
 
 <?php print $documentation ?>
 
-<?php if ($namespace) : ?>
-  <h3><?php print t('Namespace'); ?></h3>
-  <?php print $namespace; ?>
-<?php endif; ?>
+<?php if (!empty($implements)) { ?>
+  <h3><?php print t('Implemented by') ?></h3>
+  <?php print $implements ?>
+<?php } ?>
+
+<?php if (!empty($hierarchy)) { ?>
+  <h3><?php print t('Hierarchy') ?></h3>
+  <?php print $hierarchy ?>
+<?php } ?>
 
 <?php if (!empty($deprecated)) { ?>
 <div class="api-deprecated">
@@ -62,23 +67,6 @@
   <?php print $see ?>
 <?php } ?>
 
-<?php if (!empty($implements)) { ?>
-  <h3><?php print t('Implemented by') ?></h3>
-  <?php print $implements ?>
-<?php } ?>
-
-<?php if (!empty($hierarchy)) { ?>
-  <h3><?php print t('Hierarchy') ?></h3>
-  <?php print $hierarchy ?>
-<?php } ?>
-
-<?php print $objects; ?>
-
-<h3><?php print t('File'); ?></h3>
-<?php print $defined; ?>
-
-<?php print theme('ctools_collapsible', array('handle' => t('View source'), 'content' => $code, 'collapsed' => TRUE)); ?>
-
 <?php if (!empty($related_topics)) { ?>
   <h3><?php print t('Related topics') ?></h3>
   <?php print $related_topics ?>
@@ -88,3 +76,15 @@
 foreach ($call_links as $link) {
   print $link;
 } ?>
+
+<h3><?php print t('File'); ?></h3>
+<?php print $defined; ?>
+
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
+<?php endif; ?>
+
+<?php print theme('ctools_collapsible', array('handle' => t('View source'), 'content' => $code, 'collapsed' => TRUE)); ?>
+
+<?php print $objects; ?>

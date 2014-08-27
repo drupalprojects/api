@@ -60,8 +60,6 @@
   <?php print $see ?>
 <?php } ?>
 
-<?php print $objects; ?>
-
 <?php
 foreach ($call_links as $link) {
   print $link;
@@ -77,3 +75,5 @@ foreach ($call_links as $link) {
   <h3><?php print t('Related topics') ?></h3>
   <?php print $related_topics ?>
 <?php } ?>
+
+<?php print $objects; ?>

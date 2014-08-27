@@ -78,6 +78,11 @@
 <?php print $return ?>
 <?php } ?>
 
+<?php if (!empty($throws)) { ?>
+  <h3><?php print t('Throws') ?></h3>
+  <?php print $throws ?>
+<?php } ?>
+
 <?php print $override; ?>
 
 <?php if (!empty($deprecated)) { ?>
@@ -85,11 +90,6 @@
   <h3><?php print t('Deprecated') ?></h3>
   <?php print $deprecated ?>
 </div>
-<?php } ?>
-
-<?php if (!empty($throws)) { ?>
-  <h3><?php print t('Throws') ?></h3>
-  <?php print $throws ?>
 <?php } ?>
 
 <?php if (!empty($see)) { ?>
@@ -110,14 +110,14 @@ foreach ($call_links as $link) {
 <h3><?php print t('File'); ?></h3>
  <?php print $defined; ?>
 
-<?php if ($namespace) : ?>
-  <h3><?php print t('Namespace'); ?></h3>
-  <?php print $namespace; ?>
-<?php endif; ?>
-
 <?php if ($class) : ?>
   <h3><?php print t('Class'); ?></h3>
   <?php print $class; ?>
+<?php endif; ?>
+
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
 <?php endif; ?>
 
 <h3><?php print t('Code'); ?></h3>

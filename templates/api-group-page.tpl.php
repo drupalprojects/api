@@ -24,7 +24,7 @@
   <?php print $see ?>
 <?php } ?>
 
-<?php print $objects; ?>
-
 <h3><?php print t('File'); ?></h3>
 <?php print $defined; ?>
+
+<?php print $objects; ?>

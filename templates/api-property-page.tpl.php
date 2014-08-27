@@ -52,11 +52,6 @@
 
 <?php print $override; ?>
 
-<?php if ($namespace) : ?>
-  <h3><?php print t('Namespace'); ?></h3>
-  <?php print $namespace; ?>
-<?php endif; ?>
-
 <?php if (!empty($deprecated)) { ?>
 <div class="api-deprecated">
   <h3><?php print t('Deprecated') ?></h3>
@@ -69,6 +64,11 @@
 <?php print $see ?>
 <?php } ?>
 
+<?php if (!empty($related_topics)) { ?>
+  <h3><?php print t('Related topics') ?></h3>
+  <?php print $related_topics ?>
+<?php } ?>
+
 <h3><?php print t('File'); ?></h3>
  <?php print $defined; ?>
 
@@ -77,10 +77,10 @@
   <?php print $class; ?>
 <?php endif; ?>
 
+<?php if ($namespace) : ?>
+  <h3><?php print t('Namespace'); ?></h3>
+  <?php print $namespace; ?>
+<?php endif; ?>
+
 <h3><?php print t('Code'); ?></h3>
 <?php print $code; ?>
-
-<?php if (!empty($related_topics)) { ?>
-  <h3><?php print t('Related topics') ?></h3>
-  <?php print $related_topics ?>
-<?php } ?>
