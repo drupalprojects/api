@@ -1455,6 +1455,7 @@ function api_page_group($group) {
 
   $documentation = api_link_documentation($group->documentation, $branch, $group->file_did, NULL, FALSE, FALSE, $group->is_drupal);
   $see = api_link_documentation($group->see, $branch, $group->file_did, NULL, TRUE, TRUE, $group->is_drupal);
+  $related_topics = api_display_view('api_references', 'block_related_topics', array($group->did));
 
   // Find and render all items in this group.
   $types = array(
@@ -1465,6 +1466,7 @@ function api_page_group($group) {
     'interface' => t('Interfaces'),
     'trait' => t('Traits'),
     'file' => t('Files'),
+    'group' => t('Sub-Topics'),
   );
 
   $objects = array();
@@ -1482,7 +1484,7 @@ function api_page_group($group) {
 
   $objects = drupal_render($objects);
 
-  $output = theme('api_group_page', array('branch' => $branch, 'object' => $group, 'documentation' => $documentation, 'objects' => $objects, 'see' => $see));
+  $output = theme('api_group_page', array('branch' => $branch, 'object' => $group, 'documentation' => $documentation, 'objects' => $objects, 'see' => $see, 'related_topics' => $related_topics));
   $output .= _api_add_comments($group);
   return $output;
 }

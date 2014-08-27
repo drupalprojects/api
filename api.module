@@ -1594,6 +1594,7 @@ function api_theme() {
         'documentation' => NULL,
         'objects' => NULL,
         'see' => NULL,
+        'related_topics' => NULL,
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
       'path' => drupal_get_path('module', 'api') . '/templates',
