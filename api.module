@@ -1361,7 +1361,7 @@ function api_object_load($object_name_or_did, $branch = NULL, $object_type = '',
     $object_type = array($object_type);
   }
 
-  if (is_int($object_name_or_did)) {
+  if (is_numeric($object_name_or_did)) {
     $key = $object_name_or_did;
   }
   else {
@@ -1382,7 +1382,7 @@ function api_object_load($object_name_or_did, $branch = NULL, $object_type = '',
     ->fields('ad')
     ->fields($ao, array('documented_did', 'overrides_did'));
 
-  if (is_int($object_name_or_did)) {
+  if (is_numeric($object_name_or_did)) {
     // Quick query on just the documentation ID.
     $query->condition('ad.did', $object_name_or_did);
   }

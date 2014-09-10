@@ -16,6 +16,25 @@ function api_search_help($path, $arg) {
 }
 
 /**
+ * Implements hook_menu().
+ */
+function api_search_menu() {
+  $items = array();
+
+  $items['admin/config/development/api/search'] = array(
+    'title' => 'Search configuration',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer API reference'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('api_search_admin_form'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 30,
+  );
+
+  return $items;
+}
+
+/**
  * Implements hook_node_view().
  *
  * Sets up API documentation "nodes" so that they can be viewed with
@@ -37,6 +56,12 @@ function api_search_node_view($node, $view_mode, $langcode) {
     return;
   }
 
+  // See if we should exclude this node.
+  if (!api_search_check_compatibility($doc)) {
+    return;
+  }
+
+  // Build the node to index.
   $title = api_search_make_node_title($doc);
   if (!$title) {
     return;
@@ -171,6 +196,10 @@ function api_search_apachesolr_index_document_build_node(ApacheSolrDocument $doc
     return;
   }
 
+  if (!api_search_check_compatibility($doc)) {
+    return;
+  }
+
   // Build the "node" title.
   $title = api_search_make_node_title($doc);
   if ($title) {
@@ -183,6 +212,7 @@ function api_search_apachesolr_index_document_build_node(ApacheSolrDocument $doc
   if ($branch) {
     $document->addField('ss_apidoc_branch', $branch->title);
     $document->addField('ss_apidoc_project', $branch->project_title);
+    $document->addField('ss_apidoc_compat', $branch->core_compatibility);
   }
 
   $document->addField('ss_apidoc_type', $doc->object_type);
@@ -198,6 +228,7 @@ function api_search_facetapi_facet_info(array $searcher_info) {
     'ss_apidoc_branch' => array(t('Branch'), t('Branch the API documentation is in')),
     'ss_apidoc_project' => array(t('Project'), t('Project the API documentation is in')),
     'ss_apidoc_type' => array(t('Object type'), t('Function, class, etc.')),
+    'ss_apidoc_compat' => array(t('Core compatibility'), t('Drupal Core version compatibility')),
   );
 
   $facets = array();
@@ -245,4 +276,156 @@ function api_search_make_node_title($doc) {
   $title[] = $branch->title;
 
   return implode(' | ', $title);
+}
+
+/**
+ * Form constructor for the API search administrative form.
+ *
+ * @see api_search_admin_form_submit()
+ * @ingroup forms
+ */
+function api_search_admin_form($form, &$form_state) {
+
+  $form['api_search_core_compatibilities'] = array(
+    '#type' => 'textfield',
+    '#default_value' => variable_get('api_search_core_compatibilities', ''),
+    '#title' => t('Core compatibilities to make searchable'),
+    '#description' => t('Separate by commas.'),
+  );
+
+  $form['info'] = array(
+    '#markup' => t('Submitting this form will immediately cause incompatible information to be removed from search indexes. This can take some time.'),
+  );
+
+  $form = system_settings_form($form);
+  $form['#submit'][] = 'api_search_update_compatibilities';
+
+  return $form;
+}
+
+/**
+ * Removes outdated core compatibilities from the search index(es).
+ */
+function api_search_update_compatibilities() {
+  $compatibilities = api_search_find_compatibilities();
+  $ok_to_index = array_filter($compatibilities);
+  if (count($ok_to_index)) {
+    $cores = array_keys($ok_to_index);
+    $query = db_select('api_documentation', 'ad');
+    $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
+    $query->condition('b.core_compatibility', $cores, 'NOT IN');
+    $query->fields('ad', array('did'));
+    $to_remove = $query->execute()->fetchCol();
+    if (count($to_remove)) {
+      // Make a batch to remove these "node" IDS from the core and Solr
+      // indexes.
+      batch_set(array('operations' => array(array('api_search_remove_nodes', array($to_remove)))));
+    }
+  }
+}
+
+/**
+ * Calculates the list of core compatibilities for search indexing.
+ *
+ * @return array
+ *   Array whose keys are core compatibility values in existing branches,
+ *   and whose values are TRUE/FALSE if this core compatibility should be
+ *   included/excluded from searching.
+ */
+function api_search_find_compatibilities() {
+  static $compatibilities = NULL;
+  if (!isset($compatibilities)) {
+    $compatibilities = array();
+    $var = trim(variable_get('api_search_core_compatibilities', ''));
+    $branches = api_get_branches();
+    foreach ($branches as $branch) {
+      $core = $branch->core_compatibility;
+      if (!isset($compatibilities[$core])) {
+        $compatibilities[$core] = (!$var || (strpos($var, $core) !== FALSE));
+      }
+    }
+  }
+
+  return $compatibilities;
+}
+
+/**
+ * Implements hook_apachesolr_ENTITY_TYPE_exclude() for node entities.
+ *
+ * Returns TRUE to exclude API "nodes" if the core compatibility doesn't match
+ * up.
+ */
+function api_search_apachesolr_node_exclude($entity_id, $row, $env_id) {
+  if ($row->bundle == 'api') {
+    $obj = api_object_load($entity_id);
+    if (!api_search_check_compatibility($obj)) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+/**
+ * Checks whether an API object should be indexed.
+ *
+ * @return bool
+ *   TRUE to index; FALSE to skip. Only returns FALSE if it can definitively
+ *   decide.
+ */
+function api_search_check_compatibility($obj) {
+  if (!$obj) {
+    return TRUE;
+  }
+
+  $branch = api_get_branch_by_id($obj->branch_id);
+  if (!$branch) {
+    return TRUE;
+  }
+
+  $compatibilities = api_search_find_compatibilities();
+  if ($compatibilities[$branch->core_compatibility]) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+/**
+ * Removes API nodes from Solr and core Search indexes using Batch API.
+ *
+ * @param $dids
+ *   IDs of the documentation items to remove.
+ * @param $context
+ *   Batch context.
+ */
+function api_search_remove_nodes($dids, &$context) {
+  if (!isset($context['sandbox']['progress'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = count($dids);
+    $context['sandbox']['dids'] = $dids;
+    $context['sandbox']['dosolr'] = module_exists('apachesolr');
+    $context['sandbox']['docore'] = module_exists('search');
+  }
+
+  // Get the next batch of 100 IDs.
+  $this_batch = array_slice($context['sandbox']['dids'], $context['sandbox']['progress'], 100);
+  $context['sandbox']['progress'] += count($this_batch);
+
+  // Remove them from the indexes.
+  foreach ($this_batch as $did) {
+    if ($context['sandbox']['dosolr']) {
+      $node = node_load($did);
+      apachesolr_entity_delete($node, 'node');
+    }
+    if ($context['sandbox']['docore']) {
+      search_reindex($did, 'node');
+    }
+  }
+
+  $context['finished'] = min(1, $context['sandbox']['progress'] / $context['sandbox']['max']);
+  if (!count($this_batch)) {
+    // Just make sure we don't run an endless loop here.
+    $context['finished'] = 1;
+  }
 }

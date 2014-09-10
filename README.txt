@@ -43,16 +43,19 @@ following features:
    individual functions will not be invalidated when the number of functions in
    a document changes.
 
+
 INSTALLATION AND SETUP
 
 See http://drupal.org/node/1516558 for information on how to install and set up
 this module.
+
 
 VIEWS INTEGRATION
 
 The API documentation is integrated with Views. Actually, most of the
 listing pages for the API module use Views, and you should be able to clone
 and modify these pages to make your own views if you want something different.
+
 
 SEARCH INTEGRATION
 
@@ -61,12 +64,16 @@ api_search), as well as either the Drupal Core "Search" module or the
 contributed Apache Solr search module, you can perform full-text searches
 on API documentation, just like your regular site content.
 
+
 Configuring Core Search
 
-This is pretty simple - just enable the Core Search module and the included
-"API Search Integration" module.
+1. Enable the Core Search module and the included "API Search Integration"
+module.
 
-If you already had core Search and the API module installed and running on a
+2. Visit the API search configuration page, and choose which Core
+Compatibilities to index (on admin/config/development/api/search).
+
+3. If you already had core Search and the API module installed and running on a
 site, and then enabled the "API Search Integration" module later, you will
 either need to run a reparse of the API documentation, or a reindex of Search,
 in order to get the full text of the API documentation into the search index.
@@ -79,19 +86,39 @@ In either case, once the indexing is complete, you'll be able to do full-text
 searches of API documentation under the "Content" search tab (along with other
 node content on your site).
 
+
 Configuring Solr Search
 
 This is a little more involved. Assuming you already have the Apache Solr
-module configured and working, here are the steps:
-- Install/enable the included "API Search Integration" module.
-- On your Solr configuration page (admin/config/search/apachesolr), at the
-  bottom under Configuration, check "API reference entries" under Node, to
-  make Solr index API reference information.
-- Run cron until the index is complete.
-- If you want to do faceted search, on
+module configured and working, and optionally the Facet API module,
+here are the steps:
+
+1. Install/enable the included "API Search Integration" module.
+
+2. On your Solr configuration page (admin/config/search/apachesolr), at the
+bottom under Configuration, check "API reference entries" under Node, to
+make Solr index API reference information.
+
+3. Visit the API configuration page, and choose which Core
+Compatibilities to index (on admin/config/development/api/search).
+
+4. Run cron until the index is complete.
+
+5. If you want to do faceted search, on
   admin/config/search/apachesolr/settings/solr/facets
-  set up the Branch, Project, and Object Type facets.
-- On the Blocks page, turn on blocks for your search box and facets. If you
-  also have the API module's "Search" block enabled, you may want to change
-  the block titles to distinguish between full-text full-site search and the
-  search for exact object names in the API module.
+set up the Branch, Project, Core Compatibility, and Object Type facets (or
+some subset). If your search is mixing API items with other nodes on the
+site, you may also want the "Content type" facet enabled. API nodes will
+show up as content type "API Documentation".
+
+6. On the Blocks page, turn on blocks for your search box and facets. If you
+also have the API module's "Search" block enabled, you may want to change
+the Search block title to distinguish between full-text full-site search and the
+search for exact object names in the API module.
+
+7. You will probably also want to do the following, on
+admin/config/search/settings :
+- Make Apache Solr search the only search module
+- Make Apache Solr search the default search module
+
+8. You may need to set up permission "Use search" for appropriate roles.
