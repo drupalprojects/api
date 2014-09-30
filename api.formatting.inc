@@ -1502,4 +1502,3 @@ function api_get_namespace_info($file_did = NULL) {
 
   return $ret;
 }
-
