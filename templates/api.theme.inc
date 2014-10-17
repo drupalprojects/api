@@ -121,13 +121,7 @@ function api_preprocess_api_object_page(&$variables) {
  *
  * @param $variables
  *   Associative array of variables to use, with the following elements:
- *   - type: The type of reference link, one of:
- *     - 'calls': Function calls.
- *     - 'implementations': Hook implementations.
- *     - 'theme_invokes': Theme calls to a function or file.
- *     - 'invokes': Calls to module_invokes and similar functions.
- *     - 'references': String references to a function name.
- *     - 'hierarchy': Class hierarchy.
+ *   - type: The type of reference link. See api_find_references() for list.
  *   - count: The number of referenced items.
  *   - function: The function, class, or file object being referenced.
  *   - override_text: Text to override the link text.
@@ -160,6 +154,9 @@ function theme_api_function_reference_link($variables) {
   }
   elseif ($function->object_type == 'service') {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/service/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
+  }
+  elseif ($function->object_type == 'constant' ) {
+    $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/constant/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;
   }
   else {
     $link_path = 'api/' . $branch->project . '/' . $processed_file_name . '/function/' . $type . '/' . $function->object_name . '/' . $branch->branch_name;

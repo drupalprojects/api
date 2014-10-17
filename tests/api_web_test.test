@@ -231,6 +231,10 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/constant/SAMPLE_CONSTANT');
     $this->assertText(t('Deprecated'), 'Deprecated appears on the page');
     $this->assertText('This constant is deprecated for sample purposes.', 'Text with deprecated appears on the page');
+    $this->assertText('interesting, to test in-code', 'Using function description is there');
+    $this->assertText('1 use of SAMPLE_CONSTANT', 'Uses text is there');
+    $this->assertLinkURLSubstring('sample.php', $this->branch_info['project'] . '/sample.php', 'sample.php link exists', 'sample.php link went to the right place');
+    $this->assertLinkURLSubstring('sample_in_code_links', $this->branch_info['project'] . '/sample.php/function/sample_in_code_links', 'sample_in_code_links link exists', 'sample_in_code_links link went to the right place');
   }
 
   /**

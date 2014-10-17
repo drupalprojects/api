@@ -817,6 +817,7 @@ function api_page_function($function) {
  *     string references to the theme hook name.
  *   - 'references': $name is the name of a function, find string references.
  *   - 'overrides': $exclude_did is the ID of a method, find overriding methods.
+ *   - 'constants': $name is the name of a constant, find uses.
  *   - 'uses': $name is the fully-namespaced name of a class, find files that
  *     have use declarations.
  *   - 'annotations': $exclude_did is the ID of an annotation class. Find
@@ -852,7 +853,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   if (!is_string($name)) {
     // It should be an object. Derive the name.
     $obj = $name;
-    $name = ($obj->class_did > 0 && $type == 'calls') ? $obj->namespaced_name : $obj->title;
+    $name = ($obj->class_did > 0 && ($type == 'calls' || $type == 'constants')) ? $obj->namespaced_name : $obj->title;
     // In a few cases, we want to look for either the base name or the
     // namespaced name.
     $altname = $obj->namespaced_name;
@@ -879,13 +880,14 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   $base_query = NULL;
   $args = array();
 
-  if ($type == 'calls') {
-    // Use reference storage to find functions that call this one.
+  if ($type == 'calls' || $type == 'constants') {
+    // Use reference storage to find functions that call this one, or
+    // use this constant.
     $base_query = db_select('api_reference_storage', 'r');
     $d = $base_query->leftJoin('api_documentation', 'd', 'r.from_did = d.did');
     $base_query->condition('d.branch_id', $branch_id)
       ->condition('d.did', $exclude_did, '<>')
-      ->condition('r.object_type', array('function', 'member-class', 'computed-member'))
+      ->condition('r.object_type', array('function', 'constant', 'member-class', 'computed-member'))
       ->condition('r.object_name', $name);
   }
   elseif ($type == 'overrides') {
@@ -1180,13 +1182,7 @@ function api_build_references($types, $object, $branch) {
  * @param $function
  *   Documentation object representing the function to display.
  * @param $type
- *   Type of page to generate, one of:
- *   - 'calls': Functions that call this function.
- *   - 'implementations': Functions that implement this hook.
- *   - 'invokes': Functions that invoke this hook.
- *   - 'theme_invokes': Functions that invoke this theme hook.
- *   - 'references': String references to a function name.
- *   - 'overrides': Methods that override this method.
+ *   Type of page to generate. See api_find_references for list.
  *
  * @return
  *   HTML output for the page.
@@ -1285,13 +1281,16 @@ function api_page_simple_item($item, $type) {
 
   $class = api_class_section($item, $branch);
 
+  $links = ($type == 'constant') ? api_build_references(array('constants'), $item, $branch) : array();
+
   $theme_hooks = array(
     'constant' => 'api_constant_page',
     'global' => 'api_global_page',
     'property' => 'api_property_page',
   );
 
-  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'var' => $var, 'class' => $class));
+  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'var' => $var, 'class' => $class, 'call_links' => $links));
+
   $output .= _api_add_comments($item);
   return $output;
 }
@@ -1870,6 +1869,9 @@ function api_reference_text($type, $count, $function) {
 
   if ($type == 'calls') {
     return format_plural($count, '1 call to !name', '@count calls to !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'constants') {
+    return format_plural($count, '1 use of !name', '@count uses of !name', array('!name' => $name_to_use));
   }
   if ($type == 'implementations') {
     return format_plural($count, '1 function implements !name', '@count functions implement !name', array('!name' => $name_to_use));

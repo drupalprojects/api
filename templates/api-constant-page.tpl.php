@@ -13,6 +13,7 @@
  * - $deprecated: Deprecated documentation.
  * - $defined: HTML reference to file that defines this constant.
  * - $class: The text for the class section.
+ * - $call_links: Links to functions that use this constant.
  * - $code: HTML-formatted declaration of this constant.
  * - $related_topics: List of related groups/topics.
  * - $branch: Object with information about the branch.
@@ -60,6 +61,11 @@
 <h3><?php print t('Related topics') ?></h3>
 <?php print $related_topics ?>
 <?php } ?>
+
+<?php
+foreach ($call_links as $link) {
+  print $link;
+} ?>
 
 <h3><?php print t('File'); ?></h3>
 <?php print $defined; ?>

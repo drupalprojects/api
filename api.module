@@ -603,6 +603,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%/%/constant/constants/%api_item'] = array(
+    'title' => 'Constant uses',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_function_calls',
+    'page arguments' => array(5, 'constants'),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%/%/global/%api_item'] = array(
     'title' => 'Global',
     'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
@@ -1498,6 +1507,7 @@ function api_theme() {
         'see' => NULL,
         'deprecated' => NULL,
         'class' => NULL,
+        'call_links' => array(),
       ),
       'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
       'path' => drupal_get_path('module', 'api') . '/templates',

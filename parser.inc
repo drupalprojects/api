@@ -1185,7 +1185,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
   }
 
   // Remove any existing references.
-  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'potential file', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string', 'service_tag', 'service_class');
+  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential alter', 'potential callback', 'potential file', 'constant', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string', 'service_tag', 'service_class');
 
   db_delete('api_reference_storage')
     ->condition('branch_id', $branch->branch_id)
@@ -1679,6 +1679,8 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
     if (is_array($token)) {
       $type = $token[0];
       $value = htmlspecialchars($token[1]);
+      // See if this is possibly a constant.
+      $could_be_constant = preg_match('|^[A-Z][A-Z0-9_]+$|', $value);
 
       switch ($type) {
         case T_OPEN_TAG:
@@ -1814,6 +1816,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
             break;
           }
           else {
+
             // No more namespace tokens are coming. Prepend any namespace
             // we have already encountered and reset for the next one.
             if ($in_namespace) {
@@ -1830,6 +1833,10 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           if ($in_annotation) {
             $class = 'class-annotation';
             $reference_type = NULL;
+          }
+          elseif ($could_be_constant) {
+            $reference_type = 'constant';
+            $reference = $value;
           }
           else {
             $reference_type = 'function';
@@ -1872,9 +1879,9 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
 
           $output .= '<span class="' . $class . '">' . $value . '</span>';
 
-          // Save references -- only for functions and only if they're not
+          // Save references -- for functions and constants, only if they're not
           // being declared.
-          if ($track_references && $is_function && !$declaring && $reference_type) {
+          if ($track_references && ($is_function || $could_be_constant) && !$declaring && $reference_type) {
             $references[$reference_type][$value] = $reference;
           }
 
