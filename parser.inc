@@ -1909,7 +1909,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
               $invoke_type = 'hook';
               $target_paren_count = $paren_count + 1;
             }
-            elseif (in_array($value, array('drupal_alter', 'alter'))) {
+            elseif (in_array($value, array('drupal_alter', 'alter', 'alterInfo'))) {
               $invoke_type = 'alter';
               $target_paren_count = $paren_count + 1;
             }
