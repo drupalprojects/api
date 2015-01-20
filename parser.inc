@@ -51,6 +51,7 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
     'namespaced_name' => '',
     'modifiers' => '',
     'is_drupal' => $is_drupal,
+    'code' => '',
   );
 
   $callback($docblock);
@@ -210,6 +211,7 @@ function api_parse_php_file($docblock) {
     'namespaced_name' => '',
     'modifiers' => '',
     'is_drupal' => $docblock['is_drupal'],
+    'code' => '',
   );
 
   $found_references = api_documentation_loop($statements, $default_block, $docblocks);
@@ -680,7 +682,8 @@ function api_save_documentation($docblocks) {
   $function_insert_query = NULL;
   $functions_to_delete = array();
 
-  // Look for @file block first so $docblocks[0] gets filled in before it is processed.
+  // Look for @file block first so $docblocks[0] gets filled in before it
+  // is processed.
   foreach ($docblocks as $docblock) {
     if (preg_match('/' . API_RE_TAG_START . 'file/', $docblock['content'])) {
       $content = $docblock['content'];
@@ -703,6 +706,29 @@ function api_save_documentation($docblocks) {
 
       $docblocks[0]['content'] = $content;
       break;
+    }
+  }
+
+  // Take care of the (bad, but possible) case where the doc block for one
+  // of the items in the file (class, function, etc.) has a @defgroup or
+  // @mainpage in it, by separating the doc block from the item.
+  $old_blocks = $docblocks;
+  $docblocks = array();
+  foreach ($old_blocks as $docblock) {
+    if ($docblock['code'] && $docblock['content'] &&
+      (preg_match('/' . API_RE_TAG_START . 'mainpage/', $docblock['content']) ||
+       preg_match('/' . API_RE_TAG_START . 'defgroup/', $docblock['content']))) {
+      $new_block = $docblock;
+      // Make one block have just the code and the other, just the docs.
+      $new_block['code'] = '';
+      $docblock['content'] = '';
+      $docblocks[] = $new_block;
+      $docblocks[] = $docblock;
+      watchdog('api', 'Item docblock containing @defgroup or @mainpage in %file at line %line. Separated into two blocks.', array('%file' => $docblocks[0]['file_name'], '%line' => $docblock['start_line']), WATCHDOG_WARNING);
+
+    }
+    else {
+      $docblocks[] = $docblock;
     }
   }
 
