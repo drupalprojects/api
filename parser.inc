@@ -706,6 +706,7 @@ function api_save_documentation($docblocks) {
     }
   }
 
+  $need_to_reparse = FALSE;
   foreach ($docblocks as $docblock) {
     // Keep track of the namespace and add it to all docblocks for this file.
     if (isset($docblock['references']['namespace']) && !empty($docblock['references']['namespace'])) {
@@ -754,7 +755,11 @@ function api_save_documentation($docblocks) {
         if ($did > 0) {
           $docblock['content'] = str_replace('defgroup', 'addtogroup', $docblock['content']);
           watchdog('api', 'Duplicate @defgroup in %file at line %line treated as @addtogroup.', array('%file' => $docblocks[0]['file_name'], '%line' => $docblock['start_line']), WATCHDOG_WARNING);
-
+          // This is commonly because the defgroup was moved from one file
+          // to another. So requeue both the found ID and the current file
+          // we are working on.
+          api_requeue_after_run($did);
+          $need_to_reparse = TRUE;
         }
         else {
           $docblock['object_name'] = $group_name;
@@ -1022,6 +1027,12 @@ function api_save_documentation($docblocks) {
     }
 
     $dids[] = $docblock['did'];
+  }
+
+  if ($need_to_reparse && count($dids)) {
+    // Mark any DID found as the one to requeue -- they should all be from
+    // the same file.
+    api_requeue_after_run($dids[0]);
   }
 
   // Run the queued-up queries on the api_function table.
@@ -2265,12 +2276,35 @@ function api_touched($class_did = 0) {
 }
 
 /**
+ * Keeps track of files that need to be requeued after this cron run.
+ *
+ * @param int $did
+ *   (optional) Documentation ID of a documentation item whose file needs
+ *   to be requeued after the run.
+ *
+ * @return array
+ *   Array of all documentation IDs that need to be requeued.
+ */
+function api_requeue_after_run($did = NULL) {
+  static $dids = array();
+
+  if ($did) {
+    $dids[$did] = $did;
+  }
+
+  return $dids;
+}
+
+/**
  * Cleans up at the end of the cron job.
  *
  * Figures out class parents, class member lists, class member overrides, and
  * class member references.
  */
 function api_shutdown() {
+  // Requeue items that were marked for requeue.
+  api_mark_items_for_reparse(api_requeue_after_run());
+
   // Figure out which classes and interfaces we need to update.
   $classes_touched = api_touched();
 
