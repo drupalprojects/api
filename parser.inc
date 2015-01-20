@@ -756,6 +756,12 @@ function api_save_documentation($docblocks) {
       $docblock['annotation_class'] = TRUE;
     }
 
+    // Change @Event to @ingroup events.
+    $event_matches = array();
+    if (preg_match('/' . API_RE_TAG_START . 'Event' . API_RE_WORD_BOUNDARY_END . '/', $docblock['content'], $event_matches)) {
+      $docblock['content'] = str_replace($event_matches[0], "\n@ingroup events\n", $docblock['content']);
+    }
+
     // Deal with @mainpage.
     if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $docblock['content'])) {
       preg_match('/' . API_RE_TAG_START . 'mainpage (.*?)\n/', $docblock['content'], $mainpage_matches);
