@@ -169,7 +169,10 @@ function api_parse_php_file($docblock) {
   drupal_set_time_limit(600);
   $editor = PGPEditor::getInstance();
   $reader = $editor->getReader();
+  // Set up the reader to preserve the spacing of the original code.
   $reader->setPreserveWhitespace(FALSE);
+  $reader->setPreserveNewline(TRUE);
+  $reader->setPreserveArrayNewline(TRUE);
   $reader->setSnippet($docblock['source']);
   $reader->buildGrammar();
 
