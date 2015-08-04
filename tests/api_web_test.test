@@ -1076,6 +1076,21 @@ class ApiSearchTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('Sample::foo', 0, 'Sample::foo is listed');
     $this->assertLink('SampleInSubDir::foo', 0, 'SampleInSubDir::foo is listed');
     $this->assertLink('SampleInSubDir::$foo', 0, 'SampleInSubDir::$foo is listed');
+
+    // Turn on the API search block and Visit a invalid path then
+    // Search through the block to see if it redirects to the result.
+
+    $this->drupalPost('admin/structure/block/list', array(
+        'blocks[api_api-search][region]' => 'sidebar_second',
+      ),
+      t('Save blocks')
+    );
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/foobar');
+    $this->drupalPost(NULL, array(
+        'search' => 'sample_function',
+      ),
+      t('Search'));
+    $this->assertURLContains('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function', 'Search went directly to sample_function page from a invalid path');
   }
 }
 
