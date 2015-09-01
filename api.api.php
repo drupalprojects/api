@@ -48,4 +48,16 @@ function hook_api_ignore_node_access($query) {
   return FALSE;
 }
 
-
+/**
+ * Alter the list of API parse functions.
+ *
+ * @param array $parse_functions
+ *   An associative array whose keys are the file extensions to parse, and
+ *   whose values are the callback functions used to parse them. See
+ *   api_parse_functions() for details on the callback function.
+ *
+ * @see api_parse_functions()
+ */
+function hook_api_parse_functions_alter(array &$parse_functions) {
+  $parse_functions['php'] = 'my_module_api_parse_php_file';
+}

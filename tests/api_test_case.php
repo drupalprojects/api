@@ -40,9 +40,13 @@ class ApiTestCase extends DrupalWebTestCase {
 
   /**
    * Sets up modules for API tests, and a super-user.
+   *
+   * @param array $extra_modules
+   *   Extra modules to install.
    */
-  function baseSetUp() {
-    DrupalWebTestCase::setUp('api', 'ctools', 'gplib', 'node', 'comment', 'dblog', 'views');
+  function baseSetUp($extra_modules = array()) {
+    $modules = array_merge(array('api', 'ctools', 'gplib', 'node', 'comment', 'dblog', 'views'), $extra_modules);
+    DrupalWebTestCase::setUp($modules);
 
     // Set the line break tag to nothing for most tests.
     variable_set('api_breaks_tag', '');
