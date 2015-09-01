@@ -35,9 +35,17 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
   }
 
   /**
+   * Runs all the tests, so that setUp() isn't done multiple times.
+   */
+  function testAll() {
+    $this->_testNamespacePages();
+    $this->_testYaml();
+  }
+
+  /**
    * Tests that the namespace pages and namespaced objects work fine.
    */
-  function testNamespacePages() {
+  function _testNamespacePages() {
     // Test namespaces page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/namespaces');
     $this->assertLink('api\\test1', 0, 'First namespace link is there');
@@ -145,7 +153,7 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that YAML works properly for linking and references.
    */
-  function testYaml() {
+  function _testYaml() {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.routing.yml');
 
     // Verify that the page name is correct.
