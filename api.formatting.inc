@@ -778,7 +778,7 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     $query->condition('ad.object_type', 'global');
   }
   elseif ($type == 'function_or_constant') {
-    $query->condition('ad.object_type', array('function', 'constant', 'class', 'interface'));
+    $query->condition('ad.object_type', array('function', 'constant', 'class', 'interface', 'trait'));
   }
   elseif ($type == 'file') {
     // For files other than HTML type, the title is the basename of the file.
@@ -801,7 +801,7 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     $query->condition('ad.object_type', 'constant');
   }
   elseif ($type == 'class') {
-    $query->condition('ad.object_type', array('class', 'interface'));
+    $query->condition('ad.object_type', array('class', 'interface', 'trait'));
   }
   elseif ($type == 'group') {
     $query->condition('ad.object_type', 'group');

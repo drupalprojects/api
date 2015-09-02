@@ -115,6 +115,17 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('1 file declares its use of ClassB', 'Reference text is on class page');
     $this->assertLink('ClassA.php', 0, 'Link to file using class is present');
 
+    // Verify traits are listed on the Classes page.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes');
+    $this->assertLink('TraitF', 0, 'Trait appears on classes page');
+
+    // Verify trait, class, interface turn into links on Files page
+    // (from @file tag first lines).
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
+    $this->assertLink('\api\test1\TraitF', 0, 'Trait turns into link in documentation');
+    $this->assertLink('\api\test1\ClassA', 0, 'Class turns into link in documentation');
+    $this->assertLink('\api\test2\InterfaceC', 0, 'Interface turns into link in documentation');
+
     // Verify trait page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/TraitF.php/trait/TraitF');
     $this->assertText('A sample trait.', 'Trait summary is there.');
