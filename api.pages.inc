@@ -1835,7 +1835,7 @@ function _api_add_comments($documentation_object) {
  *   Formatted link to the file the object is in.
  */
 function api_file_link($object) {
-  return str_replace('/', '/<wbr>', dirname($object->file_name)) . '/<wbr>' . l(basename($object->file_name), api_url($object, TRUE));
+  return api_add_breaks(dirname($object->file_name) . '/' ) . l(basename($object->file_name), api_url($object, TRUE));
 }
 
 /**

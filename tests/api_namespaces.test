@@ -148,6 +148,17 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('pdq', $this->branch_info['project'] . '/TraitF.php/function/TraitF', 'Aliased trait method link exists', 'Aliased trait method link went to the right place');
     $this->clickLink('pdq');
     $this->assertText('Method to inherit', 'Clicking to trait method page went to right place');
+
+    // Set the breaks tag variable and test Classes and Namespaces pages.
+    variable_set('api_breaks_tag', '<wbr />');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/namespaces');
+    $this->assertRaw('\\<wbr />', 'Break tag is inserted after a backslash');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes');
+    $this->assertRaw('\\<wbr />', 'Break tag is inserted after a backslash');
+
+    // Set breaks tag back to empty to continue with testing.
+    variable_set('api_breaks_tag', '');
+
   }
 
   /**

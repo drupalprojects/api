@@ -659,6 +659,15 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('SampleInSubDir::constant', 0, 'Overridden constant link is there');
     $this->clickLink('SubInSubDirSample::constant');
     $this->assertLink('SampleInSubDir::constant', 0, 'Overridden constant link is on constant page');
+
+    // Go back to the classes page with the breaks tag set, and verify.
+    variable_set('api_breaks_tag', '<wbr />');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->assertRaw('/<wbr />', 'Break tag is inserted after a /');
+    $this->assertRaw('::<wbr />', 'Break tag is inserted after a ::');
+
+    // Set breaks tag back to empty to continue with testing.
+    variable_set('api_breaks_tag', '');
   }
 
   /**
