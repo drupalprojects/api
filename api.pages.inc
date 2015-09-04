@@ -156,11 +156,20 @@ function api_page_function_dump($branch_name) {
  * page numbering starts at 0; you can omit 'page' on the first page as well).
  *
  * @param object $branch
- *   Object representing the branch to dump objects for.
+ *   (optional) Object representing the branch to dump objects for.
+ * @param string $project
+ *   If $branch is empty, load the default branch from this project.
  *
  * @see api_menu()
  */
-function api_dump_full_list($branch) {
+function api_dump_full_list($branch, $project = '') {
+  if (!$branch) {
+    $branch = api_get_branch_by_name($project);
+    if (!$branch) {
+      return;
+    }
+  }
+
   $query = db_select('api_documentation', 'd')
     ->fields('d', array('object_name', 'namespaced_name', 'member_name', 'title', 'summary', 'object_type', 'branch_id', 'file_name'))
     ->condition('d.branch_id', $branch->branch_id)
@@ -413,15 +422,27 @@ function api_page_file($file) {
 /**
  * Page callback: Generates the default documentation page for a branch.
  *
- * @param $branch
- *   Branch object giving the branch to display documentation for.
+ * @param object $branch
+ *   (optional) Branch object giving the branch to display documentation for.
+ *   If NULL, $project must be specified, and the default branch for that
+ *   project will be displayed.
+ * @param string $project
+ *   (optional) If $branch is not given, display this project's default branch.
+ *   Ignored if $branch is given.
  *
  * @return
- *   HTML output for the page.
+ *   Render array for the page.
  *
  * @see api_menu()
  */
-function api_page_branch($branch) {
+function api_page_branch($branch, $project = '') {
+  if (!$branch) {
+    $branch = api_get_branch_by_name($project);
+    if (!$branch) {
+      return;
+    }
+  }
+
   // Set HTML page title.
   $title = t('API reference');
   $page_title = array(
@@ -431,6 +452,9 @@ function api_page_branch($branch) {
   );
   api_set_html_page_title(implode(' | ', $page_title));
 
+  $output = array();
+  $output['navigation'] = api_make_navigation($branch);
+
   $docs = db_select('api_documentation', 'd')
     ->fields('d', array('documentation'))
     ->condition('branch_id', $branch->branch_id)
@@ -438,28 +462,47 @@ function api_page_branch($branch) {
     ->execute()
     ->fetchObject();
   if ($docs) {
-    return api_link_documentation($docs->documentation, $branch);
+    $output['docs'] = array(
+      '#type' => 'markup',
+      '#markup' => api_link_documentation($docs->documentation, $branch),
+    );
   }
   else {
-    return theme('api_branch_default_page', array('branch' => $branch));
+    $output['docs'] = array(
+      '#theme' => 'api_branch_default_page',
+      '#branch' => $branch,
+    );
   }
+
+  return $output;
 }
 
 /**
  * Page callback: Generates a listing page for an object type.
  *
- * @param $branch
- *   Object representing branch to generate the listing for.
- * @param $object_type
+ * @param object $branch
+ *   (optional) Object representing branch to generate the listing for.
+ * @param string $object_type
  *   Type of object to list ('file', 'group', etc.), or 'deprecated' for the
  *   Deprecated page.
- * @param $is_page
- *   TRUE if this is on its own page, FALSE if it is included in another page.
+ * @param $bool is_page
+ *   (optional) TRUE if this is on its own page (default), FALSE if it is
+ *   included in another page.
+ * @param string $project
+ *   Name of the project. Used if $branch is NULL, meaning find the default
+ *   branch for this project.
  *
  * @return
- *   HTML for the listing page.
+ *   Render array for the listing page.
  */
-function api_page_listing($branch, $object_type, $is_page = TRUE) {
+function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '') {
+  if (!$branch) {
+    $branch = api_get_branch_by_name($project);
+    if (!$branch) {
+      return;
+    }
+  }
+
   // Set the HTML page title and breadcrumb.
   if ($is_page) {
     $breadcrumb = array(
@@ -492,6 +535,10 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
   }
 
   $output = array();
+
+  if ($is_page) {
+    $output['navigation'] = api_make_navigation($branch, $object_type);
+  }
 
   if ($object_type === 'function' || $object_type == 'constant' || $object_type == 'global' ) {
     $output['listing'] = array(
@@ -544,6 +591,76 @@ function api_page_listing($branch, $object_type, $is_page = TRUE) {
   }
 
   return $output;
+}
+
+/**
+ * Generates tab navigation for listing pages.
+ *
+ * @param object $branch
+ *   Branch of the current page.
+ * @param string $object_type
+ *   (optional) Object type of the listing page; leave out for the branch
+ *   home page.
+ *
+ * @return array
+ *   Render array for tab navigation.
+ */
+function api_make_navigation($branch, $object_type = '') {
+  switch ($object_type) {
+    case '':
+      $suffix = '';
+      break;
+
+    case 'class':
+      $suffix = 'classes';
+      break;
+
+    case 'deprecated':
+      $suffix = 'deprecated';
+      break;
+
+      default:
+        $suffix = $object_type . 's';
+  }
+
+  // Make links to all the other branches' listing pages within this
+  // project.
+  $branches = api_get_branches();
+  $links = array();
+  foreach ($branches as $other_branch) {
+    if ($other_branch->project == $branch->project) {
+      if ($suffix) {
+        $path = 'api/' . $branch->project . '/' . $suffix . '/' . $other_branch->branch_name;
+      }
+      else {
+        $path = 'api/' . $branch->project . '/' . $other_branch->branch_name;
+      }
+      $links[] = array(
+        'title' => $other_branch->title,
+        'href' => $path,
+        'active' => ($other_branch->branch_id == $branch->branch_id),
+      );
+    }
+  }
+
+  if ($links) {
+    // Output this as a Local tasks array.
+    $output = array(
+      '#theme' => 'menu_local_tasks',
+      '#primary' => array(),
+    );
+    foreach ($links as $link) {
+      $link['localized_options'] = array();
+      $output['#primary'][] = array(
+        '#theme' => 'menu_local_task',
+        '#link' => $link,
+        '#active' => $link['active'],
+      );
+    }
+    return $output;
+  }
+
+  return NULL;
 }
 
 /**

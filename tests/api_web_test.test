@@ -727,7 +727,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
    * Tests that file pages have the right information.
    */
   function _testFilePages() {
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/' . $this->branch_info['branch_name']);
     $this->assertText('A sample file', 'Sample file description appears on the page');
     $this->assertTitleContains('sample.php', 'File page title includes file name');
     $this->assertLink('sample_function', 0, 'sample_function link is on sample file page');
@@ -747,7 +747,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('$sample_global', $this->branch_info['project'] . '/sample.php/global/sample_global', 'sample_global link exists', 'sample_global link went to the right place');
 
     // Now try the classes file.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/' . $this->branch_info['branch_name']);
     $this->assertText('Object-oriented tests', 'Sample file file description appears on the page');
     $this->assertTitleContains('classes.php', 'File page title includes file name');
     $this->assertLink('Sample', 0, 'Sample class link is on file page');
@@ -764,7 +764,7 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('SampleInterface', $this->branch_info['project'] . '/classes.php/interface/SampleInterface', 'SampleInterface link exists', 'SampleInterface link went to the right place');
 
     // Now try a file in a subdirectory.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!sample-subdir.php');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!sample-subdir.php/' . $this->branch_info['branch_name']);
     $this->assertText('A sample file in a subdirectory.', 'File description appears on subdirectory file page');
     $this->assertText('sample-subdir.', 'File name appears on subdirectory file page');
     $this->assertLink('sample_insubdir_function', 0, 'Function link appears on subdirectory file page');
@@ -772,27 +772,27 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('Used for sample and testing URLs', 'Subdir link went to right place');
 
     // Now try a file with -- in the name.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample--doubledash.tpl.php');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample--doubledash.tpl.php/' . $this->branch_info['branch_name']);
     $this->assertText('Displays a sample with a doubledash.', 'File description appears on double-dash page');
 
     // Now try the HTML sample file.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/htmlfile.html/');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/htmlfile.html/' . $this->branch_info['branch_name']);
     $this->assertTitleContains("Sample HTML file's title", 'HTML file page has right title');
     $this->assertText("Sample HTML file's body", 'HTML file body is displayed');
     $this->assertText("Sample HTML file's title", 'HTML file title is displayed');
     $this->assertText('head', 'HTML file source is displayed');
 
     // Now try the text sample file.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!textfile.txt/');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!textfile.txt/' . $this->branch_info['branch_name']);
     $this->assertTitleContains('textfile.txt', 'Text file page has right title');
     $this->assertText('This is a sample text file for testing.', 'Text file page displays the text');
 
     // Now try the one-function file.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/onefunction.php/');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/onefunction.php/' . $this->branch_info['branch_name']);
     $this->assertLink('only_function_in_file', 0, 'Function link is present from one-function file.');
 
     // Now the deprecated file.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample-three.tpl.php/');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample-three.tpl.php/' . $this->branch_info['branch_name']);
     $this->assertText(t('Deprecated'), 'Deprecated appears on the page');
     $this->assertText('This file is deprecated for sample purposes.', 'Text with deprecated appears on the page');
 

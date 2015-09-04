@@ -58,7 +58,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('Tests that Unicode characters can be dealt with.', 'Class file description is there');
 
     // Verify the text file page.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/AllUnicodeChars.txt');
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/AllUnicodeChars.txt/' . $this->branch_info['branch_name']);
     $this->assertText('abcdefghij', 'ASCII characters are there');
     $this->assertText('àáâãä', 'Accented characters are there');
     $this->assertText('ਙਚਛਜ', 'Some other Unicode characters are there');
