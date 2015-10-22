@@ -772,7 +772,7 @@ function api_menu() {
   $items['api/%api_project'] = array(
     'title' => 'API reference',
     'page callback' => 'api_page_branch',
-    'page arguments' => array(NULL,1),
+    'page arguments' => array(NULL, 1),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
@@ -1797,7 +1797,6 @@ function api_block_view($delta) {
         // Figure out if this is the default branch for this project, the same
         // way the menu system decides.
 
-        $default_branch = api_get_branch_by_id();
         $projects = _api_make_menu_projects();
         $is_default = ($branch->branch_name === $projects[$branch->project]['use branch']);
         $suffix = ($is_default) ? '' : '/' . $branch->branch_name;
@@ -2592,18 +2591,41 @@ function api_get_active_branch() {
     // If we're on an API path, it should be safe to call menu_get_item().
     $item = menu_get_item();
 
+    // Paths that you'd find in $item['path'] for listing pages.
+    $listing_page_paths = array(
+      'api/%/functions',
+      'api/%/constants',
+      'api/%/classes',
+      'api/%/globals',
+      'api/%/files',
+      'api/%/groups',
+      'api/%/namespaces',
+      'api/%/deprecated',
+      'api/%/services',
+    );
+
     // See if this is an API item page, in which case the first page
-    // argument will be the loaded item object, with a branch ID on it. Or a
-    // listing page, in which case the first page argument would be the
-    // branch, which would also have a branch ID.
+    // argument will be the loaded item object, with a branch ID on it.
     if (isset($item['page_arguments'][0]->branch_id)) {
       $branch = $branches[$item['page_arguments'][0]->branch_id];
     }
+    // Or we could be on a listing page, in which case the first page argument
+    // could be the branch, which would also have a branch ID.
     elseif (isset($item['page_arguments'][0]->branch_name)) {
       $branch = $item['page_arguments'][0];
     }
+    // Or it could be a listing page without the branch suffix in the URL.
+    elseif (in_array($item['path'], $listing_page_paths)) {
+      $project = $item['page_arguments'][3];
+      $branch = api_get_branch_by_name($project);
+    }
+    // Or the main project page (default branch).
+    elseif ($item['path'] == 'api/%') {
+      $project = $item['page_arguments'][1];
+      $branch = api_get_branch_by_name($project);
+    }
     // Namespace item pages have a different format.
-    elseif ($item['path'] == 'api/%api_project/namespace/%/%') {
+    elseif ($item['path'] == 'api/%/namespace/%/%') {
       $project = $item['page_arguments'][0];
       $branch_name = $item['page_arguments'][1];
       $branch = api_get_branch_by_name($project, $branch_name);
@@ -2623,11 +2645,6 @@ function api_get_active_branch() {
           $branch = $possible_branch;
         }
       }
-    }
-    // Could also be a listing page with a project and no branch, meaning
-    // use the default branch.
-    elseif (strpos($item['path'], 'api/%api_project') === 0 && isset($item['page_arguments'][1])) {
-      $branch = api_get_branch_by_name($item['page_arguments'][1]);
     }
 
     // If all else fails, use the default branch.
