@@ -70,6 +70,8 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
 
     // Test the Classes page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes');
+    $this->assertText('Say something interesting about classes here', 'Class page header information is shown');
+    $this->assertLink('sample_function', 0, 'See also link is shown in header');
     $this->assertLink('Sample2', 0, 'Sample2 is on classes list page');
     $this->assertLink('SubSample', 0, 'SubSample is on classes list page');
     $this->assertLink('SampleInterfaceTwo', 0, 'SampleInterfaceTwo is on classes list page');

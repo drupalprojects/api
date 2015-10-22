@@ -352,3 +352,11 @@ function sample_one() {
 $var = 1;
 function () use ($var) {};
 function () use ($var) {};
+
+/**
+ * @defgroup listing_page_class Page header for Functions page
+ *
+ * Say something interesting about classes here.
+ *
+ * @see sample_function()
+ */

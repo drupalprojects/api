@@ -540,6 +540,21 @@ function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '')
     $output['navigation'] = api_make_navigation($branch, $object_type);
   }
 
+  // See if there is a special defgroup in this branch with the name
+  // 'listing_page_OBJECT_TYPE'. If so, display its documentation.
+  $defgroup = api_object_load('listing_page_' . $object_type, $branch, 'group');
+  if ($defgroup) {
+    $documentation = api_link_documentation($defgroup->documentation, $branch, $defgroup->file_did, NULL, FALSE, FALSE, $defgroup->is_drupal);
+    $see = api_link_documentation($defgroup->see, $branch, $defgroup->file_did, NULL, TRUE, TRUE, $defgroup->is_drupal);
+    $output['heading'] = array(
+      '#theme' => 'api_group_page',
+      '#documentation' => $documentation,
+      '#see' => $see,
+      '#object' => $defgroup,
+    );
+
+  }
+
   if ($object_type === 'function' || $object_type == 'constant' || $object_type == 'global' ) {
     $output['listing'] = array(
       '#type' => 'markup',

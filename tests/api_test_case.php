@@ -176,7 +176,7 @@ class ApiTestCase extends DrupalWebTestCase {
    *   Number of objects to assert. Omit to use the current number that should
    *   be present for the default branch.
    */
-  function assertObjectCount($branch = NULL, $num = 67) {
+  function assertObjectCount($branch = NULL, $num = 68) {
     if (is_null($branch)) {
       $branch = $this->getBranch();
     }
