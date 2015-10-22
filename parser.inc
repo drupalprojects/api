@@ -990,7 +990,7 @@ function api_save_documentation($docblocks) {
       case 'trait':
         db_delete('api_reference_storage')
           ->condition('branch_id', $docblocks[0]['branch']->branch_id)
-          ->condition('object_type', array('class', 'interface', 'trait', 'annotation_class', 'annotation'))
+          ->condition('object_type', array('class', 'interface', 'trait', 'annotation_class', 'annotation', 'element'))
           ->condition('from_did', $docblock['did'])
           ->execute();
         db_delete('api_namespace')
@@ -1040,6 +1040,11 @@ function api_save_documentation($docblocks) {
         if (isset($docblock['references']['annotation'])) {
           foreach($docblock['references']['annotation'] as $class) {
             api_reference($docblocks[0]['branch'], 'annotation', $class, $docblock['did']);
+          }
+        }
+        if (isset($docblock['references']['element'])) {
+          foreach($docblock['references']['element'] as $element_type) {
+            api_reference($docblocks[0]['branch'], 'element', $element_type, $docblock['did']);
           }
         }
         if ($docblock['annotation_class']) {
@@ -1391,6 +1396,14 @@ function api_format_documentation($documentation, $auto_p = TRUE, &$references) 
     $class = $annotation_matches[1];
     $references['annotation'][$class] = $class;
     $documentation = str_replace($annotation_matches[0], '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . $annotation_matches[1] . $annotation_matches[2]. "\n@endcode", $documentation);
+    $element_types = array('FormElement', 'RenderElement');
+    if (in_array($class, $element_types)) {
+      // This is annotation like @FormElement("button") or
+      // @RenderElement("table"). Extract the element machine name
+      // (button/table) from $annotation_matches[2] and save it as a reference.
+      $element_type = trim(decode_entities($annotation_matches[2]), " \t\n\r()'\"");
+      $references['element'][$element_type] = $element_type;
+    }
   }
 
   // Process the @code @endcode tags.

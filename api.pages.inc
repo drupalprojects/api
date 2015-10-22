@@ -522,6 +522,7 @@ function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '')
       'namespace' => t('Namespaces'),
       'deprecated' => t('Deprecated'),
       'service' => t('Services'),
+      'element' => t('Form and render elements'),
     );
     $title = $titles[$object_type];
     drupal_set_title($title);
@@ -571,6 +572,12 @@ function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '')
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_services', array($branch->branch_id)),
+    );
+  }
+  elseif ($object_type === 'element' ) {
+    $output['listing'] = array(
+      '#type' => 'markup',
+      '#markup' => api_display_view('api_listings', 'block_elements', array($branch->branch_id)),
     );
   }
   elseif ( $object_type === 'file') {

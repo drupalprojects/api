@@ -977,6 +977,25 @@ function api_menu() {
     'file' => 'api.pages.inc',
   );
 
+  // Elements listing page.
+  $items['api/%api_project/elements'] = array(
+    'title' => 'Elements',
+    'page callback' => 'api_page_listing',
+    'page arguments' => array(NULL, 'element', TRUE, 1),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+  $items['api/%api_project/elements/%api_branch'] = array(
+    'title' => 'Elements',
+    'page callback' => 'api_page_listing',
+    'page arguments' => array(3, 'element'),
+    'access arguments' => array('access API reference'),
+    'load arguments' => array('%map'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
+
   // Full dump page.
   // Note that you can put query parameters on this URL: 'limit' to limit
   // the number of items output, and 'page' to move on to the next page if
@@ -1822,6 +1841,9 @@ function api_block_view($delta) {
         if ($counts['services'] > 0) {
           $links[] = l(t('Services'), 'api/' . $branch->project . '/services' . $suffix);
         }
+        if ($counts['elements'] > 0) {
+          $links[] = l(t('Elements'), 'api/' . $branch->project . '/elements' . $suffix);
+        }
         if ($counts['constants'] > 0) {
           $links[] = l(t('Constants'), 'api/' . $branch->project . '/constants' . $suffix);
         }
@@ -1871,6 +1893,7 @@ function api_listing_counts($branch) {
     'namespaces' => 0,
     'deprecated' => 0,
     'services' => 0,
+    'elements' => 0,
   );
 
   // These queries mirror what is done in the views used by api_page_listing().
@@ -1899,6 +1922,14 @@ function api_listing_counts($branch) {
     ->groupBy('branch_id');
   $query->addExpression('COUNT(*)', 'num');
   $return['classes'] = $query
+    ->execute()
+    ->fetchField();
+
+  $query = db_select('api_reference_storage', 'ars')
+    ->condition('branch_id', $branch->branch_id)
+    ->condition('object_type', array('element'));
+  $query->addExpression('COUNT(*)', 'num');
+  $return['elements'] = $query
     ->execute()
     ->fetchField();
 
@@ -2602,6 +2633,7 @@ function api_get_active_branch() {
       'api/%/namespaces',
       'api/%/deprecated',
       'api/%/services',
+      'api/%/elements',
     );
 
     // See if this is an API item page, in which case the first page

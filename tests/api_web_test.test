@@ -158,6 +158,15 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('sample.php', 0, 'File containing deprecated items is linked on deprecated page');
     $this->assertLink('classes.php', 0, 'Other file containing deprecated items is linked on deprecated page');
     $this->assertNoLink('sample_function', 'Non-deprecated function is not on deprecated page');
+
+    // Test the Elements page.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/elements');
+    $this->assertText('sub_sample');
+    $this->assertText('subdir_sample');
+    $this->assertText('FormElement');
+    $this->assertText('RenderElement');
+    $this->assertLink('SubSample', 0);
+    $this->assertLink('SubInSubDirSample', 0);
   }
 }
 
