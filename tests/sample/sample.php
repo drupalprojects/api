@@ -118,6 +118,8 @@ function sample_function($parameter, $complex_parameter) {
   $foo = sample_function();
 
   $bar = array('#theme' => 'sample_two');
+
+  $baz = array('#type' => 'subdir_sample');
 }
 
 /**

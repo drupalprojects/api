@@ -347,15 +347,13 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     // Test the theme invokes page from a template.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_in_code_links');
     $this->clickLink('sample_two');
-    $this->assertRaw('1 theme call to sample-two.tpl.php', 'Theme calls text is present');
-    $this->assertRaw('2 string references to the theme hook from sample-two.tpl.php', 'Theme references text is present');
+    $this->assertRaw('2 theme calls to sample-two.tpl.php', 'Theme calls text is present');
     $this->assertLink('sample_in_code_links', 0, 'Link to theme calling function is present');
     $this->assertLink('sample_function', 0, 'Link to theme string reference function is present');
 
     // Also test the theme invokes page from the same-hook function.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/theme_sample_two');
-    $this->assertRaw('1 theme call to theme_sample_two()', 'Theme calls text is present');
-    $this->assertRaw('2 string references to the theme hook from theme_sample_two()', 'Theme references text is present');
+    $this->assertRaw('2 theme calls to theme_sample_two()', 'Theme calls text is present');
     $this->assertLink('sample_in_code_links', 0, 'Link to theme calling function is present');
     $this->assertLink('sample_function', 0, 'Link to theme string reference function is present');
 
@@ -670,6 +668,15 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('SampleInSubDir::constant', 0, 'Overridden constant link is there');
     $this->clickLink('SubInSubDirSample::constant');
     $this->assertLink('SampleInSubDir::constant', 0, 'Overridden constant link is on constant page');
+
+    // Verify references for render element.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/subdirectory!classes-subdir.php/class/SubInSubDirSample');
+    $this->assertText('1 #type use of SubInSubDirSample', 'References list for element is present');
+    $this->assertLink('sample_function', 0, 'Link to element reference is there');
+    $this->clickLink('sample_function');
+    $this->assertLink('subdir_sample', 0, 'Element machine name is linked');
+    $this->clickLink('subdir_sample');
+    $this->assertTitleContains('SubInSubDirSample', 'Element link went to the right place');
 
     // Go back to the classes page with the breaks tag set, and verify.
     variable_set('api_breaks_tag', '<wbr />');

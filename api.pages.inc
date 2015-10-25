@@ -412,7 +412,7 @@ function api_page_file($file) {
   $objects = drupal_render($objects);
 
   // If this is a theme template or YML file, make reference link.
-  $links = api_build_references(array('theme_invokes', 'theme_references', 'yml_config', 'yml_keys'), $file, $branch);
+  $links = api_build_references(array('theme_invokes', 'yml_config', 'yml_keys'), $file, $branch);
 
   $output = theme('api_file_page', array('object' => $file, 'documentation' => $documentation, 'objects' => $objects, 'code' => $code, 'see' => $see, 'deprecated' => $deprecated, 'related_topics' => $related_topics, 'defined' => $defined, 'call_links' => $links));
   $output .= _api_add_comments($file);
@@ -930,7 +930,7 @@ function api_page_function($function) {
   $class = api_class_section($function, $branch);
 
   // Build reference links.
-  $links = api_build_references(array('calls', 'references', 'implementations', 'invokes', 'theme_invokes', 'theme_references', 'overrides'), $function, $branch);
+  $links = api_build_references(array('calls', 'references', 'implementations', 'invokes', 'theme_invokes', 'overrides'), $function, $branch);
 
   // Put it all together and theme the output.
   $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'deprecated' => $deprecated, 'throws' => $throws, 'class' => $class));
@@ -952,6 +952,8 @@ function api_page_function($function) {
  *   - 'invokes': $name is the name of a hook, find invocations.
  *   - 'theme_invokes': $name is the name of a theme function or file, find
  *     theme calls.
+ *   - 'element_invokes': $name is the name of an element, find #type uses of
+ *     this element.
  *   - 'theme_references': $name is the name of a theme function or file, find
  *     string references to the theme hook name.
  *   - 'references': $name is the name of a function, find string references.
@@ -971,7 +973,7 @@ function api_page_function($function) {
  *   If TRUE (default), return a count. If FALSE, return an array.
  * @param $exclude_did
  *   (optional) Document ID to exclude from the query, or to use as the ID for
- *   overrides.
+ *   overrides and element_invokes.
  * @param $limit
  *   (optional) Limit the number of references returned to this amount.
  * @param bool $is_drupal
@@ -984,7 +986,7 @@ function api_page_function($function) {
 function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0, $is_drupal = TRUE) {
 
   // Early return: if this is a Drupal type and $is_drupal is FALSE.
-  $drupal_types = array('implementations', 'theme_invokes', 'theme_references', 'invokes', 'yml_config', 'yml_keys');
+  $drupal_types = array('implementations', 'theme_invokes', 'element_invokes', 'theme_references', 'invokes', 'yml_config', 'yml_keys');
   if (!$is_drupal && in_array($type, $drupal_types)) {
     return ($count) ? 0 : array();
   }
@@ -1239,6 +1241,17 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
         ->condition('d.is_drupal', 1)
         ->condition($or_clauses);
     }
+  }
+  elseif ($type == 'element_invokes') {
+    // $exclude_did is the ID of a potential element class. This must have
+    // an 'element' reference in reference storage. Then we're looking for
+    // 'potential element' references to that element machine name.
+    $base_query = db_select('api_reference_storage', 'r')
+      ->condition('r.from_did', $exclude_did)
+      ->condition('r.object_type', 'element');
+    $r2 = $base_query->innerJoin('api_reference_storage', 'r2', 'r.object_name = r2.object_name AND r.branch_id = r2.branch_id');
+    $base_query->condition('r2.object_type', 'potential element');
+    $d = $base_query->innerJoin('api_documentation', 'd', 'r2.from_did = d.did');
   }
 
   // See if we built a query to execute.
@@ -1521,6 +1534,7 @@ function api_page_class($class) {
   $reference_types = array('uses', 'references', 'services');
   if ($class->object_type == 'class') {
     $reference_types[] = 'annotations';
+    $reference_types[] = 'element_invokes';
   }
   $links = api_build_references($reference_types, $class, $branch);
 
@@ -2020,6 +2034,9 @@ function api_reference_text($type, $count, $function) {
   }
   if ($type == 'overrides') {
     return format_plural($count, '1 method overrides !name', '@count methods override !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'element_invokes') {
+    return format_plural($count, '1 #type use of !name', '@count #type uses of !name', array('!name' => $name_to_use));
   }
   if ($type == 'theme_invokes') {
     return format_plural($count, '1 theme call to !name', '@count theme calls to !name', array('!name' => $name_to_use));
