@@ -1400,6 +1400,46 @@ function api_page_class_hierarchy($class) {
 }
 
 /**
+ * Page callback: Displays a full interface implementations list.
+ *
+ * @param $class
+ *   Documentation object representing the interface to display.
+ *
+ * @return
+ *   HTML output for the page.
+ */
+function api_page_interface_implements($class) {
+  $branch = api_get_branch_by_id($class->branch_id);
+
+  $call_title = api_reference_text('implements', 0, $class);
+  api_object_title_and_breadcrumb($branch, $class, $call_title, TRUE);
+
+  // Make a list of all the classes that implement the interface.
+  $to_process = array($class->did => $class);
+  $processed = array();
+  $found = array();
+  while (count($to_process)) {
+    $todo = array_shift($to_process);
+    $processed[$todo->did] = $todo;
+    if ($todo->object_type == 'class') {
+      _api_class_process_inherits($todo, $to_process, $processed, $found);
+    }
+    else {
+      _api_interface_process_inherits($todo, $to_process, $processed, $found);
+    }
+  }
+
+  // Sort alphabetically and return it.
+  if ($found) {
+    ksort($found);
+    return theme('item_list', array('items' => $found));
+  }
+  else {
+    return t('No classes implement this interface');
+  }
+}
+
+/**
  * Page callback: Displays documentation for an item (constant, global, etc.).
  *
  * This function can be used to display "simple" items (items without listings,
@@ -1472,52 +1512,6 @@ function api_page_class($class) {
   // Figure out the class hierarchy.
   $hierarchy = api_class_hierarchy($class);
 
-  // Figure out what classes implement if this is an interface.
-  $implements = array();
-  if ($class->object_type === 'interface') {
-    // Make a list of all interfaces that extend this one in this branch.
-    $to_check = array($class->did);
-    $extend_list = array($class->did);
-    while (count($to_check) > 0) {
-      $this_did = array_shift($to_check);
-      $result = db_select('api_reference_storage', 'ars')
-        ->condition('ars.object_type', 'class')
-        ->condition('ars.extends_did', $this_did)
-        ->condition('ars.branch_id', $branch->branch_id)
-        ->fields('ars', array('from_did'))
-        ->execute()
-        ->fetchCol();
-      foreach ($result as $new_did) {
-        if (!in_array($new_did, $extend_list)) {
-          // Avoid loops!
-          $to_check[] = $new_did;
-        }
-        $extend_list[] = $new_did;
-      }
-    }
-
-    // Now find which classes implement either the base interface or
-    // any that extend it. Use DISTINCT on the query, because some results
-    // could be for the same class, due to somewhere in its extends hierarchy,
-    // implementing this interface twice.
-    $query = db_select('api_reference_storage', 'ars');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
-    $query->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
-      ->condition('ars.extends_did', $extend_list)
-      ->condition('ars.branch_id', $branch->branch_id)
-      ->condition('ars.object_type', 'interface')
-      ->orderBy($ad . '.object_name')
-      ->distinct();
-    $result = $query->execute();
-
-    foreach ($result as $object) {
-      $implements[] = l($object->object_name, api_url($object));
-    }
-    if (count($implements) > 0) {
-      $implements = theme('item_list', array('items' => $implements));
-    }
-  }
-
   // Find and render all the class members.
   $objects = array();
   $out = api_display_view('api_members', 'block_member_list', array($class->did));
@@ -1536,10 +1530,14 @@ function api_page_class($class) {
     $reference_types[] = 'annotations';
     $reference_types[] = 'element_invokes';
   }
+  elseif ($class->object_type == 'interface') {
+    $reference_types[] = 'implements';
+  }
+
   $links = api_build_references($reference_types, $class, $branch);
 
   // Put it all together.
-  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'implements' => $implements, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'call_links' => $links));
+  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'call_links' => $links));
   $output .= _api_add_comments($class);
 
   return $output;
@@ -1814,6 +1812,10 @@ function api_class_hierarchy($class, $type = 'ancestors') {
     $output .= '<p>' . theme('api_function_reference_link', array('type' => 'hierarchy', 'count' => 0, 'function' => $class)) . '</p>';
   }
 
+  if ($type != 'full' && $class->object_type == 'interface') {
+    $output .= '<p>' . theme('api_function_reference_link', array('type' => 'implements', 'count' => 0, 'function' => $class)) . '</p>';
+  }
+
   return $output;
 }
 
@@ -1834,17 +1836,106 @@ function api_class_children($class, $current_did = 0) {
   $query = db_select('api_reference_storage', 'ars');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
   $query
-    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
+    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
     ->condition('ars.extends_did', $class->did)
     ->condition('ad.object_type', array('class', 'interface'))
     ->condition('ars.object_type', 'class')
-    ->orderBy('ad.object_name');
+    ->orderBy('ad.namespaced_name');
   $result = $query->execute();
   foreach ($result as $object) {
     $children[$object->did] = api_class_hierarchy_line($object, $current_did);
   }
 
   return $children;
+}
+
+/**
+ * Processes an interface for api_page_interface_implements().
+ *
+ * Finds all interfaces that extend it and classes that implement it, directly,
+ * and adds them to the to do and found lists.
+ *
+ * @param object $interface
+ *   Documentation object for the interface to check.
+ * @param object[] $to_process
+ *   List of classes and interfaces still to be processed, keyed by
+ *   documentation ID.
+ * @param object[] $processed
+ *   List of classes and interfaces that have already been processed, keyed
+ *   by documentation ID.
+ * @param string[] $found
+ *   Array of classes found to implement the interface. Keys are the
+ *   a sort index; values are lines like in a class hierarchy.
+ */
+function _api_interface_process_inherits($interface, &$to_process, &$processed, &$found) {
+  // Find interfaces that directly extend this one.
+  $exclude = array_merge(array_keys($to_process), array_keys($processed));
+  $query = db_select('api_reference_storage', 'ars');
+  $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
+  $query
+    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
+    ->condition('ars.extends_did', $interface->did)
+    ->condition('ad.object_type', array('interface'))
+    // In reference storage, any "extends" gets saved as type "class".
+    ->condition('ars.object_type', 'class')
+    ->condition('ad.did', $exclude, 'NOT IN');
+  $result = $query->execute();
+  foreach ($result as $object) {
+    $to_process[$object->did] = $object;
+  }
+
+  // Find classes that directly implement this interface.
+  $query = db_select('api_reference_storage', 'ars');
+  $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
+  $query
+    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
+    ->condition('ars.extends_did', $interface->did)
+    ->condition('ad.object_type', array('class'))
+    // In reference storage, any "implements" gets saved as type "interface".
+    ->condition('ars.object_type', 'interface')
+    ->condition('ad.did', $exclude, 'NOT IN');
+  $result = $query->execute();
+  foreach ($result as $object) {
+    $to_process[$object->did] = $object;
+    $found[$object->namespaced_name . $object->did] = api_class_hierarchy_line($object);
+  }
+}
+
+/**
+ * Processes a class for api_page_interface_implements().
+ *
+ * Finds all classes that extend it directly, and adds them to the to do and
+ * found lists.
+ *
+ * @param object $class
+ *   Documentation object for the class to check.
+ * @param object[] $to_process
+ *   List of classes and interfaces still to be processed, keyed by
+ *   documentation ID.
+ * @param object[] $processed
+ *   List of classes and interfaces that have already been processed, keyed
+ *   by documentation ID.
+ * @param string[] $found
+ *   Array of classes found to implement the interface. Keys are the
+ *   a sort index; values are lines like in a class hierarchy.
+ */
+function _api_class_process_inherits($class, &$to_process, &$processed, &$found) {
+  // Find classes that directly extend this one.
+  $exclude = array_merge(array_keys($to_process), array_keys($processed));
+  $query = db_select('api_reference_storage', 'ars');
+  $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
+  $query
+    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
+    ->condition('ars.extends_did', $class->did)
+    ->condition('ad.object_type', array('class'))
+    // In reference storage, any "extends" gets saved as type "class".
+    ->condition('ars.object_type', 'class')
+    ->condition('ad.did', $exclude, 'NOT IN');
+  $result = $query->execute();
+  foreach ($result as $object) {
+    $to_process[$object->did] = $object;
+    $found[$object->namespaced_name . $object->did] = api_class_hierarchy_line($object);
+  }
 }
 
 /**
@@ -1878,7 +1969,7 @@ function api_class_hierarchy_line($class, $current_did = 0) {
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
     ->condition('ars.from_did', $class->did)
     ->condition('ars.object_type', array('interface', 'trait'))
-    ->orderBy('ad.object_name');
+    ->orderBy('ad.namespaced_name');
   $query->addField('ars', 'object_type', 'ars_object_type');
   $result = $query->execute();
   foreach ($result as $object) {
@@ -1921,7 +2012,8 @@ function api_class_hierarchy_line($class, $current_did = 0) {
     $extends = ' extends ' . $parent->object_name;
   }
 
-  $output = $class->object_type . ' ' . l($class->object_name, api_url($class), array('attributes' => array('class' => $classes))) . $extends;
+  $namespace = substr($class->namespaced_name, 0, -strlen($class->object_name));
+  $output = $class->object_type . ' ' . $namespace . l($class->object_name, api_url($class), array('attributes' => array('class' => $classes))) . $extends;
   if (count($interfaces) > 0) {
     $output .= ' implements ' . implode(', ', $interfaces);
   }
@@ -1998,6 +2090,7 @@ function api_file_link($object) {
  *   The type of reference link. This is either one of the values listed in
  *   api_find_references(), or:
  *   - 'hierarchy': Class hierarchy ($count is ignored).
+ *   - 'implements': Interface implements list ($count is ignored).
  * @param $count
  *   The number of referenced items.
  * @param $function
@@ -2061,6 +2154,9 @@ function api_reference_text($type, $count, $function) {
   }
   if ($type == 'hierarchy') {
     return t('Expanded class hierarchy of !name', array('!name' => $name_to_use));
+  }
+  if ($type == 'implements') {
+    return t('All classes that implement !name', array('!name' => $name_to_use));
   }
 
   return '';

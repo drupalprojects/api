@@ -701,6 +701,15 @@ function api_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
   );
+  $items['api/%api_project/%/interface/implements/%api_item'] = array(
+    'title' => 'Interface implementations',
+    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'page callback' => 'api_page_interface_implements',
+    'page arguments' => array(5),
+    'access arguments' => array('access API reference'),
+    'type' => MENU_CALLBACK,
+    'file' => 'api.pages.inc',
+  );
   $items['api/%api_project/%/interface/uses/%api_item'] = array(
     'title' => 'Class uses',
     'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type

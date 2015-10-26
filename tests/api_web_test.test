@@ -549,16 +549,21 @@ class ApiComplexItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('SampleInterface');
     $this->assertURLContains($this->branch_info['project'] . '/classes.php/interface/SampleInterface', 'Interface link went to the right place');
     // While we're here, check some text...
+    $this->assertText('interface SampleInterface', 'H1 title text is there');
+    // Visit the implements page and verify classes are there.
+    $this->clickLink('All classes that implement SampleInterface');
     $this->assertLink('Sample', 0, 'Link to sample class appears on interface page');
     $this->assertLink('Sample2', 0, 'Link to sample2 class appears on interface page');
-    $this->assertText('interface SampleInterface', 'H1 title text is there');
 
-    // Click through to method and verify overrides link.
+    // Back on the interface page, click through to method and verify overrides
+    // link.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/interface/SampleInterface');
     $this->clickLink('SampleInterface::foo');
     $this->assertRaw('2 methods override SampleInterface::foo()', 'Overrides text is there');
     $this->assertLink('Sample::foo', 0, 'First override is found');
     $this->assertLink('SampleInSubDir::foo', 0, 'Second override is found');
 
+    // Back on the class page, verify the property page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->clickLink('Sample::$property');
     $this->assertURLContains($this->branch_info['project'] . '/classes.php/property/Sample', 'Property link went to the right place');
