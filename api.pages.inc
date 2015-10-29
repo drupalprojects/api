@@ -657,7 +657,7 @@ function api_make_navigation($branch, $object_type = '') {
       else {
         $path = 'api/' . $branch->project . '/' . $other_branch->branch_name;
       }
-      $links[] = array(
+      $links[$other_branch->title . $other_branch->branch_id] = array(
         'title' => $other_branch->title,
         'href' => $path,
         'active' => ($other_branch->branch_id == $branch->branch_id),
@@ -666,6 +666,7 @@ function api_make_navigation($branch, $object_type = '') {
   }
 
   if ($links) {
+    ksort($links);
     // Output this as a Local tasks array.
     $output = array(
       '#theme' => 'menu_local_tasks',
