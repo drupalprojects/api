@@ -383,7 +383,7 @@ function api_menu() {
   }
 
   // Projects autocomplete callback. This is always available.
-  $items['api/project/autocomplete'] = array(
+  $items['api-project-autocomplete'] = array(
     'page callback' => 'api_project_autocomplete',
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,

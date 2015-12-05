@@ -342,7 +342,7 @@ function api_page_projects() {
 function api_project_form($form, $form_state) {
   $form['project'] = array(
     '#type' => 'textfield',
-    '#autocomplete_path' => 'api/project/autocomplete',
+    '#autocomplete_path' => 'api-project-autocomplete',
     '#title' => t('Project short name'),
     '#default_value' => !empty($form_state['values']['project']) ? $form_state['values']['project'] : '',
   );
