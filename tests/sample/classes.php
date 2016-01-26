@@ -18,6 +18,8 @@
  * This example now includes some annotation for testing, including a function
  * name and a class name that should turn into links in the code section.
  *
+ * This is a link to an inherited method on the subclass: SubSample::foo().
+ *
  * @SampleInSubDir(
  *   id = "samplefoo",
  *   title = @Translation("A great plugin title"),
