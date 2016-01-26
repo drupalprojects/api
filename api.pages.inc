@@ -1335,7 +1335,7 @@ function api_build_references($types, $object, $branch) {
  * @param $function
  *   Documentation object representing the function to display.
  * @param $type
- *   Type of page to generate. See api_find_references for list.
+ *   Type of page to generate. See api_find_references() for list.
  *
  * @return
  *   HTML output for the page.
@@ -1526,13 +1526,15 @@ function api_page_class($class) {
 
   $objects = drupal_render($objects);
 
-  $reference_types = array('uses', 'references', 'services');
+  $reference_types = array('uses', 'references');
   if ($class->object_type == 'class') {
     $reference_types[] = 'annotations';
     $reference_types[] = 'element_invokes';
+    $reference_types[] = 'services';
   }
   elseif ($class->object_type == 'interface') {
     $reference_types[] = 'implements';
+    $reference_types[] = 'services';
   }
 
   $links = api_build_references($reference_types, $class, $branch);
