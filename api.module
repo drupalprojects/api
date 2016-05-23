@@ -1953,8 +1953,7 @@ function api_listing_counts($branch) {
   // These queries mirror what is done in the views used by api_page_listing().
   $query = db_select('api_documentation', 'ad')
     ->condition('branch_id', $branch->branch_id)
-    ->condition('object_type', 'group')
-    ->groupBy('branch_id');
+    ->condition('object_type', 'group');
   $query->addExpression('COUNT(*)', 'num');
   $return['groups'] = $query
     ->execute()
@@ -1972,8 +1971,7 @@ function api_listing_counts($branch) {
   $query = db_select('api_documentation', 'ad')
     ->condition('branch_id', $branch->branch_id)
     ->condition('object_type', array('class', 'interface', 'trait'))
-    ->condition('class_did', 0)
-    ->groupBy('branch_id');
+    ->condition('class_did', 0);
   $query->addExpression('COUNT(*)', 'num');
   $return['classes'] = $query
     ->execute()
@@ -1989,8 +1987,7 @@ function api_listing_counts($branch) {
 
   $query = db_select('api_documentation', 'ad')
     ->condition('branch_id', $branch->branch_id)
-    ->condition('deprecated', '', '<>')
-    ->groupBy('branch_id');
+    ->condition('deprecated', '', '<>');
   $query->addExpression('COUNT(*)', 'num');
   $return['deprecated'] = $query
     ->execute()
@@ -2000,8 +1997,7 @@ function api_listing_counts($branch) {
     $query = db_select('api_documentation', 'ad')
       ->condition('branch_id', $branch->branch_id)
       ->condition('object_type', $type)
-      ->condition('class_did', 0)
-      ->groupBy('branch_id');
+      ->condition('class_did', 0);
     $query->addExpression('COUNT(*)', 'num');
     $return[$type . 's'] = $query
       ->execute()
