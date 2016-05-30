@@ -34,7 +34,7 @@ function api_search_redirect() {
   $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
   $results = $query
     ->condition('ad.title', $tail)
-    ->orderBy('b.weight')
+    ->orderBy('b.weight', 'DESC')
     ->range(0,1)
     ->fields('b', array('project', 'branch_name'))
     ->execute();
@@ -49,7 +49,7 @@ function api_search_redirect() {
   $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
   $results = $query
     ->condition('ad.title', '%' . $tail . '%', 'LIKE')
-    ->orderBy('b.weight')
+    ->orderBy('b.weight', 'DESC')
     ->range(0,1)
     ->fields('b', array('project', 'branch_name'))
     ->execute();
