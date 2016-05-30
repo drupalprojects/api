@@ -2887,9 +2887,9 @@ function api_get_branch_by_name($project, $branch_name = NULL) {
         (empty($branch_name) && $branch->core_compatibility == $compatibility && $branch->preferred)) {
         return $branch;
       }
-      if (!isset($fallback_branch)) {
-        $fallback_branch = $branch;
-      }
+
+      // Overwrite each time to get the most recent branch as a fallback.
+      $fallback_branch = $branch;
     }
   }
 
