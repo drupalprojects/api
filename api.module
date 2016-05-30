@@ -1087,7 +1087,7 @@ function api_menu() {
   // Legacy search.
   $items['api/search'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/' . $default_branch->branch_name . '/search', array(), '302'),
+    'page arguments' => array('api/' . $default_branch->project . '/' . $default_branch->branch_name . '/search', array(), 301),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
@@ -1103,7 +1103,7 @@ function api_menu() {
   $items['api/function/%api_legacy_1_2_object'] = array(
     'load arguments' => array('function', 3),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -1111,7 +1111,7 @@ function api_menu() {
   $items['api/constant/%api_legacy_1_2_object'] = array(
     'load arguments' => array('constant', 3),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -1119,7 +1119,7 @@ function api_menu() {
   $items['api/global/%api_legacy_1_2_object'] = array(
     'load arguments' => array('global', 3),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -1127,7 +1127,7 @@ function api_menu() {
   $items['api/group/%api_legacy_1_2_object'] = array(
     'load arguments' => array('group', 3),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -1136,31 +1136,31 @@ function api_menu() {
   // Legacy listing pages.
   $items['api/functions'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/functions', array(), '302'),
+    'page arguments' => array('api/' . $default_branch->project . '/functions', array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/files'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/files', array(), '302'),
+    'page arguments' => array('api/' . $default_branch->project . '/files', array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/constants'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/constants', array(), '302'),
+    'page arguments' => array('api/' . $default_branch->project . '/constants', array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/globals'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/globals', array(), '302'),
+    'page arguments' => array('api/' . $default_branch->project . '/globals', array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/groups'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/groups', array(), '302'),
+    'page arguments' => array('api/' . $default_branch->project . '/groups', array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -1169,35 +1169,35 @@ function api_menu() {
   $items['api/functions/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('functions'),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/files/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('files'),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/constants/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('constants'),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/globals/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('globals'),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/groups/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('groups'),
     'page callback' => 'drupal_goto',
-    'page arguments' => array(2, array(), '302'),
+    'page arguments' => array(2, array(), 301),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
