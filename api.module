@@ -1876,35 +1876,35 @@ function api_block_view($delta) {
 
         $links = array();
         $links[] = l($branch->title, 'api/' . $branch->project . $suffix);
-        $counts = api_listing_counts($branch);
-        if ($counts['groups'] > 0) {
+        $types = api_listing_types($branch);
+        if ($types['groups']) {
           $links[] = l(t('Topics'), 'api/' . $branch->project . '/groups' . $suffix);
         }
-        if ($counts['classes'] > 0) {
+        if ($types['classes']) {
           $links[] = l(t('Classes'), 'api/' . $branch->project . '/classes' . $suffix);
         }
-        if ($counts['functions'] > 0) {
+        if ($types['functions']) {
           $links[] = l(t('Functions'), 'api/' . $branch->project . '/functions' . $suffix);
         }
-        if ($counts['files'] > 0) {
+        if ($types['files']) {
           $links[] = l(t('Files'), 'api/' . $branch->project . '/files' . $suffix);
         }
-        if ($counts['namespaces'] > 0) {
+        if ($types['namespaces']) {
           $links[] = l(t('Namespaces'), 'api/' . $branch->project . '/namespaces' . $suffix);
         }
-        if ($counts['services'] > 0) {
+        if ($types['services']) {
           $links[] = l(t('Services'), 'api/' . $branch->project . '/services' . $suffix);
         }
-        if ($counts['elements'] > 0) {
+        if ($types['elements']) {
           $links[] = l(t('Elements'), 'api/' . $branch->project . '/elements' . $suffix);
         }
-        if ($counts['constants'] > 0) {
+        if ($types['constants']) {
           $links[] = l(t('Constants'), 'api/' . $branch->project . '/constants' . $suffix);
         }
-        if ($counts['globals'] > 0) {
+        if ($types['globals']) {
           $links[] = l(t('Globals'), 'api/' . $branch->project . '/globals' . $suffix);
         }
-        if ($counts['deprecated'] > 0) {
+        if ($types['deprecated']) {
           $links[] = l(t('Deprecated'), 'api/' . $branch->project . '/deprecated' . $suffix);
         }
 
@@ -1918,94 +1918,38 @@ function api_block_view($delta) {
 }
 
 /**
- * Counts items by type for a branch.
+ * Get item types used for a branch.
  *
  * @param $branch
- *   Object representing the branch to count.
+ *   Object representing the branch.
  *
  * @return
  *   Associative array where the keys are the type of listing ('functions',
- *   'classes', etc.) and the values are the count of how many there are in
- *   that listing for the given branch.
+ *   'classes', etc.) and the values are TRUE if there is an item of that type
+ *   for the given branch.
  */
-function api_listing_counts($branch) {
-  static $cached_counts = array();
+function api_listing_types($branch) {
+  static $cache = [];
 
   // Check the cache.
-  $key = $branch->branch_name . $branch->branch_id;
-  if (isset($cached_counts[$key])) {
-    return $cached_counts[$key];
+  if (isset($cache[$branch->branch_id])) {
+    return $cache[$branch->branch_id];
   }
-
-  $return = array(
-    'groups' => 0,
-    'classes' => 0,
-    'functions' => 0,
-    'constants' => 0,
-    'globals' => 0,
-    'files' => 0,
-    'namespaces' => 0,
-    'deprecated' => 0,
-    'services' => 0,
-    'elements' => 0,
-  );
 
   // These queries mirror what is done in the views used by api_page_listing().
-  $query = db_select('api_documentation', 'ad')
-    ->condition('branch_id', $branch->branch_id)
-    ->condition('object_type', 'group');
-  $query->addExpression('COUNT(*)', 'num');
-  $return['groups'] = $query
-    ->execute()
-    ->fetchField();
-
-  $query = db_select('api_documentation', 'ad')
-    ->condition('branch_id', $branch->branch_id)
-    ->condition('namespace', '', '<>')
-    ->groupBy('namespace');
-  $query->addExpression('COUNT(*)', 'num');
-  $return['namespaces'] = $query
-    ->execute()
-    ->fetchField();
-
-  $query = db_select('api_documentation', 'ad')
-    ->condition('branch_id', $branch->branch_id)
-    ->condition('object_type', array('class', 'interface', 'trait'))
-    ->condition('class_did', 0);
-  $query->addExpression('COUNT(*)', 'num');
-  $return['classes'] = $query
-    ->execute()
-    ->fetchField();
-
-  $query = db_select('api_reference_storage', 'ars')
-    ->condition('branch_id', $branch->branch_id)
-    ->condition('object_type', array('element'));
-  $query->addExpression('COUNT(*)', 'num');
-  $return['elements'] = $query
-    ->execute()
-    ->fetchField();
-
-  $query = db_select('api_documentation', 'ad')
-    ->condition('branch_id', $branch->branch_id)
-    ->condition('deprecated', '', '<>');
-  $query->addExpression('COUNT(*)', 'num');
-  $return['deprecated'] = $query
-    ->execute()
-    ->fetchField();
-
-  foreach (array('function', 'constant', 'global', 'file', 'service') as $type) {
-    $query = db_select('api_documentation', 'ad')
-      ->condition('branch_id', $branch->branch_id)
-      ->condition('object_type', $type)
-      ->condition('class_did', 0);
-    $query->addExpression('COUNT(*)', 'num');
-    $return[$type . 's'] = $query
-      ->execute()
-      ->fetchField();
-  }
-
-  $cached_counts[$key] = $return;
-  return $return;
+  $args = [':branch_id' => $branch->branch_id];
+  return $cache[$branch->branch_id] = [
+    'groups' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'group'", 1, 1, $args)->fetchField(),
+    'classes' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type IN ('class', 'interface', 'trait') AND class_did = 0", 1, 1, $args)->fetchField(),
+    'functions' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'function'", 1, 1, $args)->fetchField(),
+    'constants' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'constant'", 1, 1, $args)->fetchField(),
+    'globals' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'global'", 1, 1, $args)->fetchField(),
+    'files' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'file'", 1, 1, $args)->fetchField(),
+    'namespaces' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND namespace <> ''", 1, 1, $args)->fetchField(),
+    'deprecated' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND deprecated <> ''", 1, 1, $args)->fetchField(),
+    'services' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'service'", 1, 1, $args)->fetchField(),
+    'elements' => (bool) db_query_range("SELECT 1 FROM {api_reference_storage} WHERE branch_id = :branch_id AND object_type = 'element'", 1, 1, $args)->fetchField(),
+  ];
 }
 
 /**
