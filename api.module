@@ -67,12 +67,12 @@ define('API_RE_TAG_START', '(?<!\\\)@');
 /**
  * Regular expression for word boundary start for API linking.
  */
-define('API_RE_WORD_BOUNDARY_START', '(?<=\s|^|\(|@|\>)');
+define('API_RE_WORD_BOUNDARY_START', '(?<=^|[\s\(@\>|])');
 
 /**
  * Regular expression for word boundary end for API linking.
  */
-define('API_RE_WORD_BOUNDARY_END', '(?=$|[\s.,:;?!)\<\[])');
+define('API_RE_WORD_BOUNDARY_END', '(?=$|[\s.,:;?!)\<\[\|])');
 
 /**
  * File path separator.
