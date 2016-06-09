@@ -1936,20 +1936,33 @@ function api_listing_types($branch) {
     return $cache[$branch->branch_id];
   }
 
+  // Make the conditions for each type of listing.
+  $type_conditions = [
+    'groups' => "object_type = 'group'",
+    'classes' => "object_type IN ('class', 'interface', 'trait') AND class_did = 0",
+    'functions' => "object_type = 'function'",
+    'constants' => "object_type = 'constant'",
+    'globals' => "object_type = 'global'",
+    'files' => "object_type = 'file'",
+    'namespaces' => "namespace <> ''",
+    'deprecated' => "deprecated <> ''",
+    'services' => "object_type = 'service'",
+    'elements' => "object_type = 'element'"
+  ];
+
   // These queries mirror what is done in the views used by api_page_listing().
   $args = [':branch_id' => $branch->branch_id];
-  return $cache[$branch->branch_id] = [
-    'groups' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'group'", 1, 1, $args)->fetchField(),
-    'classes' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type IN ('class', 'interface', 'trait') AND class_did = 0", 1, 1, $args)->fetchField(),
-    'functions' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'function'", 1, 1, $args)->fetchField(),
-    'constants' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'constant'", 1, 1, $args)->fetchField(),
-    'globals' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'global'", 1, 1, $args)->fetchField(),
-    'files' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'file'", 1, 1, $args)->fetchField(),
-    'namespaces' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND namespace <> ''", 1, 1, $args)->fetchField(),
-    'deprecated' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND deprecated <> ''", 1, 1, $args)->fetchField(),
-    'services' => (bool) db_query_range("SELECT 1 FROM {api_documentation} WHERE branch_id = :branch_id AND object_type = 'service'", 1, 1, $args)->fetchField(),
-    'elements' => (bool) db_query_range("SELECT 1 FROM {api_reference_storage} WHERE branch_id = :branch_id AND object_type = 'element'", 1, 1, $args)->fetchField(),
-  ];
+  foreach ($type_conditions as $type => $condition) {
+    $sql = "
+      SELECT 1 FROM {api_documentation}
+      WHERE branch_id = :branch_id
+      AND $condition
+      ORDER BY branch_id
+    ";
+    $cache[$branch->branch_id][$type] = (bool) db_query_range($sql, 1, 1, $args)->fetchField();
+  }
+
+  return $cache[$branch->branch_id];
 }
 
 /**
