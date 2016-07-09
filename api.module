@@ -1927,6 +1927,8 @@ function api_block_view($delta) {
  *   Associative array where the keys are the type of listing ('functions',
  *   'classes', etc.) and the values are the count of how many there are in
  *   that listing for the given branch.
+ *
+ * @deprecated
  */
 function api_listing_counts($branch) {
   static $cached_counts = array();
