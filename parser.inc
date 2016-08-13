@@ -270,13 +270,6 @@ function api_parse_yaml_file($docblock) {
   $docblock['documentation'] = $docblock['file_name'];
 
   // Parse the YAML in the file.
-  module_load_include('php', 'api', 'yaml/ExceptionInterface');
-  module_load_include('php', 'api', 'yaml/RuntimeException');
-  module_load_include('php', 'api', 'yaml/ParseException');
-  module_load_include('php', 'api', 'yaml/DumpException');
-  module_load_include('php', 'api', 'yaml/Unescaper');
-  module_load_include('php', 'api', 'yaml/Inline');
-  module_load_include('php', 'api', 'yaml/Parser');
   $parser = new \Symfony\Component\Yaml\Parser();
   try {
     $parsed = $parser->parse($docblock['source']);
@@ -350,8 +343,6 @@ function api_parse_yaml_file($docblock) {
 
   // For services files, make docblocks for each service.
   if ($is_services && isset($parsed['services'])) {
-    module_load_include('php', 'api', 'yaml/Dumper');
-    module_load_include('php', 'api', 'yaml/Escaper');
     $dumper = new \Symfony\Component\Yaml\Dumper();
     $dumper->setIndentation(2);
 
