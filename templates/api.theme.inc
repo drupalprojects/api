@@ -172,9 +172,7 @@ function theme_api_function_reference_link($variables) {
  * Preprocesses variables for api-views-view-dl-list.tpl.php.
  */
 function api_preprocess_views_view_dl_list(&$variables) {
-  module_load_include('views', 'theme/theme', 'inc');
-
-  $handler  = $variables['view']->style_plugin;
+  $handler = $variables['view']->style_plugin;
 
   $class = explode(' ', $handler->options['class']);
   $class = array_map('views_clean_css_identifier', $class);
