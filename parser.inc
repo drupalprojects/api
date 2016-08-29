@@ -1341,7 +1341,7 @@ function api_format_documentation($documentation, $auto_p = TRUE, &$references) 
   }
 
   // Check for invalid Unicode, which screws everything up.
-  if (!mb_check_encoding($documentation, 'UTF-8')) {
+  if (!drupal_validate_utf8($documentation)) {
     return t('Non-displayable characters.');
   }
   // Replace 4-byte characters not supported by MySQL's utf8 encoding
@@ -1616,7 +1616,7 @@ function api_documentation_summary($documentation) {
  */
 function api_format_php($code, &$references, $number = FALSE, $track_references = TRUE, $is_drupal = TRUE) {
   // Check for invalid Unicode, which screws everything up.
-  if (!mb_check_encoding($code, 'UTF-8')) {
+  if (!drupal_validate_utf8($code)) {
     return t('Non-displayable characters.');
   }
   // Replace 4-byte characters not supported by MySQL's utf8 encoding
