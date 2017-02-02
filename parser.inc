@@ -89,17 +89,7 @@ function api_parse_text_file($docblock, $escape_html = FALSE) {
   // probably only present for Twig files.
   $matches = array();
   if (preg_match('|/\*\*[\s\*]+@file.+\*/|Us', $docblock['source'], $matches)) {
-    // Let Grammar parser and api_save_documentation() parse out this
-    // documentation.
-    if (!api_libraries_loaded()) {
-      return;
-    }
-    // Avoid timeouts in Grammar Parser, but do not run forever in case it
-    // has a major problem. 10 minutes should be plenty. Drupal cron normally
-    // has a limit of 4 minutes. This will reset timing counter to 0 also.
-    drupal_set_time_limit(600);
-    $editor = PGPEditor::getInstance();
-    $docblock['content'] = $editor->commentToString(array('value' => $matches[0]));
+    $docblock['content'] = _api_clean_comment($matches[0]);
   }
   else {
     $tmp = array();
@@ -162,36 +152,12 @@ function api_parse_php_file($docblock) {
     return;
   }
 
-  // Build grammar statements.
-  // Avoid timeouts in Grammar Parser, but do not run forever in case it
-  // has a major problem. 10 minutes should be plenty. Drupal cron normally
-  // has a limit of 4 minutes. This will reset timing counter to 0 also.
-  drupal_set_time_limit(600);
-  $editor = PGPEditor::getInstance();
-  $reader = $editor->getReader();
-  // Set up the reader to preserve the spacing of the original code.
-  $reader->setPreserveWhitespace(FALSE);
-  $reader->setPreserveNewline(TRUE);
-  $reader->setPreserveArrayNewline(TRUE);
-  $reader->setSnippet($docblock['source']);
-  $reader->buildGrammar();
-
-  // Retrieve items of interest.
-  $statements = $reader->getStatements();
-  if (!$statements) {
-
-    // This is a text file or template file with no declarations of functions,
-    // constants, etc. But we do want to track references in it.
-    $docblock['code'] = api_format_php($docblock['source'], $docblock['references'], TRUE, TRUE, $docblock['is_drupal']);
-
-    api_save_documentation(array($docblock));
-    // Free up memory.
-    $docblock = NULL;
-    $statements = NULL;
-    $reader->reset();
-    $reader = NULL;
-    $editor = NULL;
-    return;
+  $parser = (new \PhpParser\ParserFactory)->create(\PhpParser\ParserFactory::PREFER_PHP7);
+  try {
+    $statements = $parser->parse($docblock['source']);
+  }
+  catch (\PhpParser\Error $e) {
+    watchdog('api', 'File @name could not be parsed. ' . $e->getMessage(), array('@name' => $docblock['file_name']), WATCHDOG_ERROR);
   }
 
   // Reserve the first array slot for the file documentation block. Note that
@@ -249,9 +215,6 @@ function api_parse_php_file($docblock) {
   $default_block = NULL;
   $docblocks = NULL;
   $statements = NULL;
-  $reader->reset();
-  $reader = NULL;
-  $editor = NULL;
 }
 
 /**
@@ -464,8 +427,8 @@ function _api_find_yaml_references($yaml, $key_refs_level) {
 /**
  * Builds a list of documentation items.
  *
- * @param PGPBody $statements
- *   A PGPBody object containing body statements.
+ * @param array $statements
+ *   An array of parser output statements.
  * @param array $default_block
  *   The default documentation block to use to build documentation items.
  * @param array $docblocks
@@ -483,132 +446,295 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
   // Keep track of all references found.
   $all_references = array();
 
-  static $object_types = array(
-    T_ASSIGNMENT => 'property',
-    T_CONST => 'constant',
-  );
-  $editor = PGPEditor::getInstance();
+  // Traverse top-level statement list to gather documentation items.
+  $in_class = !empty($default_block['class']);
+  $class_prefix = $in_class ? $default_block['class'] . '::' : '';
+  $printer = new \PhpParser\PrettyPrinter\Standard;
 
-  // Traverse statement list to gather documentation items.
-  $current = $statements->first();
-  while ($current != NULL) {
-    $statement = $current->data;
-    $type = is_object($statement) ? $statement->type : $statement['type'];
+  foreach ($statements as $statement) {
+    $docblock = $default_block;
+    $docblock['start_line'] = $statement->getLine();
+    $docblock['content'] = '';
+    $type = $statement->getType();
 
-    // Common processing.
-    switch ($type) {
-      case T_NAMESPACE:
-        // $statement->name has the name of the namespace for the file.
+    // Process the comments for this statement. The parser makes an array of
+    // all the comments that precede the statement; the last one is the doc
+    // block (for statements that support doc blocks). Other than the official
+    // doc bloc, other ones can be saved as global doc blocks, such as the
+    // @file and @defgroup doc blocks, but only if we are outside of classes.
+    $comments = $statement->getAttribute('comments');
+    $types_without_comments = array(
+      'Stmt_Nop',
+      'Stmt_Namespace',
+      'Stmt_Use',
+    );
+
+    if ($comments) {
+      $count = count($comments);
+      foreach ($comments as $index => $comment) {
+        if (!$in_class &&
+          ($index < $count - 1 || in_array($type, $types_without_comments)) &&
+          $comment instanceof \PhpParser\Comment\Doc) {
+
+          // This is a global comment. Add it to the list of doc blocks.
+          $comment_docblock = $default_block;
+          $comment_docblock['content'] = _api_clean_comment($comment->getText());
+          $comment_docblock['start_line'] = $comment->getLine();
+          $docblocks[] = $comment_docblock;
+        }
+        elseif ($index == $count - 1 && $comment instanceof \PhpParser\Comment\Doc) {
+          // This is the doc comment for this statement.
+          $docblock['content'] = _api_clean_comment($comment->getText());
+        }
+      }
+    }
+
+    // Clear out the comments, so that we don't encounter them later.
+    $statement->setAttribute('comments', array());
+
+    // Process the actual statement.
+     switch ($type) {
+      case 'Expr_FuncCall':
+        // Process this only if it is a call to define(CONST_NAME, value);.
+        $name = $statement->name->toString();
+        if ($name == 'define') {
+          $args = $statement->args;
+          if (count($args) > 0) {
+            $docblock['object_type'] = 'constant';
+            $docblock['member_name'] = $args[0]->value->value;
+            $docblock['object_name'] = $class_prefix . $docblock['member_name'];
+            $docblock['title'] = $docblock['object_name'];
+            // Don't save references for constant definitions.
+            $references = array();
+            $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, FALSE, $docblock['is_drupal']);
+            $docblocks[] = $docblock;
+          }
+        }
+        break;
+
+      case 'Stmt_ClassConst':
+      case 'Stmt_Property':
+      case 'Stmt_Global':
+        $sub_objects = array();
+        $title_prefix = '';
+        if ($type == 'Stmt_ClassConst') {
+          $sub_objects = $statement->consts;
+          $docblock['object_type'] = 'constant';
+        }
+        elseif ($type == 'Stmt_Property') {
+          $sub_objects = $statement->props;
+          $docblock['object_type'] = 'property';
+          $title_prefix = '$';
+        }
+        elseif ($type == 'Stmt_Global') {
+          $sub_objects = $statement->vars;
+          $docblock['object_type'] = 'global';
+          $title_prefix = '$';
+        }
+
+        if (!empty($sub_objects)) {
+          $sub_object = $sub_objects[0];
+          $docblock['member_name'] = $sub_object->name;
+          $docblock['object_name'] = $class_prefix . $docblock['member_name'];
+          $docblock['title'] = $class_prefix . $title_prefix . $docblock['member_name'];
+          // Don't save references for constant and property definitions.
+          $references = array();
+          $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, FALSE, $docblock['is_drupal']);
+          if ($type != 'Stmt_Global') {
+            $docblock['modifiers'] = _api_get_statement_modifiers($statement);
+          }
+
+          $docblocks[] = $docblock;
+        }
+        break;
+
+      case 'Stmt_Function':
+      case 'Stmt_ClassMethod':
+        $docblock['object_type'] = 'function';
+        $docblock['member_name'] = $statement->name;
+        $docblock['object_name'] = $class_prefix . $docblock['member_name'];
+        $docblock['title'] = $docblock['object_name'];
+        $references = array();
+        $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, TRUE, $docblock['is_drupal']);
+        $docblock['references'] = $references;
+        $all_references = _api_merge_references($all_references, $references);
+        $docblock['signature'] = _api_get_function_signature($statement, $printer);
+        if ($type == 'Stmt_ClassMethod') {
+          $docblock['modifiers'] = _api_get_statement_modifiers($statement);
+        }
+        $docblocks[] = $docblock;
+        break;
+
+      case 'Stmt_Class':
+      case 'Stmt_Interface':
+      case 'Stmt_Trait':
+        $docblock['object_name'] = $statement->name;
+        $docblock['title'] = $docblock['object_name'];
+        $docblock['member_name'] = $docblock['object_name'];
+        // References here are discarded. We'll use the ones from the contained
+        // statements instead.
+        $references = array();
+        $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, FALSE, $docblock['is_drupal']);
+        $docblock['extends'] = array();
+        $docblock['implements'] = array();
+
+        if ($type == 'Stmt_Class') {
+          $docblock['object_type'] = 'class';
+          $docblock['modifiers'] = _api_get_statement_modifiers($statement);
+
+          if ($statement->extends) {
+            $docblock['extends'] = array($statement->extends->toString());
+          }
+          if (!empty($statement->implements) && count($statement->implements)) {
+            foreach ($statement->implements as $item) {
+              $docblock['implements'][] = $item->toString();
+            }
+          }
+        }
+        elseif ($type == 'Stmt_Interface') {
+          $docblock['object_type'] = 'interface';
+          if ($statement->extends) {
+            foreach ($statement->extends as $extend) {
+              $docblock['extends'][] = $extend->toString();
+            }
+          }
+        }
+        else {
+          $docblock['object_type'] = 'trait';
+        }
+
+        $docblocks[] = $docblock;
+
+        // Process the class's internal/body statements.
+        if (!empty($statement->stmts)) {
+          $last_index = count($docblocks) - 1;
+          $references = api_documentation_loop($statement->stmts, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
+          $all_references = _api_merge_references($all_references, $references);
+          $docblocks[$last_index]['references'] = $references;
+        }
+
+        break;
+
+      case 'Stmt_Namespace':
         $namespace = $statement->name->toString();
-        if (!empty($namespace)) {
-          $references = array('namespace' => $namespace);
+        $references = array('namespace' => $namespace);
+        $all_references = _api_merge_references($all_references, $references);
+        // The rest of the statements in this file are inside this namespace.
+        if (!empty($statement->stmts)) {
+          $references = api_documentation_loop($statement->stmts, $default_block, $docblocks);
           $all_references = _api_merge_references($all_references, $references);
         }
         break;
 
-      case T_USE:
-        // See if this is a use statement for the file, or a use statement
-        // indicating using a trait inside a class/trait.
-        if (!empty($default_block['class'])) {
-          // This is inside a file, so it's a trait use statement.
-          $trait_info = $statement->valuesToArray('alias');
-          foreach ($trait_info as $key => $value) {
-            // Should be only one array element...
-            $trait_alias = $key;
-            $trait_class = $value;
+      case 'Stmt_Use':
+        $references = array('use_alias' => array());
+        foreach ($statement->uses as $use) {
+          $alias = $use->alias;
+          $class = $use->name->toString();
+          if (!$alias) {
+            $alias = $class;
           }
-
-          $details = array();
-          if (!empty($statement->body)) {
-            $details = $statement->bodyValuesToArray();
-          }
-          $references = array('use_trait' => array($trait_alias => array('class' => $trait_class, 'details' => $details)));
-        }
-        else {
-          $references = array('use_alias' => $statement->valuesToArray('alias'));
+          $references['use_alias'][$alias] = $class;
         }
         $all_references = _api_merge_references($all_references, $references);
         break;
 
-      case T_ASSIGNMENT: // Class property
-        if (empty($default_block['class'])) {
-          break;
-        } // Explicit fallthrough.
-      case T_INTERFACE:
-      case T_TRAIT:
-      case T_CLASS:
-      case T_FUNCTION:
-      case T_DEFINE:
-      case T_CONST:
-      case T_GLOBAL:
-        $docblock = $default_block;
-        $docblock['object_type'] = isset($object_types[(int) $type]) ? $object_types[(int) $type] : $editor->statementTypeToString($statement);
-
-        $class_prefix = empty($default_block['class']) ? '' : $default_block['class'] . '::';
-        if ($type == T_GLOBAL || $type == T_ASSIGNMENT) {
-          $docblock['member_name'] = preg_replace('/^\$/', '', $editor->statementOperandToText($statement));
+      case 'Stmt_TraitUse':
+        $trait = $statement->traits[0]->toString();
+        $references = array(
+          'use_trait' => array(
+            $trait => array(
+              'class' => $trait,
+              'details' => array(),
+            ),
+          ),
+        );
+        foreach ($statement->adaptations as $adaptation) {
+          $ad_type_parts = explode('_', $adaptation->getType());
+          $ad_type = strtolower(array_pop($ad_type_parts));
+          $references['use_trait'][$trait]['details'][$ad_type][$adaptation->newName] = $adaptation->method;
         }
-        else {
-          $docblock['member_name'] = $editor->statementOperandToText($statement);
-        }
-        $docblock['object_name'] = $class_prefix . $docblock['member_name'];
-        $docblock['title'] = $class_prefix . $editor->statementOperandToText($statement);
-        $docblock['start_line'] = $current->line;
-        $docblock['content'] = $editor->commentToString($statement->comment);
-        $statement->comment = '';
-        $references = array();
-        $docblock['code'] = api_format_php("<?php\n" . $statement->toString() . "\n?" . ">", $references, FALSE, ($statement->type == T_FUNCTION), $docblock['is_drupal']);
-
-        if (isset($statement->modifiers) && !$statement->modifiers->isEmpty()) {
-          $docblock['modifiers'] = $statement->modifiers->toString();
-        }
-
-        if ($statement->type == T_FUNCTION) {
-          $docblock['signature'] = $editor->functionGetSignature($statement);
-          $docblock['references'] = $references;
-          $all_references = _api_merge_references($all_references, $references);
-        }
-        elseif ($statement->type == T_CLASS || $statement->type == T_INTERFACE || $statement->type == T_TRAIT) {
-          $docblock['extends'] = is_object($statement->extends) ? explode(', ', $statement->extends->toString()) : array();
-          $docblock['implements'] = is_object($statement->implements) ? explode(', ', $statement->implements->toString()) : array();
-          $docblock['references'] = $references;
-        }
-
-        $docblocks[] = $docblock;
+        $all_references = _api_merge_references($all_references, $references);
         break;
 
-      case T_DOC_COMMENT:
-        $docblock = $default_block;
-        $docblock['content'] = $editor->commentToString($statement);
-        $docblock['start_line'] = $current->line;
-        $docblocks[] = $docblock;
-        break;
     }
-
-
-    // Additional recursive processing on statements with bodies that can
-    // contain other doc objects.
-    switch ($type) {
-      case T_TRAIT:
-      case T_INTERFACE:
-      case T_CLASS:
-        if (!empty($statement->body)) {
-          // We need to find all the additional things in here (methods, etc.),
-          // which will add items to the $docblocks array. And then we need to
-          // add the references found to the parent docblock. So keep track of
-          // which docblock we are adding to.
-          $last_index = count($docblocks) - 1;
-          $references = api_documentation_loop($statement->body, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
-          $all_references = _api_merge_references($all_references, $references);
-          $docblocks[$last_index]['references'] = $references;
-        }
-        break;
-    }
-
-    $current = $current->next;
   }
 
   return $all_references;
+}
+
+/**
+ * Returns the function signature from a PhpParser function node object.
+ *
+ * @param $statement
+ *   A function statement to get the signature of.
+ * @param $printer
+ *   A pretty printer object to use to get the signature.
+ *
+ * @return string
+ *   The function signature.
+ */
+function _api_get_function_signature($statement, $printer) {
+  // Make a function with empty body, pretty-print it, and remove the {}.
+  $empty_function = new \PhpParser\Node\Stmt\Function_(
+    $statement->name,
+    array(
+      'byRef' => $statement->byRef,
+      'params' => $statement->params,
+      'returnType' => $statement->returnType,
+    ));
+
+  $output = $printer->prettyPrint(array($empty_function));
+  $output = preg_replace('|\{.*\}|s', '', $output);
+  $output = str_replace('function ', '', $output);
+  return trim($output);
+}
+
+/**
+ * Returns the modifiers from a PhpParser statement.
+ *
+ * @param $statement
+ *   A class, method, property, etc. statement to get the modifiers of. Must
+ *   have a flags property.
+ *
+ * @return string
+ *   The modifiers.
+ */
+function _api_get_statement_modifiers($statement) {
+  $flags = $statement->flags;
+  $modifiers = '';
+  $modifier_list = array(
+    // Note: Keep this list in the order that the modifiers should appear.
+    \PhpParser\Node\Stmt\Class_::MODIFIER_ABSTRACT => 'abstract',
+    \PhpParser\Node\Stmt\Class_::MODIFIER_FINAL => 'final',
+    \PhpParser\Node\Stmt\Class_::MODIFIER_PUBLIC => 'public',
+    \PhpParser\Node\Stmt\Class_::MODIFIER_PROTECTED => 'protected',
+    \PhpParser\Node\Stmt\Class_::MODIFIER_PRIVATE => 'private',
+    \PhpParser\Node\Stmt\Class_::MODIFIER_STATIC => 'static',
+  );
+  foreach ($modifier_list as $flag => $name) {
+    if ($flags & $flag) {
+      $modifiers .= $name . ' ';
+    }
+  }
+  return trim($modifiers);
+}
+
+/**
+ * Cleans the comment characters out of a doc comment.
+ *
+ * @param string $text
+ *   Comment text to clean.
+ *
+ * @return string
+ *   Cleaned text.
+ */
+function _api_clean_comment($text) {
+  // @todo This is used to replicate what Grammar Parser did with comments,
+  // which may not be desirable if we switch to a different comment parser.
+  $text = str_replace(array('/**', '*/'), '', $text);
+  $text = preg_replace('|^ *\* ?|m', '', $text);
+  return $text;
 }
 
 /**
@@ -1012,7 +1138,7 @@ function api_save_documentation($docblocks) {
             if (isset($info['details'])) {
               foreach ($info['details'] as $type => $list) {
                 foreach ($list as $name => $item) {
-                  if ($type == 'insteadof') {
+                  if ($type == 'precedence') {
                     // @todo We could support insteadof here; see other todo
                     // for where it would be used.
                     watchdog('api', 'Trait inheritance with insteadof statements are not supported in %filename for %item', array('%filename' => $docblock['file_name'], '%item' => $name), WATCHDOG_WARNING);
@@ -1383,7 +1509,7 @@ function api_format_documentation($documentation, $auto_p = TRUE, &$references) 
   // Change @Plugin and other annotation sections into @code. They have to be
   // at the very end of the documentation block. And add a reference.
   $annotation_matches = array();
-  if (preg_match('/' . API_RE_TAG_START . '(' . API_RE_FUNCTION_CHARACTERS . ')(\(.*\))$/s', $documentation, $annotation_matches)) {
+  if (preg_match('/' . API_RE_TAG_START . '(' . API_RE_FUNCTION_CHARACTERS . ')(\(.*\))\s*$/s', $documentation, $annotation_matches)) {
     $class = $annotation_matches[1];
     $references['annotation'][$class] = $class;
     $documentation = str_replace($annotation_matches[0], '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . $annotation_matches[1] . $annotation_matches[2]. "\n@endcode", $documentation);

@@ -258,7 +258,8 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     // Check the text on the page.
     $this->assertTitleContains('duplicate_function', 'Function page title includes function name');
     $this->assertText('For testing duplicate function name linking.', 'Description is present on function page');
-    $this->assertText("function duplicate_function() {", 'Code is present on function page');
+    $this->assertText("function duplicate_function()", 'Code is present on function page');
+    $this->assertText('$foo = sample_function()', 'More code is present on function page');
     $this->assertLink('sample.php', 0, 'Link to file is present on function page');
     $this->assertLink($this->branch_info['branch_name'] . ' duplicates.php', 0, 'Link to other version is present on function page');
     $this->assertLink('duplicate_function', 0, 'Second link to other version is present on function page');

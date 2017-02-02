@@ -3393,26 +3393,25 @@ function api_libraries_loaded($watchdog = TRUE) {
     return $loaded;
   }
 
-  if (!gplib_version_check(FALSE)) {
-    if ($watchdog) {
-      watchdog('api', 'Grammar Parser library is not installed or version is incompatible.', array(), WATCHDOG_ERROR);
-    }
-    $loaded = FALSE;
-    return FALSE;
-  }
-
-  $library = libraries_load('grammar_parser');
-  if (empty($library['loaded'])) {
-    if ($watchdog) {
-      watchdog('api', 'Grammar Parser library is not loaded. Unable to parse files.', array(), WATCHDOG_ERROR);
-    }
-    $loaded = FALSE;
-    return FALSE;
-  }
-
+  // Verify that the MB library exists.
   if (!function_exists('mb_check_encoding')) {
     if ($watchdog) {
       watchdog('api', 'PHP multi-byte library is not installed.', array(), WATCHDOG_ERROR);
+    }
+    $loaded = FALSE;
+    return FALSE;
+  }
+
+  // @todo Also load the YAML parser
+
+
+  // Verify that the external classes can be created.
+  try {
+    $factory = new \PhpParser\ParserFactory;
+  }
+  catch (Exception $e) {
+    if ($watchdog) {
+      watchdog('api', 'PHP parsing library is not properly installed via Composer.', array(), WATCHDOG_ERROR);
     }
     $loaded = FALSE;
     return FALSE;

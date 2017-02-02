@@ -25,7 +25,7 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
 
   function setUp() {
     // Start with only the support modules enabled.
-    DrupalWebTestCase::setUp('ctools', 'gplib', 'node', 'dblog', 'views', 'comment');
+    DrupalWebTestCase::setUp('ctools', 'node', 'dblog', 'views', 'comment', 'composer_manager');
 
     variable_set('api_breaks_tag', '');
 

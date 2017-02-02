@@ -1,3 +1,5 @@
+<?php
+
 /**
  * @file
  * Class inheritance loop.
