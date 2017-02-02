@@ -152,7 +152,7 @@ function api_parse_php_file($docblock) {
     return;
   }
 
-  $parser = (new \PhpParser\ParserFactory)->create(\PhpParser\ParserFactory::PREFER_PHP7);
+  $parser = (new \PhpParser\ParserFactory())->create(\PhpParser\ParserFactory::PREFER_PHP7);
   try {
     $statements = $parser->parse($docblock['source']);
   }
@@ -449,7 +449,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
   // Traverse top-level statement list to gather documentation items.
   $in_class = !empty($default_block['class']);
   $class_prefix = $in_class ? $default_block['class'] . '::' : '';
-  $printer = new \PhpParser\PrettyPrinter\Standard;
+  $printer = new \PhpParser\PrettyPrinter\Standard();
 
   foreach ($statements as $statement) {
     $docblock = $default_block;

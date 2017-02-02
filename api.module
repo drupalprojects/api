@@ -3402,16 +3402,14 @@ function api_libraries_loaded($watchdog = TRUE) {
     return FALSE;
   }
 
-  // @todo Also load the YAML parser
-
-
   // Verify that the external classes can be created.
   try {
-    $factory = new \PhpParser\ParserFactory;
+    $factory = new \PhpParser\ParserFactory();
+    $parser = new \Symfony\Component\Yaml\Parser();
   }
   catch (Exception $e) {
     if ($watchdog) {
-      watchdog('api', 'PHP parsing library is not properly installed via Composer.', array(), WATCHDOG_ERROR);
+      watchdog('api', 'PHP and YAML parsing libraries is not properly installed via Composer.', array(), WATCHDOG_ERROR);
     }
     $loaded = FALSE;
     return FALSE;
