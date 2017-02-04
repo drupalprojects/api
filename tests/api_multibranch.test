@@ -34,8 +34,7 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     ));
 
     // Create a second "file" branch in a different branch on the same project.
-    // Exclude the "maybe_exclude" directory so that this branch
-    // only has functions and not constants and classes.
+    // Use the sample2 code.
     $this->branch_info_2 = $this->setUpBranchUI('', FALSE, array(
       'branch_name' => 'long_7',
       'project_title' => 'Project Test',

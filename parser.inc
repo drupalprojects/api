@@ -160,10 +160,12 @@ function api_parse_php_file($docblock) {
     watchdog('api', 'File @name could not be parsed. ' . $e->getMessage(), array('@name' => $docblock['file_name']), WATCHDOG_ERROR);
   }
 
-  // Reserve the first array slot for the file documentation block. Note that
-  // we will only keep some of the references we parsed out.
-  $references = array();
-  $docblock['code'] = api_format_php($docblock['source'], $references, TRUE, TRUE, $docblock['is_drupal']);
+  // Find all the references in the whole file. We will omit the ones that
+  // belong to particular functions etc. in the file.
+  $references = _api_find_php_references($statements, $docblock['is_drupal']);
+
+  // Make the first doc block be for the file as a whole.
+  $docblock['code'] = _api_format_statements($statements, $docblock['is_drupal']);
   $docblocks = array($docblock);
 
   // Set default documentation block array for items other than the file.
@@ -273,34 +275,16 @@ function api_parse_yaml_file($docblock) {
   }
   $docblock['references'] = $references;
 
-  // Now we need to format the source of this file. Start by escaping
-  // HTML tags and entities.
+  // Format the code, number the lines and put into a code block.
+
+  // Escape HTML tags and entities.
   $code = $docblock['source'];
   $code = htmlspecialchars($code, ENT_NOQUOTES, 'UTF-8');
-
-  // Wrap each found callback reference string in a span. We have to use
-  // preg_replace() to do this, because we only want to match whole strings,
-  // enclosed in single quotes, double quotes, or whitespace. And we want to
-  // do the whole thing in one replace, so it matches the longest possible
-  // string in each case. So we also need to sort the strings by length,
-  // longest first, because PHP regular expressions with alternatives take the
-  // first matching one.
-  $callbacks = $references['potential callback'];
-  if (count($callbacks)) {
-    $newstrings = array();
-    usort($callbacks, '_api_length_compare');
-    foreach ($callbacks as $string) {
-      $newstrings[] = preg_quote($string, '/');
-    }
-
-    $regexp = '/(?<=[\'"\s])(' . implode('|', $newstrings) . ')(?=[\'"\s])/';
-    $code = preg_replace($regexp, '<span class="yaml-reference">$1</span>', $code);
-  }
-
-  // Number the lines and put into a code block.
+  $code = _api_format_yaml_code($code, $references);
   $code = api_number_lines($code);
   $code = '<pre class="php"><code>' . $code . '</code></pre>';
   $docblock['code'] = $code;
+  $full_references = $references;
 
   $docblocks = array($docblock);
 
@@ -319,9 +303,7 @@ function api_parse_yaml_file($docblock) {
         $code = print_r($info, TRUE);
       }
       $code = htmlspecialchars($code, ENT_NOQUOTES, 'UTF-8');
-      if (count($callbacks)) {
-        $code = preg_replace($regexp, '<span class="yaml-reference">$1</span>', $code);
-      }
+      $code = _api_format_yaml_code($code, $full_references);
       $code = api_number_lines($code);
       $code = '<pre class="php"><code>' . $code . '</code></pre>';
 
@@ -425,6 +407,46 @@ function _api_find_yaml_references($yaml, $key_refs_level) {
 }
 
 /**
+ * Formats YAML code.
+ *
+ * @param string $code
+ *   The code to format.
+ * @param array $references
+ *   Array of found references, used to put spans around strings that can
+ *   turn into link.
+ * @param string $wrappers
+ *   (optional) Characters that can wrap strings, formatted so it can go into
+ *   a [] character class in a regular expression.
+ * @param string $span_class
+ *   (optional) Class to put on spans in the text.
+ *
+ * @return string
+ *   Formatted code.
+ */
+function _api_format_yaml_code($code, $references, $wrappers = '\'"\s', $span_class = 'yaml-reference') {
+  // Wrap each found callback reference string in a span. We have to use
+  // preg_replace() to do this, because we only want to match whole strings,
+  // enclosed in single quotes, double quotes, or whitespace. And we want to
+  // do the whole thing in one replace, so it matches the longest possible
+  // string in each case. So we also need to sort the strings by length,
+  // longest first, because PHP regular expressions with alternatives take the
+  // first matching one.
+  $callbacks = $references['potential callback'];
+  if (count($callbacks)) {
+    $newstrings = array();
+    usort($callbacks, '_api_length_compare');
+    foreach ($callbacks as $string) {
+      $newstrings[] = preg_quote($string, '/');
+    }
+
+    $regexp = '/(?<=[' . $wrappers . '])(' . implode('|', $newstrings) . ')(?=[' . $wrappers . '])/';
+    $code = preg_replace($regexp, '<span class="' . $span_class . '">$1</span>', $code);
+  }
+
+  return $code;
+}
+
+/**
  * Builds a list of documentation items.
  *
  * @param array $statements
@@ -449,7 +471,6 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
   // Traverse top-level statement list to gather documentation items.
   $in_class = !empty($default_block['class']);
   $class_prefix = $in_class ? $default_block['class'] . '::' : '';
-  $printer = new \PhpParser\PrettyPrinter\Standard();
 
   foreach ($statements as $statement) {
     $docblock = $default_block;
@@ -504,9 +525,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
             $docblock['member_name'] = $args[0]->value->value;
             $docblock['object_name'] = $class_prefix . $docblock['member_name'];
             $docblock['title'] = $docblock['object_name'];
-            // Don't save references for constant definitions.
-            $references = array();
-            $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, FALSE, $docblock['is_drupal']);
+            $docblock['code'] = _api_format_statements(array($statement), $docblock['is_drupal']);
             $docblocks[] = $docblock;
           }
         }
@@ -537,9 +556,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
           $docblock['member_name'] = $sub_object->name;
           $docblock['object_name'] = $class_prefix . $docblock['member_name'];
           $docblock['title'] = $class_prefix . $title_prefix . $docblock['member_name'];
-          // Don't save references for constant and property definitions.
-          $references = array();
-          $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, FALSE, $docblock['is_drupal']);
+          $docblock['code'] = _api_format_statements(array($statement), $docblock['is_drupal']);
           if ($type != 'Stmt_Global') {
             $docblock['modifiers'] = _api_get_statement_modifiers($statement);
           }
@@ -554,11 +571,10 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         $docblock['member_name'] = $statement->name;
         $docblock['object_name'] = $class_prefix . $docblock['member_name'];
         $docblock['title'] = $docblock['object_name'];
-        $references = array();
-        $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, TRUE, $docblock['is_drupal']);
-        $docblock['references'] = $references;
-        $all_references = _api_merge_references($all_references, $references);
-        $docblock['signature'] = _api_get_function_signature($statement, $printer);
+        $docblock['code'] = _api_format_statements(array($statement), $docblock['is_drupal']);
+        $docblock['references'] = _api_find_php_references(array($statement), $docblock['is_drupal']);
+        $all_references = _api_merge_references($all_references, $docblock['references']);
+        $docblock['signature'] = _api_get_function_signature($statement);
         if ($type == 'Stmt_ClassMethod') {
           $docblock['modifiers'] = _api_get_statement_modifiers($statement);
         }
@@ -571,10 +587,10 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         $docblock['object_name'] = $statement->name;
         $docblock['title'] = $docblock['object_name'];
         $docblock['member_name'] = $docblock['object_name'];
-        // References here are discarded. We'll use the ones from the contained
-        // statements instead.
-        $references = array();
-        $docblock['code'] = api_format_php("<?php\n" . $printer->prettyPrint(array($statement)) . "\n?" . ">", $references, FALSE, FALSE, $docblock['is_drupal']);
+        // Note that we are not finding references here. We use the ones
+        // from the child statements instead.
+        $docblock['code'] = _api_format_statements(array($statement), $docblock['is_drupal']);
+
         $docblock['extends'] = array();
         $docblock['implements'] = array();
 
@@ -668,13 +684,11 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
  *
  * @param $statement
  *   A function statement to get the signature of.
- * @param $printer
- *   A pretty printer object to use to get the signature.
  *
  * @return string
  *   The function signature.
  */
-function _api_get_function_signature($statement, $printer) {
+function _api_get_function_signature($statement) {
   // Make a function with empty body, pretty-print it, and remove the {}.
   $empty_function = new \PhpParser\Node\Stmt\Function_(
     $statement->name,
@@ -684,6 +698,7 @@ function _api_get_function_signature($statement, $printer) {
       'returnType' => $statement->returnType,
     ));
 
+  $printer = new \PhpParser\PrettyPrinter\Standard();
   $output = $printer->prettyPrint(array($empty_function));
   $output = preg_replace('|\{.*\}|s', '', $output);
   $output = str_replace('function ', '', $output);
@@ -1337,7 +1352,7 @@ function api_new_external_doc_id() {
  * @param $name
  *   Name of the item making the calls.
  * @param $references
- *   Array of references set up by api_format_php().
+ *   Array of references set up by _api_find_php_references().
  * @param $do_namespaces
  *   TRUE to save namespace references. FALSE (default) to ignore them.
  * @param $namespace
@@ -1604,8 +1619,27 @@ function api_autop($text) {
  * Regular expression callback for \@code tags in api_format_documentation().
  */
 function api_format_embedded_php($matches) {
-  $references = array();
-  return "\n" . api_format_php("<?php" . decode_entities($matches[1]) . "?" . ">", $references, FALSE, FALSE, FALSE) . "\n";
+  $code = decode_entities($matches[1]);
+  $parser = (new \PhpParser\ParserFactory())->create(\PhpParser\ParserFactory::PREFER_PHP7);
+  try {
+    $statements = $parser->parse("<?php" . $code . "?" . ">");
+  }
+  catch (\PhpParser\Error $e) {
+    // The code block is not valid PHP. It could be JavaScript, annotation,
+    // PHP code with a syntax error, or something else. The best we can do is
+    // try to find function-like strings and wrap them in spans for formatting.
+    $string_matches = array();
+    $wrappers = '\'" @(';
+    $possible_matches = array();
+    if (preg_match_all('|[' . $wrappers . '](' . API_RE_FUNCTION_IN_TEXT . ')[' . $wrappers . ']|', $code, $string_matches)) {
+      $possible_matches = array_unique($string_matches[1]);
+      $code = _api_format_yaml_code($code, array('potential callback' => $possible_matches), $wrappers, 'php-function-or-constant-declared');
+    }
+
+    return "\n" . '<pre class="php"><code>' . $code . "</code></pre>\n";
+  }
+
+  return "\n" . _api_format_statements($statements) . "\n";
 }
 
 /**
@@ -1709,29 +1743,240 @@ function api_documentation_summary($documentation) {
 }
 
 /**
- * Colorizes and formats PHP code, and finds references in it.
+ * Traverses PHP statements to find references.
  *
- * @param $code
- *   PHP code to format. Note that any actual PHP code needs to be enclosed in
- *   PHP start/end tags to be formatted correctly.
- * @param $references
- *   Array to return references in, if $track_references is TRUE. References
- *   are hook invocations, function calls, etc. $references is an associative
- *   array where the keys are the types of references ('function',
- *   'potential hook', etc.), and the values are arrays of the names of this
- *   type that were found.
- * @param $number
- *   FALSE to not number the lines (default). TRUE to number the lines, or an
- *   integer to start numbering at that line number.
- * @param $track_references
- *   TRUE (default) to track references, FALSE to skip reference tracking.
- * @param $is_drupal
- *   TRUE (default) to use Drupal-specific parsing; FALSE to skip Drupalisms.
+ * @param array $statements
+ *   Array of statements to traverse from PhpParser parsing.
+ * @param bool $is_drupal
+ *   (optional) TRUE (default) if this is Drupal code; FALSE if not. This turns
+ *   on recognition of things like hooks and theme calls.
+ * @param array $state
+ *   (optional) Array to keep track of state for recursive calls.
  *
- * @return
+ * @return array
+ *   Array of references found. References are hook invocations, function calls,
+ *   etc., and they are put into an associative array where the keys are the
+ *   types of references ('function', 'potential hook', etc.), and the values
+ *   are arrays of the names of this type that were found.
+ */
+function _api_find_php_references($statements, $is_drupal = TRUE, $state = array()) {
+  $references = array();
+
+  $invoke_function_names = array(
+    '_field_invoke' => 'hook',
+    '_field_invoke_default' => 'hook',
+    '_field_invoke_multiple' => 'hook',
+    '_field_invoke_multiple_default' => 'hook',
+    'bootstrap_invoke_all' => 'hook',
+    'entity_invoke_bundle_hook' => 'hook',
+    'getImplementations' => 'hook',
+    'implementsHook' => 'hook',
+    'invoke' => 'hook',
+    'invokeAll' => 'hook',
+    'invokeHook' => 'hook',
+    'module_hook' => 'hook',
+    'module_implements' => 'hook',
+    'module_invoke' => 'hook',
+    'module_invoke_all' => 'hook',
+    'node_invoke' => 'hook',
+    'user_module_invoke' => 'hook',
+    'theme' => 'theme',
+    'drupal_alter' => 'alter',
+    'alter' => 'alter',
+    'alterInfo' => 'alter',
+  );
+
+  foreach ($statements as $statement) {
+    $type = $statement->getType();
+    $sub_nodes = $statement->getSubNodeNames();
+    $sub_statements = NULL;
+    $sub_state = $state;
+
+    // Find references that are directly in this statement.
+    if ($type == 'Expr_FuncCall') {
+      // Function call. Only store a reference if it is a directly-
+      // named function, not a variable.
+      $name = '';
+      if ($statement->name && is_object($statement->name) && $statement->name->getType() == 'Name') {
+        $name = $statement->name->toString();
+      }
+      if ($name) {
+        $references['function'][$name] = $name;
+        if ($is_drupal && isset($invoke_function_names[$name])) {
+          $sub_state['invoke_call'] = $invoke_function_names[$name];
+        }
+      }
+
+      if (!empty($statement->args)) {
+        $sub_statements = $statement->args;
+      }
+    }
+    elseif ($type == 'Expr_MethodCall') {
+      // Method call. Only store a reference if it is a directly-named method,
+      // not a variable.
+      $name = '';
+      if (is_string($statement->name)) {
+        $name = $statement->name;
+      }
+      // Also only save it if it's a method on $this.
+      if ($name && $statement->var && $statement->var->name && $statement->var->name == 'this') {
+        $references['member-self'][$name] = $name;
+        if ($is_drupal && isset($invoke_function_names[$name])) {
+          $sub_state['invoke_call'] = $invoke_function_names[$name];
+        }
+      }
+
+      if (!empty($statement->args)) {
+        $sub_statements = $statement->args;
+      }
+    }
+    elseif ($type == 'Expr_StaticCall') {
+      // Method call on a static class. Only save if it is a directly-named
+      // method, not a variable, on a directly-named class or 'self'.
+      $name = '';
+      $class = '';
+      if (is_string($statement->name)) {
+        $name = $statement->name;
+      }
+      if ($statement->class && $statement->class->getType() == 'Name') {
+        $class = $statement->class->toString();
+      }
+      if ($name && $class) {
+        if ($class == 'self') {
+          $references['member-self'][$name] = $name;
+        }
+        elseif ($class == 'parent') {
+          $references['member-parent'][$name] = $name;
+        }
+        else {
+          $references['member-class'][$class . '::' . $name] = $class . '::' . $name;
+        }
+        if ($is_drupal && isset($invoke_function_names[$name])) {
+          $sub_state['invoke_call'] = $invoke_function_names[$name];
+        }
+      }
+
+      if (!empty($statement->args)) {
+        $sub_statements = $statement->args;
+      }
+    }
+    elseif ($type == 'Expr_ConstFetch') {
+      // Reference to a constant.
+      $name = $statement->name->toString();
+      $references['constant'][$name] = $name;
+    }
+    elseif ($type == 'Expr_ClassConstFetch') {
+      // Reference to a class constant. Only store if it is a directly-named
+      // class, not a variable like $myclass.
+      if ($statement->class && $statement->class->getType() == 'Name') {
+        $name = $statement->name;
+        $class = $statement->class->toString();
+        $references['constant'][$name] = $class . '::' . $name;
+      }
+    }
+    elseif ($type == 'Scalar_String') {
+      $name = $statement->value;
+      if ($name) {
+        if (!empty($state['invoke_call'])) {
+          $references['potential ' . $state['invoke_call']][$name] = $name;
+        }
+        elseif ($is_drupal && isset($state['array_key']) && $state['array_key'] == '#theme') {
+          $references['potential theme'][$name] = $name;
+        }
+        elseif ($is_drupal && isset($state['array_key']) && $state['array_key'] == '#type') {
+          $references['potential element'][$name] = $name;
+        }
+        elseif (preg_match("|^" . DRUPAL_PHP_FUNCTION_PATTERN . "$|", $name)) {
+          $references['potential callback'][$name] = $name;
+        }
+
+        if (preg_match("|^" . API_RE_FILENAME . "$|", $name)) {
+          // Some of these may be quite long, so truncate.
+          $newname = drupal_substr($name, 0, 127);
+          $references['potential file'][$newname] = $newname;
+        }
+      }
+    }
+    elseif ($type == 'Arg') {
+      // Function argument.
+      $sub_statements = $statement->value;
+    }
+    elseif ($type == 'Expr_ArrayItem') {
+      // Array item.
+      if ($statement->key && $statement->key->getType() == 'Scalar_String') {
+        $sub_state['array_key'] = $statement->key->value;
+      }
+      $sub_statements = $statement->value;
+    }
+    elseif ($statement instanceof \PhpParser\Node\Stmt\ClassLike) {
+      $sub_state['class'] = $statement->name;
+      $sub_statements = $statement->stmts;
+    }
+    elseif (in_array('items', $sub_nodes)) {
+      // An array or similar.
+      $sub_statements = $statement->items;
+    }
+    elseif (in_array('stmts', $sub_nodes)) {
+      // A closure, case, catch, function declaration, or similar statement
+      // that has sub-statements.
+      $sub_statements = $statement->stmts;
+    }
+    elseif (in_array('expr', $sub_nodes)) {
+      // An assignment, unary operation, or similar.
+      $sub_statements = $statement->expr;
+    }
+    elseif (in_array('left', $sub_nodes) && in_array('right', $sub_nodes)) {
+      // A binary operation.
+      $sub_statements = array($statement->left, $statement->right);
+    }
+    elseif (in_array('cond', $sub_nodes) && in_array('if', $sub_nodes) && in_array('else', $sub_nodes)) {
+      // A ternary operation.
+      $sub_statements = array($statement->cond, $statement->if, $statement->else);
+    }
+
+    // Recursively find references in sub-statements.
+    if (!empty($sub_statements)) {
+      if (!is_array($sub_statements)) {
+        $sub_statements = array($sub_statements);
+      }
+      $references = _api_merge_references($references, _api_find_php_references($sub_statements, $is_drupal, $sub_state));
+    }
+
+    // After processing the first argument of functions, unset some state
+    // elements.
+    $state['invoke_call'] = FALSE;
+  }
+
+  return $references;
+}
+
+/**
+ * Formats statements as PHP code set up for linking at output time.
+ *
+ * @param array $statements
+ *   Array of statements from PhpParser parsing.
+ * @param bool $is_drupal
+ *   (optional) TRUE (default) if this is Drupal code; FALSE if not. This turns
+ *   on recognition of things like hooks and theme calls.
+ *
+ * @return string
  *   HTML-formatted code, with spans enclosing various PHP elements.
  */
-function api_format_php($code, &$references, $number = FALSE, $track_references = TRUE, $is_drupal = TRUE) {
+function _api_format_statements($statements, $is_drupal = TRUE) {
+  // @todo Substitute a pretty printer that does our formatting
+  $printer = new \PhpParser\PrettyPrinter\Standard();
+  $code = "<?php\n" . $printer->prettyPrint($statements) . "\n?>";
+  return api_tmp_old_formatter($code, $is_drupal);
+}
+
+/**
+ * Temporary code formatter.
+ *
+ * @deprecated Will be replaced soon.
+ */
+function api_tmp_old_formatter($code, $is_drupal) {
+  // @todo Replace this. See _api_format_statements().
+
   // Check for invalid Unicode, which screws everything up.
   if (!mb_check_encoding($code, 'UTF-8')) {
     return t('Non-displayable characters.');
@@ -1746,22 +1991,6 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
   }
   if (!defined('T_DOC_COMMENT')) {
     define('T_DOC_COMMENT', T_COMMENT);
-  }
-
-  // Set up to track references, if we are tracking them.
-  if ($track_references) {
-    $references = array(
-      'function' => array(),
-      'potential hook' => array(),
-      'potential theme' => array(),
-      'potential element' => array(),
-      'potential alter' => array(),
-      'potential callback' => array(),
-      'member-parent' => array(),
-      'member-self' => array(),
-      'member' => array(),
-      'member-class' => array(),
-    );
   }
 
   // Keep track of:
@@ -1960,29 +2189,13 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           $class = 'php-string';
           if ($invoke_type != '' && preg_match("|^'" . API_RE_FUNCTION_CHARACTERS . "'$|", $value)) {
             $class .= ' potential-' . $invoke_type;
-            if ($track_references) {
-              $newname = $value_no_quotes;
-              $references['potential ' . $invoke_type][$newname] = $newname;
-            }
           }
-          if ($track_references) {
-            if (preg_match("|^'" . DRUPAL_PHP_FUNCTION_PATTERN . "'$|", $value)) {
-              $reftype = 'potential callback';
-              if ($previous_key == '#theme') {
-                $reftype = 'potential theme';
-                $class .= ' potential-theme';
-              }
-              elseif ($previous_key == '#type') {
-                $reftype = 'potential element';
-                $class .= ' potential-element';
-              }
-              $newname = $value_no_quotes;
-              $references[$reftype][$newname] = $newname;
+          if (preg_match("|^'" . DRUPAL_PHP_FUNCTION_PATTERN . "'$|", $value)) {
+            if ($previous_key == '#theme') {
+              $class .= ' potential-theme';
             }
-            elseif (preg_match("|^'" . API_RE_FILENAME . "'$|", $value)) {
-              // Some of these may be quite long, so truncate.
-              $newname = str_replace("'", '', drupal_substr($value, 0, 127));
-              $references['potential file'][$newname] = $newname;
+            elseif ($previous_key == '#type') {
+              $class .= ' potential-element';
             }
           }
 
@@ -2033,15 +2246,6 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
           }
           if ($in_annotation) {
             $class = 'class-annotation';
-            $reference_type = NULL;
-          }
-          elseif ($could_be_constant) {
-            $reference_type = 'constant';
-            $reference = $value;
-          }
-          else {
-            $reference_type = 'function';
-            $reference = $value;
           }
 
           // See if this is a function call or not, by looking ahead to the
@@ -2057,34 +2261,22 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
             }
             if ($member_of == 'parent') {
               $class .= ' member-of-parent';
-              $reference_type = 'member-parent';
             }
             elseif ($member_of == '$this' || $member_of == 'self' || $member_of == 'static') {
               $class .= ' member-of-self';
-              $reference_type = 'member-self';
             }
             elseif (strpos($member_of, '$') === 0) {
               $class .= ' member-of-variable';
-              $reference_type = 'member';
             }
             elseif (strlen($member_of) > 0) {
               $class .= ' member-of-class-' . $member_of;
-              $reference_type = 'member-class';
-              $reference = $member_of . '::' . $value;
             }
             else {
               $class .= ' member-of-variable';
-              $reference_type = 'member';
             }
           }
 
           $output .= '<span class="' . $class . '">' . $value . '</span>';
-
-          // Save references -- for functions and constants, only if they're not
-          // being declared.
-          if ($track_references && ($is_function || $could_be_constant) && !$declaring && $reference_type) {
-            $references[$reference_type][$value] = $reference;
-          }
 
           // Update $in_member/$member_of status.
           if ($in_member) {
@@ -2280,12 +2472,8 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
     $output = substr($output, $open_size, strlen($output) - $open_size - $close_size);
   }
 
-  // Add line numbering, if requested.
-  if ($number !== FALSE) {
-    $output = api_number_lines($output, $number);
-  }
-
   $output = '<pre class="php"><code>' . $output . '</code></pre>';
+
   return $output;
 }
 
@@ -2295,7 +2483,7 @@ function api_format_php($code, &$references, $number = FALSE, $track_references 
  * @param string $code
  *   Code to number.
  * @param int $number
- *   Number to start with.
+ *   (optional) Number to start with, if different from 1.
  *
  * @return string
  *   Numbered code. Uses OL list.
@@ -3176,7 +3364,7 @@ function api_update_all_branches() {
  * @see api_update_all_branches()
  */
 function api_update_branch_php($branch) {
-  $response = drupal_http_request($branch->summary);
+  $response = drupal_http_request($branch->summary, array('timeout' => 60));
   if ($response->code === '200') {
     $docblocks = array();
     // Note that drupal_json_decode() passes TRUE to json_decode(), so that all
