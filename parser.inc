@@ -698,6 +698,8 @@ function _api_get_function_signature($statement) {
       'returnType' => $statement->returnType,
     ));
 
+  // Note: Use the Standard pretty-printer here, not our class that does
+  // HTML formatting.
   $printer = new \PhpParser\PrettyPrinter\Standard();
   $output = $printer->prettyPrint(array($empty_function));
   $output = preg_replace('|\{.*\}|s', '', $output);
@@ -1964,7 +1966,7 @@ function _api_find_php_references($statements, $is_drupal = TRUE, $state = array
  */
 function _api_format_statements($statements, $is_drupal = TRUE) {
   // @todo Substitute a pretty printer that does our formatting
-  $printer = new \PhpParser\PrettyPrinter\Standard();
+  $printer = new ApiPrettyPrinter();
   $code = "<?php\n" . $printer->prettyPrint($statements) . "\n?>";
   return api_tmp_old_formatter($code, $is_drupal);
 }
