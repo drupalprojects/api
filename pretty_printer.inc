@@ -5,6 +5,12 @@
  * The Pretty Printer class for PHP code.
  */
 
+use PhpParser\Comment;
+use PhpParser\Node;
+use PhpParser\Node\Expr;
+use PhpParser\Node\Stmt;
+use PhpParser\PrettyPrinter\Standard;
+
 /**
  * Pretty-prints code for Drupal coding standards and HTML output.
  *
@@ -23,7 +29,7 @@
  *
  * @todo Also need to add HTML formatting for links.
  */
-class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
+class ApiPrettyPrinter extends Standard {
 
   /**
    * Overrides basic statement printing.
@@ -38,16 +44,12 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
       $comments = $node->getAttribute('comments', array());
       if ($comments) {
         $result .= "\n\n" . $this->pComments($comments);
-        if ($node instanceof \PhpParser\Node\Stmt\Nop) {
+        if ($node instanceof Stmt\Nop) {
           continue;
         }
       }
-      else {
-        // If there is no comment, leave a blank line anyway.
-        $result .= "\n";
-      }
 
-      $result .= "\n" . $this->p($node) . ($node instanceof \PhpParser\Node\Expr ? ';' : '');
+      $result .= "\n" . $this->p($node) . ($node instanceof Expr ? ';' : '');
     }
     if ($indent) {
       // Indent two spaces.
@@ -96,7 +98,7 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
    *   '//' if this is a single-line comment, or /** or /* if it is a multi-
    *   line comment.
    */
-  protected function findCommentPrefix(\PhpParser\Comment $comment) {
+  protected function findCommentPrefix(Comment $comment) {
     $text = trim(preg_replace('|\s|', ' ', $comment->getText()));
     if (!$text) {
       return '';
@@ -121,7 +123,7 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
   protected function pCommaSeparatedMultiLine(array $nodes, $comma_at_end = TRUE) {
     // Implode with commas and newlines.
     $result = $this->pImplode($nodes, ",\n");
-    if ($comma_at_end) {
+    if ($comma_at_end && count($nodes)) {
       $result .= ',';
     }
 
@@ -134,10 +136,10 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
    *
    * @see self::pExprArrayItem
    */
-  protected function pExpr_Array(\PhpParser\Node\Expr\Array_ $node) {
+  protected function pExpr_Array(Expr\Array_ $node) {
     $syntax = $node->getAttribute('kind',
-      $this->options['shortArraySyntax'] ? \PhpParser\Node\Expr\Array_::KIND_SHORT : \PhpParser\Node\Expr\Array_::KIND_LONG);
-    if ($syntax === \PhpParser\Node\Expr\Array_::KIND_SHORT) {
+      $this->options['shortArraySyntax'] ? Expr\Array_::KIND_SHORT : Expr\Array_::KIND_LONG);
+    if ($syntax === Expr\Array_::KIND_SHORT) {
       return "[\n" . $this->pCommaSeparatedMultiLine($node->items) . "]";
     } else {
       return "array(\n" . $this->pCommaSeparatedMultiLine($node->items) . ")";
@@ -147,7 +149,7 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
   /**
    * Overrides printing of array items to include comments.
    */
-  protected function pExpr_ArrayItem(\PhpParser\Node\Expr\ArrayItem $node) {
+  protected function pExpr_ArrayItem(Expr\ArrayItem $node) {
     $result = '';
     $comments = $node->getAttribute('comments', array());
     if ($comments) {
@@ -160,16 +162,31 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
   }
 
   /**
+   * Overrides elseif printing to start on next line.
+   */
+  protected function pStmt_ElseIf(Stmt\ElseIf_ $node) {
+    return "\n" . 'elseif (' . $this->p($node->cond) . ') {'
+      . $this->pStmts($node->stmts) . "\n" . '}';
+  }
+
+  /**
+   * Overrides else printing to start on next line.
+   */
+  protected function pStmt_Else(Stmt\Else_ $node) {
+    return "\n" . 'else {' . $this->pStmts($node->stmts) . "\n" . '}';
+  }
+
+  /**
    * Overrides interface printing.
    *
    * Modifications:
    * - Put the { on the same line.
    * - Leave a blank line before the }.
    */
-  protected function pStmt_Interface(\PhpParser\Node\Stmt\Interface_ $node) {
+  protected function pStmt_Interface(Stmt\Interface_ $node) {
     return 'interface ' . $node->name
       . (!empty($node->extends) ? ' extends ' . $this->pCommaSeparated($node->extends) : '')
-      . '{' . $this->pStmts($node->stmts) . "\n\n" . '}';
+      . ' {' . $this->pStmts($node->stmts) . "\n\n" . '}';
   }
 
   /**
@@ -179,9 +196,9 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
    * - Put the { on the same line.
    * - Leave a blank line before the }.
    */
-  protected function pStmt_Trait(\PhpParser\Node\Stmt\Trait_ $node) {
+  protected function pStmt_Trait(Stmt\Trait_ $node) {
     return 'trait ' . $node->name
-      . '{' . $this->pStmts($node->stmts) . "\n\n" . '}';
+      . ' {' . $this->pStmts($node->stmts) . "\n\n" . '}';
   }
 
   /**
@@ -191,35 +208,51 @@ class ApiPrettyPrinter extends \PhpParser\PrettyPrinter\Standard {
    * - Put the { on the same line.
    * - Leave a blank line before the }.
    */
-  protected function pClassCommon(\PhpParser\Node\Stmt\Class_ $node, $afterClassToken) {
+  protected function pClassCommon(Stmt\Class_ $node, $afterClassToken) {
     return $this->pModifiers($node->flags)
       . 'class' . $afterClassToken
       . (null !== $node->extends ? ' extends ' . $this->p($node->extends) : '')
       . (!empty($node->implements) ? ' implements ' . $this->pCommaSeparated($node->implements) : '')
-      . '{' . $this->pStmts($node->stmts) . "\n\n" . '}';
+      . ' {' . $this->pStmts($node->stmts) . "\n\n" . '}';
   }
 
   /**
    * Overrides function printing to put the { on the same line.
    */
-  protected function pStmt_Function(\PhpParser\Node\Stmt\Function_ $node) {
+  protected function pStmt_Function(Stmt\Function_ $node) {
     return 'function ' . ($node->byRef ? '&' : '') . $node->name
       . '(' . $this->pCommaSeparated($node->params) . ')'
       . (null !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '')
-      . '{' . $this->pStmts($node->stmts) . "\n" . '}';
+      . ' {' . $this->pStmts($node->stmts) . "\n" . '}';
   }
 
   /**
    * Overrides class method printing to put the { on the same line.
    */
-  protected function pStmt_ClassMethod(\PhpParser\Node\Stmt\ClassMethod $node) {
+  protected function pStmt_ClassMethod(Stmt\ClassMethod $node) {
     return $this->pModifiers($node->flags)
       . 'function ' . ($node->byRef ? '&' : '') . $node->name
       . '(' . $this->pCommaSeparated($node->params) . ')'
       . (null !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '')
       . (null !== $node->stmts
-        ? '{' . $this->pStmts($node->stmts) . "\n" . '}'
+        ? ' {' . $this->pStmts($node->stmts) . "\n" . '}'
         : ';');
     }
+
+
+  /**
+   * Overrides closure printing.
+   *
+   * Overrides:
+   * - Space between use and the use statements.
+   */
+  protected function pExpr_Closure(Expr\Closure $node) {
+    return ($node->static ? 'static ' : '')
+      . 'function ' . ($node->byRef ? '&' : '')
+      . '(' . $this->pCommaSeparated($node->params) . ')'
+      . (!empty($node->uses) ? ' use (' . $this->pCommaSeparated($node->uses) . ')': '')
+      . (null !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '')
+      . ' {' . $this->pStmts($node->stmts) . "\n" . '}';
+  }
 
 }

@@ -84,5 +84,13 @@ class ApiInheritanceTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('BaseInterface::base_function', 0, 'Indirect function override is shown');
     $this->assertLink('YetAnotherExcitingClass::second_function', 0, 'Directly inherited function is shown');
     $this->assertLink('ExcitingClass::second_function', 0, 'Directly inherited function override is shown');
+
+    // Check formatting for PHP files in top directory of this branch.
+    $files = array('inheritance.php', 'sample2.php');
+    foreach ($files as $file) {
+      $object = api_filename_load($file, $this->branch_info['project'], $this->branch_info['branch_name']);
+      $this->assertCodeFormatting($object->code, $this->branch_info['directory'] . '/' . $object->file_name);
+    }
   }
+
 }

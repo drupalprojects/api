@@ -8,8 +8,8 @@
 class A extends B {
 }
 
-Class B extends C {
+class B extends C {
 }
 
-Class C extends A {
+class C extends A {
 }

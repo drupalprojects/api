@@ -170,6 +170,12 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     // Set breaks tag back to empty to continue with testing.
     variable_set('api_breaks_tag', '');
 
+    // Check formatting for PHP files in top directory of this branch.
+    $files = array('ClassA.php', 'ClassB.php', 'ClassE.php', 'InterfaceC.php', 'InterfaceD.php', 'InterfaceD2.php', 'no_namespace.php', 'TraitF.php');
+    foreach ($files as $file) {
+      $object = api_filename_load($file, $this->branch_info['project'], $this->branch_info['branch_name']);
+      $this->assertCodeFormatting($object->code, $this->branch_info['directory'] . '/' . $object->file_name);
+    }
   }
 
   /**

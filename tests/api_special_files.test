@@ -22,7 +22,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   function setUp() {
     $this->baseSetUp(array('api_test'));
 
-    // Set up a files branch, but do not exclude the usual directories.
+    // Set up a files branch with the special files directory.
     $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/special_files', 'excluded' => ''));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
@@ -38,6 +38,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
    * Runs the other tests, to avoid reparsing multiple times.
    */
   function testAll() {
+    $this->_testFormatting();
     $this->_testUnicode();
     $this->_testBadFileHeader();
     $this->_testExtendsLoops();
@@ -45,6 +46,19 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->_testSearchCaseSensitivity();
     $this->_testYamlServices();
     $this->_testParseAlterHook();
+  }
+
+  /**
+   * Tests that code formatting matches original code for PHP files.
+   */
+  function _testFormatting() {
+    // @todo Add in ClassWithUnicode.php when we can display it. Current output
+    // is "Non-displayable characters".
+    $files = array('badheader.php', 'ClassExtendsLoop.php', 'class_loop.php', 'dup_names.php', 'php54.php');
+    foreach ($files as $file) {
+      $object = api_filename_load($file, $this->branch_info['project'], $this->branch_info['branch_name']);
+      $this->assertCodeFormatting($object->code, $this->branch_info['directory'] . '/' . $object->file_name);
+    }
   }
 
   /**

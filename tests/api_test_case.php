@@ -322,6 +322,38 @@ class ApiTestCase extends DrupalWebTestCase {
     }
     $this->drupalPost(NULL, array(), t('Clear log messages'));
   }
+
+  /**
+   * Asserts that code formatting did not change the code.
+   *
+   * @param string $formatted
+   *   Formatted code to check.
+   * @param string $file
+   *   File name to read code from, to check against.
+   */
+  protected function assertCodeFormatting($formatted, $file) {
+    $formatted = html_entity_decode(strip_tags($formatted));
+    $original = file_get_contents($file);
+
+    // Remove spaces at ends of lines, extra vertical whitespace,
+    // and ?php tags from both.
+    $patterns = array(
+      '|\s+$|m' => '',
+      '|\n+|' => "\n",
+      // @todo We should not need to remove ?php tags. See if this can be
+      // removed when we finish completing replacement of the pretty printing
+      // code.
+      '|' . preg_quote('<?php') . '|' => '',
+    );
+    foreach ($patterns as $pattern => $replace) {
+      $original = preg_replace($pattern, $replace, $original);
+      $formatted = preg_replace($pattern, $replace, $formatted);
+    }
+
+    // Trim and compare.
+    $this->assertEqual(trim($original), trim($formatted), "Formatted code matches code in $file");
+  }
+
 }
 
 /**
@@ -590,4 +622,5 @@ class ApiWebPagesBaseTest extends ApiTestCase {
     $links = $this->xpath('//a[normalize-space(text())=:label]', array(':label' => $label));
     $this->assertEqual(count($links), $count, $message);
   }
+
 }

@@ -5,6 +5,11 @@
  * The PHP documentation parser that generates content for api.module.
  */
 
+use PhpParser\Node\Stmt;
+use PhpParser\ParserFactory;
+use PhpParser\PrettyPrinter;
+use Symfony\Component\Yaml;
+
 /**
  * Reads in a file and calls a callback function to parse and save it.
  *
@@ -152,7 +157,7 @@ function api_parse_php_file($docblock) {
     return;
   }
 
-  $parser = (new \PhpParser\ParserFactory())->create(\PhpParser\ParserFactory::PREFER_PHP7);
+  $parser = (new ParserFactory())->create(ParserFactory::PREFER_PHP7);
   try {
     $statements = $parser->parse($docblock['source']);
   }
@@ -165,7 +170,7 @@ function api_parse_php_file($docblock) {
   $references = _api_find_php_references($statements, $docblock['is_drupal']);
 
   // Make the first doc block be for the file as a whole.
-  $docblock['code'] = _api_format_statements($statements, $docblock['is_drupal']);
+  $docblock['code'] = _api_format_statements($statements, $docblock['is_drupal'], TRUE);
   $docblocks = array($docblock);
 
   // Set default documentation block array for items other than the file.
@@ -235,7 +240,7 @@ function api_parse_yaml_file($docblock) {
   $docblock['documentation'] = $docblock['file_name'];
 
   // Parse the YAML in the file.
-  $parser = new \Symfony\Component\Yaml\Parser();
+  $parser = new Yaml\Parser();
   try {
     $parsed = $parser->parse($docblock['source']);
   }
@@ -290,7 +295,7 @@ function api_parse_yaml_file($docblock) {
 
   // For services files, make docblocks for each service.
   if ($is_services && isset($parsed['services'])) {
-    $dumper = new \Symfony\Component\Yaml\Dumper();
+    $dumper = new Yaml\Dumper();
     $dumper->setIndentation(2);
 
     foreach ($parsed['services'] as $name => $info) {
@@ -690,7 +695,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
  */
 function _api_get_function_signature($statement) {
   // Make a function with empty body, pretty-print it, and remove the {}.
-  $empty_function = new \PhpParser\Node\Stmt\Function_(
+  $empty_function = new Stmt\Function_(
     $statement->name,
     array(
       'byRef' => $statement->byRef,
@@ -700,7 +705,7 @@ function _api_get_function_signature($statement) {
 
   // Note: Use the Standard pretty-printer here, not our class that does
   // HTML formatting.
-  $printer = new \PhpParser\PrettyPrinter\Standard();
+  $printer = new PrettyPrinter\Standard();
   $output = $printer->prettyPrint(array($empty_function));
   $output = preg_replace('|\{.*\}|s', '', $output);
   $output = str_replace('function ', '', $output);
@@ -1622,7 +1627,7 @@ function api_autop($text) {
  */
 function api_format_embedded_php($matches) {
   $code = decode_entities($matches[1]);
-  $parser = (new \PhpParser\ParserFactory())->create(\PhpParser\ParserFactory::PREFER_PHP7);
+  $parser = (new ParserFactory())->create(ParserFactory::PREFER_PHP7);
   try {
     $statements = $parser->parse("<?php" . $code . "?" . ">");
   }
@@ -1960,15 +1965,20 @@ function _api_find_php_references($statements, $is_drupal = TRUE, $state = array
  * @param bool $is_drupal
  *   (optional) TRUE (default) if this is Drupal code; FALSE if not. This turns
  *   on recognition of things like hooks and theme calls.
+ * @param bool $is_file
+ *   (optional) TRUE if this is a file (to print the opening ?php tag). FALSE
+ *   (default) if not.
  *
  * @return string
  *   HTML-formatted code, with spans enclosing various PHP elements.
  */
-function _api_format_statements($statements, $is_drupal = TRUE) {
+function _api_format_statements($statements, $is_drupal = TRUE, $is_file = FALSE) {
   // @todo Substitute a pretty printer that does our formatting
+  // @todo Also do the right thing with files.
   $printer = new ApiPrettyPrinter();
-  $code = "<?php\n" . $printer->prettyPrint($statements) . "\n?>";
-  return api_tmp_old_formatter($code, $is_drupal);
+  $code = "<?php\n" . $printer->prettyPrint($statements);
+  $code = api_tmp_old_formatter($code, $is_drupal);
+  return $code;
 }
 
 /**
