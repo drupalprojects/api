@@ -1483,8 +1483,12 @@ function api_format_documentation($documentation, $auto_p = TRUE, &$references) 
   if (!drupal_validate_utf8($documentation)) {
     return t('Non-displayable characters.');
   }
-  // Replace 4-byte characters not supported by MySQL's utf8 encoding
-  $documentation = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '�', $documentation);
+
+  $connection = Database::getConnection();
+  if (!method_exists($connection, 'utf8mb4IsActive') || !$connection->utf8mb4IsActive()) {
+    // Replace 4-byte characters not supported by MySQL's utf8 encoding
+    $documentation = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '�', $documentation);
+  }
 
   $documentation = check_plain($documentation);
 
@@ -1993,8 +1997,12 @@ function api_tmp_old_formatter($code, $is_drupal) {
   if (!drupal_validate_utf8($code)) {
     return t('Non-displayable characters.');
   }
-  // Replace 4-byte characters not supported by MySQL's utf8 encoding
-  $code = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '�', $code);
+
+  $connection = Database::getConnection();
+  if (!method_exists($connection, 'utf8mb4IsActive') || !$connection->utf8mb4IsActive()) {
+    // Replace 4-byte characters not supported by MySQL's utf8 encoding.
+    $code = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '�', $code);
+  }
 
   $output = '';
 
