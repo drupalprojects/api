@@ -3393,15 +3393,6 @@ function api_libraries_loaded($watchdog = TRUE) {
     return $loaded;
   }
 
-  // Verify that the MB library exists.
-  if (!function_exists('mb_check_encoding')) {
-    if ($watchdog) {
-      watchdog('api', 'PHP multi-byte library is not installed.', array(), WATCHDOG_ERROR);
-    }
-    $loaded = FALSE;
-    return FALSE;
-  }
-
   // Verify that the external classes can be created.
   try {
     $factory = new \PhpParser\ParserFactory();
