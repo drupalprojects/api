@@ -52,8 +52,8 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
    * Tests that code formatting matches original code for PHP files.
    */
   function _testFormatting() {
-    // @todo Add in ClassWithUnicode.php when we can display it. Current output
-    // is "Non-displayable characters".
+    // ClassWithUnicode.php is omitted, because it has a Unicode error in
+    // the file (intentionally), so the formatted output does not work.
     $files = array('badheader.php', 'ClassExtendsLoop.php', 'class_loop.php', 'dup_names.php', 'php54.php');
     foreach ($files as $file) {
       $object = api_filename_load($file, $this->branch_info['project'], $this->branch_info['branch_name']);

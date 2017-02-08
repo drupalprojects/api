@@ -39,12 +39,20 @@ function array_5_4() {
       5,
     ),
   );
+}
 
-  // Switch statement.
+/**
+ * A function with a bunch of different code in it, to test formatting.
+ *
+ * And let's make sure that the <em>comment</em> has some HTML in it.
+ */
+function formatting_test() {
+  // Switch statement. Comment has <em>HTML tags</em> in it.
   switch ($path) {
     case 'admin/help#api':
       return t('
-<p>This is an implementation of a subset of the Doxygen documentation generator specification, tuned to produce output that best benefits the Drupal code base. It is designed to assume the code it documents follows Drupal coding conventions, and supports documentation blocks in formats described on !doxygen_link.</p>');
+<p>This is an implementation of a subset of the Doxygen documentation generator specification, tuned to produce output that best benefits the Drupal code base. It is designed to assume the code it documents follows Drupal coding conventions, and supports documentation blocks in formats described on !doxygen_link.</p>
+<p>Here is another paragraph.</p>');
       break;
 
     case 'something_else':
@@ -75,5 +83,22 @@ function array_5_4() {
       continue;
     }
   }
+
+  // Strings with <<< syntax.
+  $foo = <<<EOO
+Here is some text with <strong>HTML tags in it</strong>
+for this string.
+EOO;
+
+  $bar = <<<'EPP'
+Here is some text with <strong>HTML tags in it</strong>
+for this string.
+EPP;
+
+  $baz = <<<'EOT'
+ My name is "$name". I am printing some $foo->foo.
+Now, I am printing some {$foo->bar[1]}.
+This should not print a capital 'A': \x41
+EOT;
 
 }

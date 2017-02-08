@@ -332,18 +332,17 @@ class ApiTestCase extends DrupalWebTestCase {
    *   File name to read code from, to check against.
    */
   protected function assertCodeFormatting($formatted, $file) {
-    $formatted = html_entity_decode(strip_tags($formatted));
     $original = file_get_contents($file);
 
-    // Remove spaces at ends of lines, extra vertical whitespace,
-    // and ?php tags from both.
+    // In formatted output, strip out the formatting tags, and then decode
+    // HTML entities, which should get us back to the original HTML that was
+    // in the file. Hopefully. That is what we're testing in this assert.
+    $formatted = html_entity_decode(strip_tags($formatted));
+
+    // Remove spaces at ends of lines, and vertical whitespace.
     $patterns = array(
       '|\s+$|m' => '',
       '|\n+|' => "\n",
-      // @todo We should not need to remove ?php tags. See if this can be
-      // removed when we finish completing replacement of the pretty printing
-      // code.
-      '|' . preg_quote('<?php') . '|' => '',
     );
     foreach ($patterns as $pattern => $replace) {
       $original = preg_replace($pattern, $replace, $original);
@@ -351,7 +350,9 @@ class ApiTestCase extends DrupalWebTestCase {
     }
 
     // Trim and compare.
-    $this->assertEqual(trim($original), trim($formatted), "Formatted code matches code in $file");
+    $original = trim($original);
+    $formatted = trim($formatted);
+    $result = $this->assertEqual($original, $formatted, "Formatted code matches code in $file");
   }
 
 }
