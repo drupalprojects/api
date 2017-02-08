@@ -653,6 +653,8 @@ function api_schema() {
  * Implements hook_enable().
  */
 function api_enable() {
+  module_load_include('inc', 'api', 'api.db');
+
   // Make sure a few things are reset. This is only necessary for running tests.
   drupal_static_reset('api_get_branches');
   drupal_static_reset('api_get_branch_names');
@@ -1303,7 +1305,7 @@ function api_update_7115() {
  * Reset branches as sorting has been updated.
  */
 function api_update_7116() {
-  module_load_include('module', 'api');
+  module_load_include('inc', 'api', 'api.db');
   api_reset_branches();
 }
 
@@ -1562,6 +1564,8 @@ function api_update_7129() {
  * Make the api_external_documentation.url field text instead of varchar.
  */
 function api_update_7130() {
+  module_load_include('inc', 'api', 'api.db');
+
   db_change_field('api_external_documentation', 'url', 'url', array(
     'type' => 'text',
     'size' => 'medium',

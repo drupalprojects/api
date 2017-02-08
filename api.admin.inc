@@ -5,8 +5,11 @@
  * Administrative pages for the API module.
  */
 
+module_load_include('inc', 'api', 'api.db');
+module_load_include('inc', 'api', 'api.utilities');
+
 /**
- * Builds the overview page for API module administration.
+ * Page callback: Builds the overview page for API module administration.
  *
  * @return
  *   Render array for the page.
@@ -175,7 +178,7 @@ function api_page_admin_form($form, &$form_state) {
 }
 
 /**
- * Builds a list of PHP branches.
+ * Page callback: Builds a list of PHP branches.
  *
  * @return
  *   Render array for the page.
@@ -238,7 +241,10 @@ function api_php_branch_list() {
 }
 
 /**
- * Generates the projects admin page.
+ * Page callback: Generates the projects admin page.
+ *
+ * @return
+ *   Render array for the page.
  */
 function api_admin_project_list() {
   variable_set('api_do_cron', 1);
@@ -259,7 +265,10 @@ function api_admin_project_list() {
 }
 
 /**
- * Generates the branch admin page.
+ * Page callback: Generates the branches admin page.
+ *
+ * @return
+ *   Render array for the page.
  */
 function api_admin_branch_list() {
   variable_set('api_do_cron', 1);
@@ -512,26 +521,6 @@ function api_check_regexps($element, &$form_state) {
   if (count($msg)) {
     form_set_error(implode('][', $element['#parents']), implode('; ', $msg));
   }
-}
-
-/**
- * Trims whitespace, and removes trailing directory separators and blank lines.
- *
- * @param $list
- *   Array of directories.
- *
- * @return
- *   String with cleaned-up directories, separated by newlines.
- */
-function api_clean_directory_list($list) {
-  $array = explode("\n", $list);
-  foreach ($array as $key => $directory) {
-    $array[$key] = rtrim(trim($directory), DIRECTORY_SEPARATOR);
-    if (empty($array[$key])) {
-      unset($array[$key]);
-    }
-  }
-  return implode("\n", $array);
 }
 
 /**
@@ -985,7 +974,7 @@ function api_comments_settings_form_submit($form, &$form_state) {
 }
 
 /**
- * Applies current default comment settings to existing API nodes.
+ * Page callback: Applies default comment settings to existing API nodes.
  */
 function api_apply_comment_settings() {
   if (module_exists('comment')) {

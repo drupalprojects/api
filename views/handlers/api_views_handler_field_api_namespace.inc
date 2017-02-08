@@ -72,6 +72,7 @@ class api_views_handler_field_api_namespace extends views_handler_field {
       }
     }
 
+    module_load_include('inc', 'api', 'api.utilities');
     $data = api_add_breaks($data);
     return $data;
   }

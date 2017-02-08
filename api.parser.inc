@@ -3,12 +3,17 @@
 /**
  * @file
  * The PHP documentation parser that generates content for api.module.
+ *
+ * Functions whose names start with _ in this file are only intended to be
+ * called by other functions in this file.
  */
 
 use PhpParser\Node\Stmt;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter;
 use Symfony\Component\Yaml;
+
+module_load_include('inc', 'api', 'api.utilities');
 
 /**
  * Reads in a file and calls a callback function to parse and save it.
@@ -98,7 +103,7 @@ function api_parse_text_file($docblock, $escape_html = FALSE) {
   }
   else {
     $tmp = array();
-    $docblock['documentation'] = api_format_documentation($docblock['source'], FALSE, $tmp);
+    $docblock['documentation'] = _api_format_documentation($docblock['source'], FALSE, $tmp);
   }
 
   // Escape HTML and number the lines.
@@ -106,11 +111,11 @@ function api_parse_text_file($docblock, $escape_html = FALSE) {
   if ($escape_html) {
     $output = htmlspecialchars($docblock['source']);
   }
-  $output = api_number_lines($output);
+  $output = _api_number_lines($output);
   $output = '<pre class="php"><code>' . $output . '</code></pre>';
   $docblock['code'] = $output;
 
-  api_save_documentation(array($docblock));
+  _api_save_docblocks(array($docblock));
 }
 
 /**
@@ -137,7 +142,7 @@ function api_parse_html_file($docblock) {
     $docblock['documentation'] = $documentation_match[2];
   }
 
-  api_save_documentation(array($docblock));
+  _api_save_docblocks(array($docblock));
 }
 
 /**
@@ -190,13 +195,13 @@ function api_parse_php_file($docblock) {
     'code' => '',
   );
 
-  $found_references = api_documentation_loop($statements, $default_block, $docblocks);
+  $found_references = _api_build_php_docblocks($statements, $default_block, $docblocks);
 
   // For the file, save only the references not found in parsing the
   // statements within the file. This will only save references to function
   // calls in the global area of the file, excluding those found in
   // functions declared in the file. This doesn't apply to namespace and use
-  // references though -- these are found only in api_documentation_loop().
+  // references though -- these are found only in _api_build_php_docblocks().
 
   foreach ($found_references as $type => $list) {
     // For namespaces and use aliases, merge these into the main references.
@@ -213,7 +218,7 @@ function api_parse_php_file($docblock) {
   }
   $docblocks[0]['references'] = $references;
 
-  api_save_documentation($docblocks);
+  _api_save_docblocks($docblocks);
 
   // Free up memory.
   $references = NULL;
@@ -286,7 +291,7 @@ function api_parse_yaml_file($docblock) {
   $code = $docblock['source'];
   $code = htmlspecialchars($code, ENT_NOQUOTES, 'UTF-8');
   $code = _api_format_yaml_code($code, $references);
-  $code = api_number_lines($code);
+  $code = _api_number_lines($code);
   $code = '<pre class="php"><code>' . $code . '</code></pre>';
   $docblock['code'] = $code;
   $full_references = $references;
@@ -309,7 +314,7 @@ function api_parse_yaml_file($docblock) {
       }
       $code = htmlspecialchars($code, ENT_NOQUOTES, 'UTF-8');
       $code = _api_format_yaml_code($code, $full_references);
-      $code = api_number_lines($code);
+      $code = _api_number_lines($code);
       $code = '<pre class="php"><code>' . $code . '</code></pre>';
 
       $references = array('service_tag' => array());
@@ -351,7 +356,7 @@ function api_parse_yaml_file($docblock) {
     }
   }
 
-  api_save_documentation($docblocks);
+  _api_save_docblocks($docblocks);
 }
 
 /**
@@ -452,20 +457,20 @@ function _api_format_yaml_code($code, $references, $wrappers = '\'"\s', $span_cl
 }
 
 /**
- * Builds a list of documentation items.
+ * Builds documentation blocks and finds references for parsed PHP code.
  *
  * @param array $statements
- *   An array of parser output statements.
+ *   An array of PHP parser output statements to look through.
  * @param array $default_block
- *   The default documentation block to use to build documentation items.
+ *   The default documentation block to use.
  * @param array $docblocks
- *   The array of documentation block items. Documentation items
- *   are added to the end of this array.
+ *   The array of documentation blocks, passed by reference. Documentation and
+ *   code items found in the PHP statements are added to the end of this array.
  *
  * @return
  *   An array of all the references found while parsing the statements.
  */
-function api_documentation_loop($statements, $default_block, &$docblocks) {
+function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
   if (!api_libraries_loaded()) {
     return array();
   }
@@ -629,7 +634,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         // Process the class's internal/body statements.
         if (!empty($statement->stmts)) {
           $last_index = count($docblocks) - 1;
-          $references = api_documentation_loop($statement->stmts, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
+          $references = _api_build_php_docblocks($statement->stmts, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
           $all_references = _api_merge_references($all_references, $references);
           $docblocks[$last_index]['references'] = $references;
         }
@@ -642,7 +647,7 @@ function api_documentation_loop($statements, $default_block, &$docblocks) {
         $all_references = _api_merge_references($all_references, $references);
         // The rest of the statements in this file are inside this namespace.
         if (!empty($statement->stmts)) {
-          $references = api_documentation_loop($statement->stmts, $default_block, $docblocks);
+          $references = _api_build_php_docblocks($statement->stmts, $default_block, $docblocks);
           $all_references = _api_merge_references($all_references, $references);
         }
         break;
@@ -804,7 +809,7 @@ function _api_merge_references($master, $new) {
  *   array element should be for the file as a whole, and subsequent elements
  *   should have information for items declared in that file (if any).
  */
-function api_save_documentation($docblocks) {
+function _api_save_docblocks($docblocks) {
   $nested_groups = array();
   $namespace = '';
   $use_aliases = array();
@@ -932,7 +937,7 @@ function api_save_documentation($docblocks) {
           // This is commonly because the defgroup was moved from one file
           // to another. So requeue both the found ID and the current file
           // we are working on.
-          api_requeue_after_run($did);
+          _api_requeue_after_run($did);
           $need_to_reparse = TRUE;
         }
         else {
@@ -1004,7 +1009,7 @@ function api_save_documentation($docblocks) {
       }
       // Format and then replace our fake tags with real ones.
       $tmp = array();
-      $params = api_format_documentation($params, TRUE, $tmp);
+      $params = _api_format_documentation($params, TRUE, $tmp);
       $params = str_replace('[strong]', '<strong>', $params);
       $params = str_replace('[/strong]', '</strong>', $params);
       $docblock['parameters'] = $params;
@@ -1016,7 +1021,7 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($return_match[0], '', $docblock['content']);
         $docblock['return_value'] .= "\n\n" . $return_match[1];
       }
-      $docblock['return_value'] = api_format_documentation($docblock['return_value'], TRUE, $tmp);
+      $docblock['return_value'] = _api_format_documentation($docblock['return_value'], TRUE, $tmp);
 
       // Find @see lines.
       $docblock['see'] = '';
@@ -1024,7 +1029,7 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
         $docblock['see'] .= "\n\n" . $match[1];
       }
-      $docblock['see'] = api_format_documentation($docblock['see'], TRUE, $tmp);
+      $docblock['see'] = _api_format_documentation($docblock['see'], TRUE, $tmp);
 
       // Find @var, a class or variable type name.
       $docblock['var'] = '';
@@ -1039,7 +1044,7 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
         $docblock['throws'] .= "\n\n" . $match[1];
       }
-      $docblock['throws'] = api_format_documentation($docblock['throws'], TRUE, $tmp);
+      $docblock['throws'] = _api_format_documentation($docblock['throws'], TRUE, $tmp);
 
       // Find @deprecated, a paragraph (could be more than one).
       $docblock['deprecated'] = '';
@@ -1047,15 +1052,15 @@ function api_save_documentation($docblocks) {
         $docblock['content'] = str_replace($match[0], '', $docblock['content']);
         $docblock['deprecated'] .= "\n\n" . $match[1];
       }
-      $docblock['deprecated'] = api_format_documentation($docblock['deprecated'], TRUE, $tmp);
+      $docblock['deprecated'] = _api_format_documentation($docblock['deprecated'], TRUE, $tmp);
 
       // Format everything remaining as the main documentation.
-      $docblock['documentation'] = api_format_documentation($docblock['content'], TRUE, $docblock['references']);
+      $docblock['documentation'] = _api_format_documentation($docblock['content'], TRUE, $docblock['references']);
     }
 
     // Grab the first line as a summary, unless already provided.
     if (!isset($docblock['summary'])) {
-      $docblock['summary'] = api_documentation_summary($docblock['documentation']);
+      $docblock['summary'] = _api_documentation_summary($docblock['documentation']);
     }
 
     if (!empty($docblock['class'])) {
@@ -1076,26 +1081,26 @@ function api_save_documentation($docblocks) {
       ->fetchField();
 
     if ($docblock['did'] > 0) {
-      _api_add_text_defaults($docblock, 'api_documentation');
+      api_add_text_defaults($docblock, 'api_documentation');
       drupal_write_record('api_documentation', $docblock, 'did');
     }
     else {
       $nid = api_new_documentation_node();
       $docblock['did'] = $nid;
       $docblock['branch_id'] = $docblocks[0]['branch']->branch_id;
-      _api_add_text_defaults($docblock, 'api_documentation');
+      api_add_text_defaults($docblock, 'api_documentation');
       drupal_write_record('api_documentation', $docblock);
     }
 
     // Keep track of class membership
     if ($docblock['object_type'] === 'class' || $docblock['object_type'] === 'interface' || $docblock['object_type'] == 'trait') {
       $class_dids[$docblock['object_name']] = $docblock['did'];
-      api_touched($docblock['did']);
+      _api_touched($docblock['did']);
     }
 
     switch ($docblock['object_type']) {
       case 'function':
-        _api_add_text_defaults($docblock, 'api_function');
+        api_add_text_defaults($docblock, 'api_function');
         // Combine all the deletes/inserts for {api_function} into one query
         // each so that they will run faster, since we don't need this table
         // to be updated during the processing of this file.
@@ -1110,18 +1115,18 @@ function api_save_documentation($docblocks) {
             'parameters' => $docblock['parameters'],
             'return_value' => $docblock['return_value'],
           ));
-        api_replace_references($docblocks[0]['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
+        _api_replace_references($docblocks[0]['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
         break;
 
       case 'service':
-        api_replace_references($docblock['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
+        _api_replace_references($docblock['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
         break;
 
       case 'file':
         // Note that this will set the 'queued' field back to zero, since
         // $docblock['queued'] is set to 0 up at the top of api_parse_file().
         drupal_write_record('api_file', $docblock, 'did');
-        api_replace_references($docblock['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], TRUE, $namespace, $use_aliases);
+        _api_replace_references($docblock['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], TRUE, $namespace, $use_aliases);
         break;
 
       case 'interface':
@@ -1139,11 +1144,11 @@ function api_save_documentation($docblocks) {
 
         foreach ($docblock['extends'] as $extend) {
           $refname = api_full_classname($extend, $namespace, $use_aliases);
-          api_reference($docblocks[0]['branch'], 'class', $refname, $docblock['did']);
+          _api_reference($docblocks[0]['branch'], 'class', $refname, $docblock['did']);
         }
         foreach ($docblock['implements'] as $implement) {
           $refname = api_full_classname($implement, $namespace, $use_aliases);
-          api_reference($docblocks[0]['branch'], 'interface', $refname, $docblock['did']);
+          _api_reference($docblocks[0]['branch'], 'interface', $refname, $docblock['did']);
         }
 
         if (isset($docblock['references']['use_trait'])) {
@@ -1154,7 +1159,7 @@ function api_save_documentation($docblocks) {
             if ($refname != $refalias) {
               watchdog('api', 'Aliases for use statements for traits are not supported in %filename for %alias, %class', array('%filename' => $docblock['file_name'], '%alias' => $alias, '%class' => $class), WATCHDOG_WARNING);
             }
-            api_reference($docblocks[0]['branch'], 'trait', $refname, $docblock['did']);
+            _api_reference($docblocks[0]['branch'], 'trait', $refname, $docblock['did']);
             // If there are insteadof/alias details for this trait, save them
             // in the namespaces table (because it has the right columns).
             if (isset($info['details'])) {
@@ -1169,7 +1174,7 @@ function api_save_documentation($docblocks) {
                     watchdog('api', 'Trait inheritance that changes visibility is not supported in %filename for %item', array('%filename' => $docblock['file_name'], '%item' => $item), WATCHDOG_WARNING);
                   }
                   else {
-                    api_namespace($docblock['did'], 'trait_' . $type, $name, $refname . '::' . $item);
+                    _api_namespace($docblock['did'], 'trait_' . $type, $name, $refname . '::' . $item);
                   }
                 }
               }
@@ -1178,16 +1183,16 @@ function api_save_documentation($docblocks) {
         }
         if (isset($docblock['references']['annotation'])) {
           foreach($docblock['references']['annotation'] as $class) {
-            api_reference($docblocks[0]['branch'], 'annotation', $class, $docblock['did']);
+            _api_reference($docblocks[0]['branch'], 'annotation', $class, $docblock['did']);
           }
         }
         if (isset($docblock['references']['element'])) {
           foreach($docblock['references']['element'] as $element_type) {
-            api_reference($docblocks[0]['branch'], 'element', $element_type, $docblock['did']);
+            _api_reference($docblocks[0]['branch'], 'element', $element_type, $docblock['did']);
           }
         }
         if ($docblock['annotation_class']) {
-          api_reference($docblocks[0]['branch'], 'annotation_class', $docblock['object_name'], $docblock['did']);
+          _api_reference($docblocks[0]['branch'], 'annotation_class', $docblock['object_name'], $docblock['did']);
         }
 
         break;
@@ -1201,7 +1206,7 @@ function api_save_documentation($docblocks) {
 
     if (isset($docblock['groups'])) {
       foreach ($docblock['groups'] as $group_name) {
-        api_reference($docblocks[0]['branch'], 'group', $group_name, $docblock['did']);
+        _api_reference($docblocks[0]['branch'], 'group', $group_name, $docblock['did']);
       }
     }
 
@@ -1211,7 +1216,7 @@ function api_save_documentation($docblocks) {
   if ($need_to_reparse && count($dids)) {
     // Mark any DID found as the one to requeue -- they should all be from
     // the same file.
-    api_requeue_after_run($dids[0]);
+    _api_requeue_after_run($dids[0]);
   }
 
   // Run the queued-up queries on the api_function table.
@@ -1232,121 +1237,12 @@ function api_save_documentation($docblocks) {
 
   // Clean out all of the doc objects from this file that no longer exist.
   $old_dids = array_diff($old_dids, $dids);
-  api_delete_items($old_dids, FALSE);
-
-  api_schedule_shutdown();
-}
-
-/**
- * Saves PHP branch documentation information to the database.
- *
- * @param $docblocks
- *   An array containing information about functions found in the branch.
- */
-function api_save_php_documentation($docblocks) {
-  // Remove all the old items from this branch. We don't care about preserving
-  // IDs, so there is no reason to use complicated logic and update existing
-  // records.
-  db_delete('api_php_documentation')
-    ->condition('branch_id', $docblocks[0]['branch_id'])
-    ->execute();
-
-  $did = api_new_php_doc_id();
-  $count = 0;
-  foreach ($docblocks as $docblock) {
-    if (!$count) {
-      // Build up queries and save the documentation in chunks, for speed.
-      $insertQuery = db_insert('api_php_documentation')
-        ->fields(array('did', 'branch_id', 'object_name', 'member_name', 'object_type', 'documentation'));
-    }
-    $docblock['did'] = $did;
-    $insertQuery->values($docblock);
-    $did++;
-    $count++;
-    if ($count >= 500) {
-      // Using a larger chunk size could risk running into database placeholder
-      // limits.
-      $insertQuery->execute();
-      $count = 0;
-    }
+  if (count($old_dids)) {
+    module_load_include('inc', 'api', 'api.db');
+    api_delete_items($old_dids, FALSE);
   }
 
-  if ($count > 0) {
-    $insertQuery->execute();
-  }
-}
-
-/**
- * Saves API branch documentation information to the database.
- *
- * @param $docblocks
- *   An array containing information about functions found in the branch.
- */
-function api_save_api_documentation($docblocks) {
-  // Remove all the old items from this branch. We don't care about preserving
-  // IDs, so there is no reason to use complicated logic and update existing
-  // records.
-  db_delete('api_external_documentation')
-    ->condition('branch_id', $docblocks[0]['branch_id'])
-    ->execute();
-
-  $did = api_new_external_doc_id();
-  $count = 0;
-  foreach ($docblocks as $docblock) {
-    if (!$count) {
-      // Build up queries and save the documentation in chunks, for speed.
-      $insertQuery = db_insert('api_external_documentation')
-        ->fields(array('did', 'branch_id', 'object_name', 'namespaced_name', 'title', 'member_name', 'summary', 'object_type', 'url'));
-    }
-    $docblock['did'] = $did;
-    $insertQuery->values($docblock);
-    $did++;
-    $count++;
-    if ($count >= 500) {
-      // Using a larger chunk size could risk running into database placeholder
-      // limits.
-      $insertQuery->execute();
-      $count = 0;
-    }
-  }
-
-  if ($count > 0) {
-    $insertQuery->execute();
-  }
-}
-
-/**
- * Returns a new ID for a PHP doc item.
- */
-function api_new_php_doc_id() {
-  $select = db_select('api_php_documentation', 'p');
-  $select->addExpression('MAX(did)', 'a');
-  $ids = $select->groupBy('branch_id')
-    ->execute()
-    ->fetchCol();
-
-  if (count($ids)) {
-    return max($ids) + 1;
-  }
-
-  return 1;
-}
-
-/**
- * Returns a new ID for an API reference branch doc item.
- */
-function api_new_external_doc_id() {
-  $select = db_select('api_external_documentation', 'p');
-  $select->addExpression('MAX(did)', 'a');
-  $ids = $select->groupBy('branch_id')
-    ->execute()
-    ->fetchCol();
-
-  if (count($ids)) {
-    return max($ids) + 1;
-  }
-
-  return 1;
+  _api_schedule_shutdown();
 }
 
 /**
@@ -1367,7 +1263,7 @@ function api_new_external_doc_id() {
  * @param $use_aliases
  *   Use aliases for the file these references are from.
  */
-function api_replace_references($branch, $did, $name, $references, $do_namespaces = FALSE, $namespace, $use_aliases) {
+function _api_replace_references($branch, $did, $name, $references, $do_namespaces = FALSE, $namespace, $use_aliases) {
   // Find the name without class prefix, if any.
   $shortname = $name;
   if (($pos = strpos($name, '::')) !== FALSE && $pos > 1) {
@@ -1398,7 +1294,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
         if ($do_namespaces) {
           // In this case, $list is actually a string containing the namespace
           // for a file, not a list.
-          api_namespace($did, $type, '', $list, TRUE);
+          _api_namespace($did, $type, '', $list, TRUE);
         }
         break;
 
@@ -1406,7 +1302,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
         if ($do_namespaces) {
           // Save all of the use aliases.
           foreach ($list as $alias => $class) {
-            api_namespace($did, $type, $alias, $class, TRUE);
+            _api_namespace($did, $type, $alias, $class, TRUE);
           }
         }
         break;
@@ -1418,7 +1314,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
           // These are references to ClassName::method(). Make sure
           // they are fully namespaced.
           $call = api_full_classname($call, $namespace, $use_aliases);
-          api_reference($branch, $type, $call, $did, TRUE);
+          _api_reference($branch, $type, $call, $did, TRUE);
         }
 
         break;
@@ -1441,20 +1337,20 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
             $call = '\\' . $call;
           }
 
-          api_reference($branch, $type, $call, $did, TRUE);
+          _api_reference($branch, $type, $call, $did, TRUE);
         }
     }
   }
 
   // Cause all the queued references to get saved.
-  api_reference(TRUE);
+  _api_reference(TRUE);
   if ($do_namespaces) {
-    api_namespace(TRUE);
+    _api_namespace(TRUE);
   }
 }
 
 /**
- * Formats a documentation block as HTML.
+ * Formats documentation comment text as HTML.
  *
  * First escapes all HTML tags. Then processes links and code blocks, and
  * converts newlines into paragraphs. Note that this function does not do any
@@ -1463,7 +1359,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
  *
  * @param string $documentation
  *   Documentation string to format.
- * @param bool $auto_p
+ * @param bool $make_paragraphs
  *   TRUE (default) to convert to paragraphs. FALSE to skip this conversion and
  *   put the documentation in PRE tags.
  * @param array $references
@@ -1473,7 +1369,7 @@ function api_replace_references($branch, $did, $name, $references, $do_namespace
  * @return string
  *   Formatted documentation.
  */
-function api_format_documentation($documentation, $auto_p = TRUE, &$references) {
+function _api_format_documentation($documentation, $make_paragraphs = TRUE, &$references) {
   // Don't do processing on empty text (so we don't end up with empty paragraphs).
   if (empty($documentation)) {
     return '';
@@ -1550,11 +1446,11 @@ function api_format_documentation($documentation, $auto_p = TRUE, &$references) 
   }
 
   // Process the @code @endcode tags.
-  $documentation = preg_replace_callback('/' . API_RE_TAG_START . 'code(.+?)' . API_RE_TAG_START . 'endcode/s', 'api_format_embedded_php', $documentation);
+  $documentation = preg_replace_callback('/' . API_RE_TAG_START . 'code(.+?)' . API_RE_TAG_START . 'endcode/s', '_api_format_embedded_php', $documentation);
 
   // Convert newlines into paragraphs.
-  if ($auto_p) {
-    $documentation = api_autop($documentation);
+  if ($make_paragraphs) {
+    $documentation = _api_make_paragraphs($documentation);
   }
   else {
     $documentation = '<pre class="api-text">' . $documentation . '</pre>';
@@ -1574,14 +1470,15 @@ function api_format_documentation($documentation, $auto_p = TRUE, &$references) 
  * @return
  *   Converted text.
  */
-function api_autop($text) {
+function _api_make_paragraphs($text) {
   // All block level tags
   $block = '(?:table|thead|tfoot|caption|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|form|blockquote|address|p|h[1-6]|hr)';
 
   // Split at <pre>, <script>, <style> and </pre>, </script>, </style> tags.
-  // We don't apply any processing to the contents of these tags to avoid messing
-  // up code. We look for matched pairs and allow basic nesting. For example:
-  // "processed <pre> ignored <script> ignored </script> ignored </pre> processed"
+  // We don't apply any processing to the contents of these tags to avoid
+  // messing up code. We look for matched pairs and allow basic nesting. For
+  // example: "processed <pre> ignored <script> ignored </script>
+  // ignored </pre> processed"
   $chunks = preg_split('@(</?(?:pre|script|style|object)[^>]*>)@i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
   // Note: PHP ensures the array consists of alternating delimiters and literals
   // and begins and ends with a literal (inserting NULL as required).
@@ -1606,7 +1503,7 @@ function api_autop($text) {
       }
     }
     elseif (!$ignore) {
-      $chunk = api_format_documentation_lists($chunk);
+      $chunk = _api_format_documentation_lists($chunk);
       $chunk = preg_replace('|\n*$|', '', $chunk) . "\n\n"; // just to make things a little easier, pad the end
       $chunk = preg_replace('|<br />\s*<br />|', "\n\n", $chunk);
       $chunk = preg_replace('!(<' . $block . '[^>]*>)!', "\n$1", $chunk); // Space things out a little
@@ -1627,9 +1524,9 @@ function api_autop($text) {
 }
 
 /**
- * Regular expression callback for \@code tags in api_format_documentation().
+ * Regular expression callback for \@code tags in _api_format_documentation().
  */
-function api_format_embedded_php($matches) {
+function _api_format_embedded_php($matches) {
   $code = decode_entities($matches[1]);
   $parser = (new ParserFactory())->create(ParserFactory::PREFER_PHP7);
   try {
@@ -1665,7 +1562,7 @@ function api_format_embedded_php($matches) {
  * @return
  *   $documentation with lists formatted.
  */
-function api_format_documentation_lists($documentation) {
+function _api_format_documentation_lists($documentation) {
   $lines = explode("\n", $documentation);
   $output = '';
   $bullet_indents = array(-1);
@@ -1720,8 +1617,8 @@ function api_format_documentation_lists($documentation) {
     $output .= '</li></ul>';
   }
 
-  // To make sure that api_autop() doesn't get confused, remove newlines
-  // immediately before </li> tags.
+  // To make sure that _api_make_paragraphs() doesn't get confused, remove
+  // newlines immediately before </li> tags.
   $output = str_replace("\n</li>", "</li>", $output);
 
   return $output;
@@ -1738,7 +1635,7 @@ function api_format_documentation_lists($documentation) {
  *   First paragraph of the documentation block, stripped of tags, and
  *   truncated to 255 characers.
  */
-function api_documentation_summary($documentation) {
+function _api_documentation_summary($documentation) {
   $pos = strpos($documentation, '</p>');
   if ($pos !== FALSE) {
     $documentation = substr($documentation, 0, $pos);
@@ -1991,7 +1888,7 @@ function _api_format_statements($statements, $is_drupal = TRUE, $is_file = FALSE
  * @return string
  *   Numbered code. Uses OL list.
  */
-function api_number_lines($code, $number = 1) {
+function _api_number_lines($code, $number = 1) {
   $start = (is_int($number)) ? $number : 1;
   $lines = explode("\n", $code);
   // If the last line is empty, omit it.
@@ -2021,10 +1918,10 @@ function api_number_lines($code, $number = 1) {
  * @param $from_did
  *   Documentation ID of the object that references this object.
  * @param $wait
- *   TRUE to save the insert until api_reference(TRUE) is called, or FALSE
+ *   TRUE to save the insert until _api_reference(TRUE) is called, or FALSE
  *   (default) to do the query immediately.
  */
-function api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $wait = FALSE) {
+function _api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $wait = FALSE) {
   static $is_php_function = array();
   static $query_stored = NULL;
 
@@ -2089,10 +1986,10 @@ function api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $w
  * @param $class
  *   Full class name for use aliases; namespace name for namespaces.
  * @param $wait
- *   TRUE to save the insert until api_namespace(TRUE) is called, or FALSE
+ *   TRUE to save the insert until _api_namespace(TRUE) is called, or FALSE
  *   (default) to do the query immediately.
  */
-function api_namespace($file_did, $type = '', $alias = '', $class = '', $wait = FALSE) {
+function _api_namespace($file_did, $type = '', $alias = '', $class = '', $wait = FALSE) {
   static $query_stored = NULL;
 
   // Is it time to do all the saved queries?
@@ -2133,7 +2030,7 @@ function api_namespace($file_did, $type = '', $alias = '', $class = '', $wait = 
  *
  * @see api_shutdown()
  */
-function api_schedule_shutdown() {
+function _api_schedule_shutdown() {
   $scheduled = &drupal_static(__FUNCTION__, FALSE);
 
   if (!$scheduled) {
@@ -2151,7 +2048,7 @@ function api_schedule_shutdown() {
  * @return int[]
  *   Array of the touched class IDs.
  */
-function api_touched($class_did = 0) {
+function _api_touched($class_did = 0) {
   $classes = &drupal_static(__FUNCTION__, array());
 
   if ($class_did) {
@@ -2171,7 +2068,7 @@ function api_touched($class_did = 0) {
  * @return array
  *   Array of all documentation IDs that need to be requeued.
  */
-function api_requeue_after_run($did = NULL) {
+function _api_requeue_after_run($did = NULL) {
   static $dids = array();
 
   if ($did) {
@@ -2189,10 +2086,11 @@ function api_requeue_after_run($did = NULL) {
  */
 function api_shutdown() {
   // Requeue items that were marked for requeue.
-  api_mark_items_for_reparse(api_requeue_after_run());
+  module_load_include('inc', 'api', 'api.db');
+  api_mark_items_for_reparse(_api_requeue_after_run());
 
   // Figure out which classes and interfaces we need to update.
-  $classes_touched = api_touched();
+  $classes_touched = _api_touched();
 
   // For each of these classes, and any that extend/implement them, we need
   // to recompute:
@@ -2262,7 +2160,7 @@ function api_shutdown() {
     }
     foreach ($parents_to_check as $parent) {
       // Figure out the ID of this parent.
-      $new_id = api_best_class_id($parent->object_name, $parent->branch_id);
+      $new_id = _api_best_class_id($parent->object_name, $parent->branch_id);
       $parents[$parent->object_name] = $new_id;
       // See if it's different from what we already had.
       if ($new_id != $parent->extends_did) {
@@ -2409,7 +2307,7 @@ function api_shutdown() {
  *   compatibility, or 0 if no match was found. The match has to be unique
  *   within the scope. If multiple matches are found, 0 will be returned.
  */
-function api_best_class_id($class_name, $branch_id) {
+function _api_best_class_id($class_name, $branch_id) {
   // Check current branch.
   $found = db_select('api_documentation', 'ad')
     ->condition('namespaced_name', $class_name)
@@ -2813,503 +2711,4 @@ function _api_has_documentation($object) {
     }
   }
   return FALSE;
-}
-
-/**
- * Checks all branches to see if it's time to update, and queues if so.
- *
- * @see api_update_branch_php()
- * @see api_update_branch_api()
- * @see api_update_branch_files()
- */
-function api_update_all_branches() {
-  $queue = DrupalQueue::get('api_branch_update');
-
-  // Check the files branches to see what needs updates.
-  foreach (api_get_branches(TRUE) as $branch) {
-    if (api_should_queue($branch)) {
-      // Add to queue and mark as queued.
-      $queue->createItem(array('type' => 'files', 'branch_id' => $branch->branch_id));
-      $branch->queued = time();
-      drupal_write_record('api_branch', $branch, 'branch_id');
-    }
-    else {
-      watchdog('api', 'Skipped update of %project branch %branch', array('%branch' => $branch->branch_name, '%project' => $branch->project));
-    }
-  }
-
-  // Check the reference branches to see what needs updates.
-  foreach (api_get_php_branches(TRUE) as $branch) {
-    if (api_should_queue($branch)) {
-      // Add to queue and mark as queued.
-      $queue->createItem(array('type' => $branch->reference_type, 'branch_id' => $branch->branch_id));
-      $branch->queued = time();
-      drupal_write_record('api_php_branch', $branch, 'branch_id');
-    }
-    else {
-      watchdog('api', 'Skipped update of reference branch %branch', array('%branch' => $branch->title));
-    }
-  }
-}
-
-/**
- * Updates a PHP branch.
- *
- * Queries the branch URL to get an updated list of functions, and saves each
- * function in the database.
- *
- * @param $branch
- *   Object representing a PHP branch to update.
- *
- * @return
- *   TRUE if the branch was updated, and FALSE if there was an error.
- *
- * @see api_update_all_branches()
- */
-function api_update_branch_php($branch) {
-  $response = drupal_http_request($branch->summary, array('timeout' => 60));
-  if ($response->code === '200') {
-    $docblocks = array();
-    // Note that drupal_json_decode() passes TRUE to json_decode(), so that all
-    // returned data is associative arrays and not objects.
-    $data = drupal_json_decode($response->data);
-    foreach ($data as $name => $item) {
-      $docblocks[] = array(
-        'branch_id' => $branch->branch_id,
-        'object_type' => 'function',
-        'object_name' => $name,
-        'documentation' => $item['prototype'] . "\n  " . $item['purpose'],
-        'member_name' => '',
-      );
-    }
-
-    if (count($docblocks)) {
-      api_save_php_documentation($docblocks);
-    }
-
-    // Mark the branch as having been updated.
-    $branch->last_updated = time();
-    $branch->queued = 0;
-    drupal_write_record('api_php_branch', $branch, array('branch_id'));
-    watchdog('api', 'Updated PHP branch %branch_name.', array('%branch_name' => $branch->title));
-    return TRUE;
-  }
-
-  // We didn't get a good response.
-  $branch->queued = 0;
-  drupal_write_record('api_php_branch', $branch, array('branch_id'));
-  watchdog('api', 'Bad HTTP response from PHP branch %branch_name.', array('%branch_name' => $branch->title), WATCHDOG_WARNING);
-  return FALSE;
-}
-
-/**
- * Updates an API branch.
- *
- * Queries the branch URL to get an updated item dump, and saves each item in
- * the database.
- *
- * @param $branch
- *   Object representing an API branch to update.
- *
- * @return
- *   TRUE if the branch was updated, and FALSE if there was an error.
- *
- * @see api_update_all_branches()
- */
-function api_update_branch_api($branch) {
-  $limit = (int) (isset($branch->page_limit) ? $branch->page_limit : 0);
-  $timeout = (int) (isset($branch->timeout) ? $branch->timeout : 0);
-  if ($limit <= 0) {
-    $limit = 2000;
-  }
-  if ($timeout <= 0) {
-    $timeout = 30;
-  }
-
-  // Download JSON by page.
-  $base_url = $branch->url . ((strpos($branch->url, '?') > 0) ? '&' : '?') . 'limit=' . $limit . '&page=';
-
-  $docblocks = array();
-  $done = array();
-  $page = 0;
-  $found = TRUE;
-
-  // Continue in this loop as long as the last response was successful and
-  // contained new data, but as a failsafe stop after 1000 pages.
-  while ($found && $page < 1000) {
-    $found = FALSE;
-    $response = @drupal_http_request($base_url . $page, array('timeout' => $timeout));
-    $page++;
-    if (isset($response) && ($response->code === '200')) {
-      $data = drupal_json_decode($response->data);
-      foreach ($data as $item) {
-        $item = (array) $item;
-        // Only save new items.
-        $key = $item['url'] . '..' . $item['object_type'] . '..' . $item['namespaced_name'];
-        if (!isset($done[$key])) {
-          $found = TRUE;
-          $done[$key] = TRUE;
-          $item['branch_id'] = $branch->branch_id;
-          $docblocks[] = $item;
-        }
-      }
-    }
-  }
-
-  if (count($docblocks)) {
-    // We found at least one doc block, so save the data.
-    api_save_api_documentation($docblocks);
-
-    // Mark the branch as having been updated.
-    $branch->last_updated = time();
-    $branch->queued = 0;
-    drupal_write_record('api_php_branch', $branch, array('branch_id'));
-    watchdog('api', 'Updated API branch %branch_name in %count page requests.', array('%branch_name' => $branch->title, '%count' => $page));
-    return TRUE;
-  }
-
-  // We didn't get a good response.
-  $branch->queued = 0;
-  drupal_write_record('api_php_branch', $branch, array('branch_id'));
-  watchdog('api', 'No documentation was downloaded from API branch %branch_name.', array('%branch_name' => $branch->title), WATCHDOG_WARNING);
-  return FALSE;
-}
-
-/**
- * Checks to see if we need to queue a branch for updates or not.
- *
- * @param $branch
- *   Object representing the branch.
- *
- * @return
- *   TRUE if we should queue this branch, and FALSE if not.
- */
-function api_should_queue($branch) {
-  if (isset($branch->queued) && $branch->queued) {
-    // It is already queued up.
-    return FALSE;
-  }
-
-  $last_run = isset($branch->last_updated) ? $branch->last_updated : 0;
-  $now = time();
-  $add = 0;
-  if (isset($branch->update_frequency)) {
-    $add = $branch->update_frequency;
-  }
-  if ($last_run + $add > $now) {
-    // It hasn't been long enough yet.
-    return FALSE;
-  }
-
-  return TRUE;
-}
-
-/**
- * Returns the list of parsing functions for file extensions.
- *
- * @return
- *   An associative array whose keys are file extensions, and whose values are
- *   the functions used to parse files with that extension. The function should
- *   parse the contents of the file, and save one or more documentation objects
- *   in the database. The function argument is a $docblock array, containing a
- *   sample documentation listing for the file as a whole. In this array, the
- *   following keys are filled in:
- *   - object_name, file_name: Both set to the file name.
- *   - title, basename: Both set to the file basename.
- *   - modified: Set to the time the file was last modified.
- *   - branch: The branch object.
- *   - object_type: Set to 'file'.
- *   - source: Set to the file contents.
- *   - is_drupal: TRUE if this is a Drupal file, as defined by the regular
- *     expression for deciding this that is part of the branch setup.
- *
- * @see api_save_documentation()
- */
-function api_parse_functions() {
-  $functions = array(
-    'php' => 'api_parse_php_file',
-    'module' => 'api_parse_php_file',
-    'inc' => 'api_parse_php_file',
-    'install' => 'api_parse_php_file',
-    'engine' => 'api_parse_php_file',
-    'theme' => 'api_parse_php_file',
-    'profile' => 'api_parse_php_file',
-    'test' => 'api_parse_php_file',
-
-    'yml' => 'api_parse_yaml_file',
-
-    'txt' => 'api_parse_text_file',
-    'info' => 'api_parse_text_file',
-    'css' => 'api_parse_text_file',
-    'sh' => 'api_parse_text_file',
-    'twig' => 'api_parse_twig_file',
-
-    'htm' => 'api_parse_html_file',
-    'html' => 'api_parse_html_file',
-  );
-
-  drupal_alter('api_parse_functions', $functions);
-  return $functions;
-}
-
-/**
- * Updates a files branch.
- *
- * Checks the current directories included in the branch to make an updated
- * list of files. Removes documentation from files that no longer exist, adds
- * documentation from new files, and updates documentation for any files that
- * have changed.
- *
- * @param $branch
- *   Object representing a files branch to update.
- *
- * @return
- *   TRUE to indicate that the branch was updated.
- *
- * @see api_update_all_branches()
- */
-function api_update_branch_files($branch) {
-  $files_to_scan = api_scan_directories($branch->directories, $branch->excluded_directories, $branch->exclude_files_regexp);
-  if (!count($files_to_scan)) {
-    watchdog('api', 'No files were found in %project branch %branch', array('%branch' => $branch->branch_name, '%project' => $branch->project), WATCHDOG_ERROR);
-    $branch->queued = 0;
-    drupal_write_record('api_branch', $branch, array('branch_id'));
-    return FALSE;
-  }
-
-  $parse_functions = api_parse_functions();
-
-  // List all documented files for the branch.
-  $files = array();
-  $query = db_select('api_documentation', 'd')
-    ->fields('d', array('object_name', 'did'));
-  $f = $query->leftJoin('api_file', 'f', 'd.did = f.did');
-  $query->fields($f, array('modified', 'queued'))
-    ->condition('d.branch_id', $branch->branch_id)
-    ->condition('d.object_type', 'file');
-  $result = $query->execute();
-  foreach ($result as $file) {
-    $files[$file->object_name] = $file;
-  }
-
-  // Check all the files. If they need an update, add them to the queue.
-  foreach ($files_to_scan as $path => $file_name) {
-    preg_match('!\.([a-z]*)$!', $file_name, $matches);
-    if (isset($matches[1]) && isset($parse_functions[$matches[1]])) {
-      $new = FALSE;
-      if (isset($files[$file_name])) {
-        $parse = (filemtime($path) > $files[$file_name]->modified) && !$files[$file_name]->queued;
-        $file = $files[$file_name];
-        unset($files[$file_name]); // All remaining files will be removed.
-      }
-      else { // New file.
-        $parse = TRUE;
-        $new = TRUE;
-      }
-      if ($parse) {
-        $queue = DrupalQueue::get('api_parse');
-        $queue->createItem(array('parser' => $parse_functions[$matches[1]], 'path' => $path, 'branch' => $branch, 'file' => $file_name, 'branch_name' => $branch->branch_name, 'timestamp' => time()));
-
-        // Make sure this doesn't get added to the parse queue again.
-
-        if ($new) {
-          // Add stub to the {api_documentation} and {api_file} table for this
-          // file so it doesn't get added to the parse queue again.
-          $nid = api_new_documentation_node();
-          $doc = array(
-            'object_name' => $file_name,
-            'file_name' => $file_name,
-            'title' => drupal_basename($file_name),
-            'object_type' => 'file',
-            'branch_id' => $branch->branch_id,
-            'queued' => time(),
-            'did' => $nid,
-          );
-          _api_add_text_defaults($doc, 'api_documentation');
-          drupal_write_record('api_documentation', $doc);
-          drupal_write_record('api_file', $doc);
-        }
-        else {
-          // Update the 'queued' field in the {api_file} table so this does not
-          // get queued again.
-          $file->queued = time();
-          drupal_write_record('api_file', $file, 'did');
-        }
-      }
-    }
-  }
-
-  // Remove outdated files.
-  foreach (array_keys($files) as $file_name) {
-    watchdog('api', 'Removing %file from branch %branch.', array('%file' => $file_name, '%branch' => $branch->branch_name));
-    $dids = db_select('api_documentation', 'ad')
-      ->fields('ad', array('did'))
-      ->condition('file_name', $file_name)
-      ->condition('branch_id', $branch->branch_id)
-      ->execute()
-      ->fetchCol();
-    api_delete_items($dids, FALSE);
-  }
-
-  // Mark the branch as having been updated.
-  $branch->last_updated = time();
-  $branch->queued = 0;
-  drupal_write_record('api_branch', $branch, array('branch_id'));
-  watchdog('api', 'Updated %project branch %branch_name.', array('%branch_name' => $branch->branch_name, '%project' => $branch->project));
-
-  return TRUE;
-}
-
-/**
- * Finds all the files in the directories specified for a branch.
- *
- * @param $directories
- *   List of directories to scan, as text (separated by newlines).
- * @param $excluded_directories
- *   List of directories to exclude, as text (separated by newlines).
- * @param $regexps
- *   List of regular expressions to exclude (files or directories), separated
- *   by newlines.
- *
- * @return
- *   Associative array of files, where the keys are the full paths to the
- *   files and the values are the file names. File names exclude the part of
- *   the full path that is shared by all directories in the scan list. Only
- *   files that can be parsed are included (see api_parse_functions() for a
- *   list). Hidden directories (names starting with .) below top-level entries
- *   in $directories are excluded, as well as directories called CVS.
- */
-function api_scan_directories($directories, $excluded_directories, $regexps) {
-  $directory_array = array_filter(explode("\n", $directories));
-  $excluded_array = array_filter(explode("\n", $excluded_directories));
-  $extensions = array_keys(api_parse_functions());
-  $regexps = explode("\n", $regexps);
-  $regexps = array_filter(array_map('trim', $regexps));
-
-  // Figure out the shared part of the file name that is in all the directories.
-  if (count($directory_array) > 1) {
-    $directories_components = array();
-    foreach ($directory_array as $directory) {
-      $directory_components = array();
-      $parts = explode(DIRECTORY_SEPARATOR, $directory);
-      $starts_with_sep = (strpos($directory, DIRECTORY_SEPARATOR) === 0);
-      foreach ($parts as $part) {
-        if (strlen($part)) {
-          $previous = reset($directory_components);
-          if (strlen($previous) > 0 || $starts_with_sep) {
-            $previous .= DIRECTORY_SEPARATOR;
-          }
-          array_unshift($directory_components, $previous . $part);
-        }
-      }
-      $directories_components[] = $directory_components;
-    }
-
-    $common_ancestor_components = call_user_func_array('array_intersect', $directories_components);
-    $common_ancestor = reset($common_ancestor_components);
-  }
-  else {
-    $common_ancestor = $directories;
-  }
-
-  // Scan the directories. Instead of letting file_scan_directory() do its own
-  // recursion, we recurse ourselves. The reason is that we can exclude things
-  // as we go, saving time and memory scanning .git, CVS, and the excluded
-  // directories.
-  $source_files = array();
-  $todo = $directory_array;
-  while (count($todo) > 0) {
-    $directory = array_shift($todo);
-    $files = file_scan_directory($directory, '/.*/', array('recurse' => FALSE));
-    foreach ($files as $path => $file) {
-      // Exclude anything that matches one of our regular expressions.
-      $ok = TRUE;
-      foreach($regexps as $regexp) {
-        if (preg_match($regexp, $path)) {
-          $ok = FALSE;
-          break;
-        }
-      }
-      if (!$ok) {
-        continue;
-      }
-
-      if (is_dir($path)) {
-        // See if we want to scan this path, and if so, add to To Do list.
-        // Don't keep any directory that starts with ".", or anything in the
-        // excluded list. Note that $file->filename includes $directory, so
-        // strip that off before checking the name for ".".
-        $dir_name = substr($file->filename, strlen($directory));
-        if ((strpos($dir_name, '.') !== 0) &&
-          !in_array($path, $excluded_array)) {
-          $todo[] = $path;
-        }
-      }
-      else {
-        // This is a regular file. See if it has an extension we recognize,
-        // and save it in our return list if so.
-        $ext = pathinfo($path, PATHINFO_EXTENSION);
-        if (in_array($ext, $extensions)) {
-          $file_name = substr($path, strlen($common_ancestor) + 1);
-          $source_files[$path] = $file_name;
-        }
-      }
-    }
-  }
-
-  return $source_files;
-}
-
-/**
- * Adds defaults for TEXT fields to a database record.
- *
- * These cannot come from the schema, because TEXT fields have no defaults.
- *
- * @param $record
- *   Record about to be written to the database with drupal_write_record().
- * @param $table
- *   Table $record is going into.
- */
-function _api_add_text_defaults(&$record, $table) {
-  switch ($table) {
-    case 'api_documentation':
-      $record += array(
-        'summary' => '',
-        'documentation' => '',
-        'code' => '',
-        'see' => '',
-        'deprecated' => '',
-        'var' => '',
-        'throws' => '',
-        'namespace' => '',
-        'namespaced_name' => '',
-        'modifiers' => '',
-      );
-      break;
-
-    case 'api_function':
-      $record += array(
-        'parameters' => '',
-        'return_value' => '',
-      );
-      break;
-  }
-}
-
-/**
- * Creates a new documentation object node (for comments).
- *
- * @return
- *   Node ID of the created node.
- */
-function api_new_documentation_node() {
-  $node = new stdClass();
-  $node->type = 'api';
-  $node->uid = 0;
-  if (module_exists('comment')) {
-    $node->comment =  variable_get('comment_api', COMMENT_NODE_OPEN);
-  }
-  node_save($node);
-
-  return $node->nid;
 }

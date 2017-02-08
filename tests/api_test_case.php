@@ -5,11 +5,6 @@
  * Base classes for tests for the API module.
  */
 
-// Some functions in these files are called directly in methods below.
-module_load_include('inc', 'api', 'api.admin');
-module_load_include('inc', 'api', 'parser');
-
-
 /**
  * Provides a base class for testing the API module.
  */
@@ -101,6 +96,8 @@ class ApiTestCase extends DrupalWebTestCase {
    *   branch and project.
    */
   function setUpBranchAPICall($prefix = '', $default = TRUE, $info = array()) {
+    module_load_include('inc', 'api', 'api.db');
+
     // Set up defaults.
     $info += array(
       'project' => 'test',
@@ -190,6 +187,7 @@ class ApiTestCase extends DrupalWebTestCase {
    * Makes sure all variables and branches have been reset.
    */
   function resetBranchesAndCache() {
+    module_load_include('inc', 'api', 'api.db');
     cache_clear_all('variables', 'cache_bootstrap', 'cache');
     drupal_static_reset();
     variable_initialize();
@@ -200,6 +198,8 @@ class ApiTestCase extends DrupalWebTestCase {
    * Updates branches and runs all update branch jobs.
    */
   function updateBranches() {
+    module_load_include('inc', 'api', 'api.update_branch');
+
     api_update_all_branches();
 
     $queues = api_cron_queue_info();
@@ -247,6 +247,7 @@ class ApiTestCase extends DrupalWebTestCase {
       $count++;
     }
 
+    module_load_include('inc', 'api', 'api.parser');
     api_shutdown();
     $this->resetBranchesAndCache();
 

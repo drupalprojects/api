@@ -5,6 +5,8 @@
  * Drush commands for the API module.
  */
 
+module_load_include('inc', 'api', 'api.db');
+
 /**
  * Implements hook_drush_command().
  */

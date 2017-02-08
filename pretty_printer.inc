@@ -12,6 +12,8 @@ use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
 use PhpParser\PrettyPrinter\Standard;
 
+module_load_include('inc', 'api', 'api.utilities');
+
 /**
  * Pretty-prints code for Drupal coding standards and HTML output.
  *

@@ -3,8 +3,42 @@
 /**
  * @file
  * Formatting functions for the API module.
+ *
+ * Functions whose names start with _ in this file are only intended to be
+ * called by other functions in this file.
  */
 
+module_load_include('inc', 'api', 'api.utilities');
+
+/**
+ * Regular expression for matching group/topic names.
+ */
+define('API_RE_GROUP_NAME', '[a-zA-Z_0-9\.\-]+');
+
+/**
+ * Regular expression for aggressively matching class names in text.
+ *
+ * Although class names can technically be just like function names, we
+ * only want to match class names if they include a capital letter, so as
+ * not to be too overly aggressive. Possibly can include namespaces.
+ */
+define('API_RE_CLASS_NAME_TEXT', '[\\\\a-zA-Z0-9_\x7f-\xff]*[A-Z][\\\\a-zA-Z0-9_\x7f-\xff]*');
+
+/**
+ * Regular expression for less-aggressively matching class names in text.
+ *
+ * Matches class names that are namespaced, because we know these are not just
+ * plain text words.
+ */
+define('API_RE_DEFINITE_CLASS_NAME_TEXT', '[\\\\a-zA-Z0-9_\x7f-\xff]*[\\\\][\\\\a-zA-Z0-9_\x7f-\xff]*');
+
+/**
+ * Regular expression for matching YAML strings.
+ *
+ * These can contain ., _, letters, and numbers, and are top-level keys
+ * in YAML files.
+ */
+define('API_RE_YAML_STRING', '[a-zA-Z0-9_\.\x7f-\xff]+');
 
 /**
  * Turns function, class, and other names into links in code.
@@ -34,7 +68,7 @@ function api_link_code($code, $branch, $file_did = NULL, $class_did = NULL, $is_
     $steps = array('code function', 'code function declared', 'code member', 'code string', 'service', 'yaml reference', 'annotation string', 'code global', 'code class', 'annotation class');
   }
 
-  return _api_link_documentation($code, $branch, $file_did, $class_did, $steps);
+  return _api_make_documentation_links($code, $branch, $file_did, $class_did, $steps);
 }
 
 /**
@@ -93,7 +127,7 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
     $stages[] = 'definite class';
   }
 
-  $documentation = _api_link_documentation($documentation, $branch, $file_did, $class_did, $stages);
+  $documentation = _api_make_documentation_links($documentation, $branch, $file_did, $class_did, $stages);
 
   // Now remove escaping from \@.
   $documentation = preg_replace('!\\\@!', '@', $documentation);
@@ -111,9 +145,9 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
  * Makes links in documentation and code.
  *
  * Recursively calls itself to iterate through various stages. At each stage,
- * api_split() is called to find matches for a particular regular expression
- * pattern and process the matches via callback functions api_link_name(),
- * api_link_member_name(), and api_link_link().
+ * _api_process_pattern() is called to find matches for a particular regular
+ * expression pattern and process the matches via callback functions
+ * api_link_name(), _api_link_member_name(), and _api_link_link().
  *
  * @param string $documentation
  *   PHP code or documentation to scan for text to link.
@@ -130,13 +164,13 @@ function api_link_documentation($documentation, $branch, $file_did = NULL, $clas
  * @return string
  *   $documentation with text turned into links.
  */
-function _api_link_documentation($documentation, $branch, $file_did = NULL, $class_did = NULL, $stages = array()) {
+function _api_make_documentation_links($documentation, $branch, $file_did = NULL, $class_did = NULL, $stages = array()) {
   // Pop off the next stage to run.
   $stage = array_shift($stages);
 
   // For this stage, figure out what regular expression pattern to use for
-  // matching, what callback to call from api_split() for pattern matches,
-  // and what arguments to pass to the callback function.
+  // matching, what callback to call from _api_process_pattern() for pattern
+  // matches, and what arguments to pass to the callback function.
   $callback_match = 'api_link_name';
   $prepend = '';
   $append = '';
@@ -156,7 +190,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
     case 'link':
       // Find @link.
       $pattern = '/' . API_RE_TAG_START . 'link\s+(.*)\s+' . API_RE_TAG_START . 'endlink/U';
-      $callback_match = 'api_link_link';
+      $callback_match = '_api_link_link';
       break;
 
     case 'function':
@@ -328,7 +362,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
 
     case 'code member':
       // Works like 'code hook name' above, but for class members.
-      $callback_match = 'api_link_member_name';
+      $callback_match = '_api_link_member_name';
       $pattern = '!(<span class="(?:php-function-or-constant|php-function-or-constant-declared|php-variable) [^"]+ member-of-[^"]+">\$*' . DRUPAL_PHP_FUNCTION_PATTERN . '</span>)!';
       break;
 
@@ -373,11 +407,11 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
   $prepend_if_no_change = '';
   $append_if_no_change = '';
   if (count($stages) > 0) {
-    $callback = '_api_link_documentation';
+    $callback = '_api_make_documentation_links';
     if ($continue_matching) {
       // In this case, we want to tell the matching callback function not
-      // to prepend or append anything, and api_split to put back the wrappers
-      // if there was no change.
+      // to prepend or append anything, and _api_process_pattern() to put back
+      // the wrappers if there was no change.
       $prepend_if_no_change = ($prepend_if_not_found) ? $prepend_if_not_found : $prepend;
       $append_if_no_change = $append;
       $prepend_if_not_found = '';
@@ -388,7 +422,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
     $callback = NULL;
   }
 
-  return api_split($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $file_did, $class_did, NULL, FALSE, $use_php, $prepend_if_not_found, $append_if_not_found, $type), $callback, array($branch, $file_did, $class_did, $stages), $continue_matching, $prepend_if_no_change, $append_if_no_change);
+  return _api_process_pattern($pattern, $documentation, $callback_match, array($branch, $prepend, $append, $file_did, $class_did, NULL, FALSE, $use_php, $prepend_if_not_found, $append_if_not_found, $type), $callback, array($branch, $file_did, $class_did, $stages), $continue_matching, $prepend_if_no_change, $append_if_no_change);
 }
 
 /**
@@ -424,7 +458,7 @@ function _api_link_documentation($documentation, $branch, $file_did = NULL, $cla
  *   The original string, with both matched and unmatched portions filtered by
  *   the appropriate callbacks.
  */
-function api_split($pattern, $subject, $callback_match = NULL, $callback_match_arguments = array(), $callback = NULL, $callback_arguments = array(), $continue_matching = FALSE, $prepend_if_not_changed = '', $append_if_not_changed = '') {
+function _api_process_pattern($pattern, $subject, $callback_match = NULL, $callback_match_arguments = array(), $callback = NULL, $callback_arguments = array(), $continue_matching = FALSE, $prepend_if_not_changed = '', $append_if_not_changed = '') {
   $return = '';
   $matched = FALSE;
   foreach (preg_split($pattern . 'sm', $subject, -1, PREG_SPLIT_DELIM_CAPTURE) as $part) {
@@ -466,7 +500,8 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
 /**
  * Links an object name to its documentation.
  *
- * Callback for api_split() in _api_link_documentation().
+ * Callback for _api_process_pattern() in _api_make_documentation_links().
+ * Can also be called directly.
  *
  * Tries to find something to link to by looking for matches in the following
  * order:
@@ -527,8 +562,8 @@ function api_split($pattern, $subject, $callback_match = NULL, $callback_match_a
  * @return
  *   The text as a link to the object page.
  *
- * @see api_link_member_name()
- * @see api_link_link()
+ * @see _api_link_member_name()
+ * @see _api_link_link()
  */
 function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL, $text = NULL, $is_link = FALSE, $use_php = TRUE, $prepend_if_not_found = NULL, $append_if_not_found = NULL, $type = '') {
 
@@ -551,7 +586,7 @@ function api_link_name($name, $branch, $prepend = '', $append = '', $file_did = 
   }
 
   // Get some information we will need in several places below.
-  $nameinfo = api_get_namespace_info($file_did);
+  $nameinfo = _api_get_namespace_info($file_did);
   $namespaced_name = api_full_classname($name, $nameinfo['namespace'], $nameinfo['use_alias']);
   $core_compatibility = ($branch) ? $branch->core_compatibility : variable_get('api_default_core_compatibility', '');
   $api_branches = api_get_php_branches();
@@ -1164,7 +1199,7 @@ function _api_match_priority($current, $previous, $prefer_shorter = TRUE, $poten
 /**
  * Links text to an appropriate class member variable, constant, or function.
  *
- * Callback for api_split() in _api_link_documentation().
+ * Callback for _api_process_pattern() in _api_make_documentation_links().
  *
  * Tries to find something to link to by looking for matches in the following
  * order:
@@ -1189,9 +1224,9 @@ function _api_match_priority($current, $previous, $prefer_shorter = TRUE, $poten
  *   Documentation ID of the class this is part of (if any).
  *
  * @see api_link_name()
- * @see api_link_link()
+ * @see _api_link_link()
  */
-function api_link_member_name($text, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL) {
+function _api_link_member_name($text, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL) {
 
   // The pattern matched to get here contains the entire span with all of its
   // classes. Parse it out.
@@ -1211,7 +1246,7 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $file
   }
 
   // Get some information we will need in several places below.
-  $nameinfo = api_get_namespace_info($file_did);
+  $nameinfo = _api_get_namespace_info($file_did);
   $core_compatibility = ($branch) ? $branch->core_compatibility : variable_get('api_default_core_compatibility', '');
   $api_branches = api_get_php_branches();
 
@@ -1303,13 +1338,13 @@ function api_link_member_name($text, $branch, $prepend = '', $append = '', $file
 /**
  * Finds matches for a class member object name in a branch and makes a link.
  *
- * Helper function for api_link_member_name().
+ * Helper function for _api_link_member_name().
  *
  * @param $name
  *   Name to match (text found in the code).
  * @param $namespaced_info
  *   Namespace information for the file context
- *   (output of api_get_namespace_info()).
+ *   (output of _api_get_namespace_info()).
  * @param $member_type
  *   What type of reference to find: 'parent', 'self', 'variable', or
  *   'class-NAME'. This is set up in the parser.
@@ -1533,27 +1568,9 @@ function _api_make_match_link_class_member($name, $namespace_info, $member_type,
 }
 
 /**
- * Decodes HTML entities.
- *
- * @param $text
- *   Text to decode.
- *
- * @return
- *   Text with all HTML entities decoded.
- */
-function api_entity_decode($text) {
-  $text = html_entity_decode($text);
-  // html_entity_decode does not decode numeric entities, and there are
-  // many cases of &#39; (quote) in here.
-  $text = str_replace('&#039;', "'", $text);
-  $text = str_replace('&#39;', "'", $text);
-  return $text;
-}
-
-/**
  * Turns text into a link, using the first word as the object name.
  *
- * Callback for api_split() in _api_link_documentation().
+ * Callback for _api_process_pattern() in _api_make_documentation_links().
  *
  * @param $name
  *   Text to link.
@@ -1572,15 +1589,14 @@ function api_entity_decode($text) {
  * @return
  *   The text as a link.
  *
- * @see api_link_member_name()
+ * @see _api_link_member_name()
  * @see api_link_name()
  */
-function api_link_link($name, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL) {
+function _api_link_link($name, $branch, $prepend = '', $append = '', $file_did = NULL, $class_did = NULL) {
   $words = preg_split('/\s+/', trim($name));
   $name = array_shift($words);
   return api_link_name($name, $branch, $prepend, $append, $file_did, $class_did, implode(' ', $words), TRUE);
 }
-
 
 /**
  * Loads namespace and use information for a file.
@@ -1594,7 +1610,7 @@ function api_link_link($name, $branch, $prepend = '', $append = '', $file_did = 
  *   - use_alias: Associative array of use statement class aliases. Keys are
  *     the alias names, and values are the fully namespaced class names.
  */
-function api_get_namespace_info($file_did = NULL) {
+function _api_get_namespace_info($file_did = NULL) {
   static $cache = array();
 
   $ret = array('namespace' => '', 'use_alias' => array());

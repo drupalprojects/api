@@ -187,7 +187,7 @@ instance, the worker for the "update branches" queue is
 api_queue_update_branch(). The queue/cron architecture:
 - cron: See if any branches need updating, and add them to the update
   branch queue. This is function api_cron() in api.module. It calls
-  api_update_all_branches(), which is in the include file parser.inc.
+  api_update_all_branches(), which is in the include file api.update_branch.inc.
 - update branch queue: See if any files have changed, and add them to the
   parse queue. Also if any files have been deleted, add entries to the node
   delete queue for everything that file used to contain.

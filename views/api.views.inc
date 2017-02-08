@@ -1,6 +1,10 @@
 <?php
+
 /**
  * Views integration for the API module.
+ *
+ * Functions whose names start with _ in this file are only intended to be
+ * called by other functions in this file.
  */
 
 /**
@@ -535,7 +539,7 @@ function api_views_data() {
       ),
       'filter' => array(
         'handler' => 'views_handler_filter_in_operator',
-        'options callback' => 'api_list_project_type_options',
+        'options callback' => '_api_list_project_type_options',
       ),
       'argument' => array(
         'handler' => 'views_handler_argument_string',
@@ -925,7 +929,7 @@ function api_views_plugins() {
  *
  * Options callback for filtering by project type.
  */
-function api_list_project_type_options() {
+function _api_list_project_type_options() {
   return drupal_map_assoc(db_select('api_project', 'p')
     ->fields('p', array('project_type'))
     ->groupBy('p.project_type')
