@@ -102,10 +102,11 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
    */
   function _testBadFileHeader() {
     // This file is in the special_files directory. Check that it triggered
-    // two log messages when it was parsed.
+    // three log messages when it was parsed.
     $this->drupalGet('admin/reports/dblog');
     $this->assertRaw('@file docblock containing @defgroup', 'Warning message is present for bad file');
     $this->assertRaw('Item docblock containing @defgroup', 'Warning message is present for bad class');
+    $this->assertRaw('Duplicate found in file', 'Warning message is present for duplicated function');
 
     // Verify that the file is listed and the file's page can be visited.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
@@ -117,6 +118,12 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     // Verify that the class is listed on this page, and not the method.
     $this->assertLink('ClassWithDefgroupDocBlock', 0, 'Class with defgroup docblock appears on file page');
     $this->assertNoLink('ClassWithDefgroupDocBlock::foo', 'Method in class with defgroup docblock does not appear on file page');
+
+    // Verify that the duplicate function is listed, and it's the right
+    // version.
+    $this->clickLink('twice_in_one_file');
+    $this->assertText('First duplicate function in same file');
+    $this->assertNoText('Second duplicate function in same file');
   }
 
   /**

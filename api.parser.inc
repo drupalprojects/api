@@ -1081,6 +1081,11 @@ function _api_save_docblocks($docblocks) {
       ->fetchField();
 
     if ($docblock['did'] > 0) {
+      // Verify that this same object wasn't already in this file in this run.
+      if (in_array($docblock['did'], $dids)) {
+        watchdog('api', 'Duplicate found in file %file at line %line. Only first instance of %name is saved', array('%file' => $docblocks[0]['file_name'], '%line' => $docblock['start_line'], '%name' => $docblock['object_name']), WATCHDOG_WARNING);
+        continue;
+      }
       api_add_text_defaults($docblock, 'api_documentation');
       drupal_write_record('api_documentation', $docblock, 'did');
     }
