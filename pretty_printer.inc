@@ -211,7 +211,7 @@ class ApiPrettyPrinter extends Standard {
       }
       elseif ($node instanceof Expr\Cast) {
         $cast_type = strtolower(array_pop($type_pieces));
-        return $this->prefixOp($type, ' (<span class="php-keyword">' . $cast_type . '</span>)', $node->expr);
+        return $this->pPrefixOp($type, '(<span class="php-keyword">' . $cast_type . '</span>) ', $node->expr);
       }
       elseif ($type == 'Expr_ConstFetch') {
         $output = parent::p($node);

@@ -64,6 +64,13 @@ function formatting_test() {
       break;
   }
 
+  // Casting and some operators.
+  $foo = (int) (7 + 3 * ($x + $y));
+  $foo++;
+  $foo--;
+  --$foo;
+  $foo += 44;
+
   // If/else statement.
   if ($foo) {
     // We need a comment here.
