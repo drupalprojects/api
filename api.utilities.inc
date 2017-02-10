@@ -119,7 +119,7 @@ function api_display_view($view_name, $display_name, $args = array()) {
  * @return string
  *   Fully-qualified name of the class, starting with a backslash.
  */
-function api_full_classname($name, $namespace = array(), $use_aliases = array()) {
+function api_full_classname($name, $namespace = '', $use_aliases = array()) {
 
   // Break off the class name from the rest.
   $classname = $name;

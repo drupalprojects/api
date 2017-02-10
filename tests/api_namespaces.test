@@ -337,6 +337,8 @@ class ApiNamespaceCruftTestCase extends ApiWebPagesBaseTest {
     $counts['api_members'] = 0;
     $counts['api_overrides'] = 0;
     $counts['api_namespace'] = 0;
+    $counts['api_reference_storage'] = 0;
+    $counts['api_reference_counts'] = 0;
     $this->verifyCounts($counts, 0, 'Branch deleted');
 
     // Delete the project and verify counts.

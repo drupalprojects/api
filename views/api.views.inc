@@ -127,6 +127,114 @@ function api_views_data() {
       ),
     ),
 
+    'references_count_call' => array(
+      'title' => t('Reference count dummy field for calls and other direct references'),
+      'relationship' => array(
+        'base' => 'api_reference_counts',
+        'base field' => 'object_name',
+        'field' => 'object_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'reference_type', 'value' => 'call'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('Reference counts: direct'),
+        'title' => t('Reference counts: direct'),
+        'help' => t('Reference count information for direct calls and uses'),
+      ),
+    ),
+
+    'references_count_call_namespaced' => array(
+      'title' => t('Reference count dummy field for calls and other direct references, with namespaces'),
+      'relationship' => array(
+        'base' => 'api_reference_counts',
+        'base field' => 'object_name',
+        'field' => 'namespaced_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'reference_type', 'value' => 'call'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('Reference counts: direct, namespaced'),
+        'title' => t('Reference counts: direct, namespaced'),
+        'help' => t('Reference count information for direct calls and uses, found by namespaced name'),
+      ),
+    ),
+
+    'references_count_string' => array(
+      'title' => t('Reference count dummy field for strings'),
+      'relationship' => array(
+        'base' => 'api_reference_counts',
+        'base field' => 'object_name',
+        'field' => 'object_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'reference_type', 'value' => 'string'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('Reference count: strings'),
+        'title' => t('Reference count: strings'),
+        'help' => t('Reference count information for strings'),
+      ),
+    ),
+
+    'references_count_string_namespaced' => array(
+      'title' => t('Reference count dummy field for strings with namespaces'),
+      'relationship' => array(
+        'base' => 'api_reference_counts',
+        'base field' => 'object_name',
+        'field' => 'namespaced_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'reference_type', 'value' => 'string'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('Reference count: strings, namespaced'),
+        'title' => t('Reference count: strings, namespaced'),
+        'help' => t('Reference count information for strings, matching on namespaced name'),
+      ),
+    ),
+
+    'references_count_override' => array(
+      'title' => t('Reference count dummy field for overrides'),
+      'relationship' => array(
+        'base' => 'api_reference_counts',
+        'base field' => 'object_name',
+        'field' => 'namespaced_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'reference_type', 'value' => 'override'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('Reference count: overrides'),
+        'title' => t('Reference count: overrides'),
+        'help' => t('Reference count information for class member overrides'),
+      ),
+    ),
+
+    'references_count_use' => array(
+      'title' => t('Reference count dummy field for uses'),
+      'relationship' => array(
+        'base' => 'api_reference_counts',
+        'base field' => 'object_name',
+        'field' => 'namespaced_name',
+        'handler' => 'views_handler_relationship',
+        'join_handler' => 'api_views_join_extras',
+        'extra' => array(
+          array('field' => 'reference_type', 'value' => 'use'),
+          array('field' => 'branch_id = %alias.branch_id', 'prepend_left' => TRUE),
+        ),
+        'label' => t('Reference counts: use statements'),
+        'title' => t('Reference counts: use statements'),
+        'help' => t('Reference count information for use statements'),
+      ),
+    ),
+
     'all_service_tags' => array(
       'title' => t('Service tag'),
       'field' => array(
@@ -869,6 +977,94 @@ function api_views_data() {
         'handler' => 'views_handler_argument_string',
       ),
     ),
+  );
+
+  $data['api_reference_counts'] = array(
+    'table' => array(
+      'group' => t('API reference counts'),
+      'base' => array(
+        'field' => 'object_name',
+        'title' => t('API reference counts'),
+        'help' => t('Counts of references in API documentation'),
+        'weight' => 80,
+      ),
+    ),
+
+    'branch_id' => array(
+      'title' => t('Branch for references'),
+      'help' => t('Numeric ID of the branch for references'),
+      'relationship' => array(
+        'base' => 'api_branch',
+        'handler' => 'views_handler_relationship',
+        'label' => t('Branch on reference'),
+        'title' => t('Branch on reference'),
+        'help' => t('The branch this reference count is in'),
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
+
+    'reference_type' => array(
+      'title' => t('Reference type'),
+      'help' => t('Reference type: call, string, use, override'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_string',
+      ),
+    ),
+
+    'object_name' => array(
+      'title' => t('Reference name'),
+      'help' => t('Function name, text found, etc. for a reference'),
+      'field' => array(
+        'handler' => 'views_handler_field',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+        'click sortable' => TRUE,
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_string',
+      ),
+      'argument' => array(
+        'handler' => 'api_views_handler_argument_partial_match',
+      ),
+    ),
+
+    'reference_count' => array(
+      'title' => t('Reference count'),
+      'help' => t('Count of references in this branch, of this type, of this item'),
+      'field' => array(
+        'handler' => 'views_handler_field_numeric',
+        'click sortable' => TRUE,
+      ),
+      'sort' => array(
+        'handler' => 'views_handler_sort',
+        'click sortable' => TRUE,
+      ),
+      'filter' => array(
+        'handler' => 'views_handler_filter_numeric',
+      ),
+      'argument' => array(
+        'handler' => 'views_handler_argument_numeric',
+      ),
+    ),
+
   );
 
   return $data;

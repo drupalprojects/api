@@ -74,6 +74,10 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     $this->assertLink('sample_in_code_links', 0, 'Calling function link is present');
     $this->assertNoLink('second_sample_function', 'Calling function from other branch link is not present');
 
+    // Visit the Functions listing page and verify the count there is the same.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/functions');
+    $this->assertText('10', 'Sample function call count is correct');
+
     // Visit the other branch's function sample_function().
     $this->drupalGet('api/' . $this->branch_info_2['project'] . '/sample2.php/function/sample_function/' . $this->branch_info_2['branch_name']);
 
@@ -82,6 +86,11 @@ class ApiMultipleBranchesTest extends ApiWebPagesBaseTest {
     // Verify links to the calling functions.
     $this->assertLink('second_sample_function', 0, 'Calling function link is present');
     $this->assertNoLink('sample_in_code_links', 'Calling function from other branch link is not present');
+
+    // Visit the Functions listing page and verify the count there is the same.
+    $this->drupalGet('api/' . $this->branch_info_2['project'] . '/functions/' . $this->branch_info_2['branch_name']);
+    $this->assertText('1', 'Sample function call count is correct');
+    $this->assertNoText('10', 'Sample function call count is correct');
   }
 
   /**
@@ -310,11 +319,15 @@ class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
     // default project's default branch name!
     $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function/' . $this->branch_info['branch_name']);
 
-    // Verify that there is only one function calling this function.
+    // Verify that there are 10 functions calling this function.
     $this->assertRaw('10 calls to sample_function()', 'Ten calling functions');
     // Verify links to the calling functions.
     $this->assertLink('sample_in_code_links', 0, 'Calling function link is present');
     $this->assertNoLink('second_sample_function', 'Calling function from other branch link is not present');
+
+    // Visit the Functions listing page and verify the count there is the same.
+    $this->drupalGet('api/' . $this->branch_info['project'] . '/functions');
+    $this->assertText('10', 'Sample function call count is correct');
 
     // Visit the other branch's function sample_function().
     $this->drupalGet('api/' . $this->branch_info_2['project'] . '/sample2.php/function/sample_function/' . $this->branch_info_2['branch_name']);
@@ -324,6 +337,11 @@ class ApiMultipleProjectsTest extends ApiWebPagesBaseTest {
     // Verify links to the calling functions.
     $this->assertLink('second_sample_function', 0, 'Calling function link is present');
     $this->assertNoLink('sample_in_code_links', 'Calling function from other branch link is not present');
+
+    // Visit the Functions listing page and verify the count there is the same.
+    $this->drupalGet('api/' . $this->branch_info_2['project'] . '/functions');
+    $this->assertText('1', 'Sample function call count is correct');
+    $this->assertNoText('10', 'Sample function call count is correct');
   }
 
   /**

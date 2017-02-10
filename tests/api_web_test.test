@@ -36,6 +36,9 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertNoRaw('hidden_function_two', 'Second hidden function is not on functions list page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
     $this->assertText('Deprecated', 'Deprecated is shown');
+    $this->assertText('10', 'Sample function call count is shown');
+    $this->assertText('Direct uses');
+    $this->assertText('Strings');
 
     // Verify file/function links.
     $this->assertLinkURLSubstring('sample_function', $this->branch_info['project'] . '/sample.php/function/sample_function', 'sample_function link exists', 'sample_function link went to the right place');
@@ -57,6 +60,9 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('sample-subdir.php', 0,   'sample-subdir.php file name is on constants list page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
     $this->assertText('Deprecated', 'Deprecated is shown');
+    $this->assertText('2', 'Duplicate constant call count is shown');
+    $this->assertText('Direct uses');
+    $this->assertText('Strings');
 
     // Verify constant/function links.
     $this->assertLinkURLSubstring('SAMPLE_CONSTANT', $this->branch_info['project'] . '/sample.php/constant/SAMPLE_CONSTANT', 'SAMPLE_CONSTANT link exists', 'SAMPLE_CONSTANT link went to the right place');
@@ -82,6 +88,10 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertNoText('baz', 'Member name is not on classes page');
     $this->assertNoLink(t('Other projects'), 'Link to other projects is not present since there are no others');
     $this->assertText('Deprecated', 'Deprecated is shown');
+    $this->assertText('3', 'Sample interface call count is shown');
+    $this->assertText('Direct uses');
+    $this->assertText('Use statements');
+    $this->assertText('Strings');
 
     // Verify file/class links.
     $this->assertLinkURLSubstring('Sample', $this->branch_info['project'] . '/classes.php/class/Sample', 'Sample link exists', 'Sample link went to the right place');
@@ -158,6 +168,11 @@ class ApiListingPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('sample.php', 0, 'File containing deprecated items is linked on deprecated page');
     $this->assertLink('classes.php', 0, 'Other file containing deprecated items is linked on deprecated page');
     $this->assertNoLink('sample_function', 'Non-deprecated function is not on deprecated page');
+    $this->assertText('1', 'Sample function call count is shown');
+    $this->assertText('Direct uses');
+    $this->assertText('Namespaced uses');
+    $this->assertText('Overrides');
+    $this->assertText('Use statements');
 
     // Test the Elements page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/elements');

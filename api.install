@@ -552,6 +552,44 @@ function api_schema() {
     ),
   );
 
+  $schema['api_reference_counts'] = array(
+    'documentation' => 'Aggregated counts of certain references',
+    'fields' => array(
+      'record_id' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+      ),
+      'branch_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'reference_type' => array(
+        'type' => 'varchar',
+        'length' => '31',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'object_name' => array(
+        'type' => 'varchar',
+        'mysql_type' => 'varbinary(255)',
+        'length' => '255',
+        'not null' => TRUE,
+      ),
+      'reference_count' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('record_id'),
+    'indexes' => array(
+      'branch_id' => array('branch_id'),
+      'reference_type' => array('reference_type'),
+      'object_name' => array('object_name'),
+    ),
+  );
+
   $schema['api_overrides'] = array(
     'description' => 'Keep track of method, property, and class constant parents.',
     'fields' => array(
@@ -1752,6 +1790,62 @@ function api_update_7141() {
   $count = api_update_mark_for_reparse();
   return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
+
+/**
+ * Add the {api_reference_counts} table to the database.
+ */
+function api_update_7142() {
+  // Create new table.
+  db_create_table('api_reference_counts', array(
+      'documentation' => 'Aggregated counts of certain references',
+      'fields' => array(
+        'record_id' => array(
+          'type' => 'serial',
+          'not null' => TRUE,
+        ),
+        'branch_id' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'reference_type' => array(
+          'type' => 'varchar',
+          'length' => '31',
+          'not null' => TRUE,
+          'default' => '',
+        ),
+        'object_name' => array(
+          'type' => 'varchar',
+          'mysql_type' => 'varbinary(255)',
+          'length' => '255',
+          'not null' => TRUE,
+        ),
+        'reference_count' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+      ),
+      'primary key' => array('record_id'),
+      'indexes' => array(
+        'branch_id' => array('branch_id'),
+        'reference_type' => array('reference_type'),
+        'object_name' => array('object_name'),
+      ),
+    ));
+
+  // Mark one file from each branch for reparse, to trigger population of
+  // this table over the next cron run(s).
+  module_load_include('inc', 'api', 'api.db');
+  $select = db_select('api_documentation', 'ad')
+    ->condition('object_type', 'file')
+    ->groupBy('ad.branch_id');
+  $select->addExpression('MIN(ad.did)', 'fdid');
+  $dids = $select->execute()->fetchCol();
+  api_mark_items_for_reparse($dids);
+  return format_string('@count files marked for reparse, starting at next cron run, to populate new table', array('@count' => count($dids)));
+}
+
 
 /**
  * Remove variables and other data on uninstall.

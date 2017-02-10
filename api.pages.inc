@@ -10,7 +10,6 @@
 
 module_load_include('inc', 'api', 'api.formatting');
 module_load_include('inc', 'api', 'api.utilities');
-module_load_include('inc', 'api', 'api.references');
 
 /**
  * Page callback: Redirects to an appropriate search page.

@@ -32,6 +32,8 @@ module_load_include('inc', 'api', 'api.utilities');
  *   File name to store in the database for this file.
  */
 function api_parse_file($callback, $file_path, $branch, $file_name) {
+  _api_branch_touched($branch->branch_id);
+
   // See if this is a Drupal file or a Drupal-excluded file.
   $drupal_regexps = (isset($branch->exclude_drupalism_regexp) ? explode("\n", $branch->exclude_drupalism_regexp) : array());
   $drupal_regexps = array_filter(array_map('trim', $drupal_regexps));
@@ -2084,6 +2086,25 @@ function _api_requeue_after_run($did = NULL) {
 }
 
 /**
+ * Keeps track of which branches were updated during this run.
+ *
+ * @param int $branch_id
+ *   (optional) ID of a branch that had some updates.
+ *
+ * @return int[]
+ *   Array of the updated branches.
+ */
+function _api_branch_touched($branch_id = 0) {
+  $branches = &drupal_static(__FUNCTION__, array());
+
+  if ($branch_id) {
+    $branches[$branch_id] = $branch_id;
+  }
+
+  return $branches;
+}
+
+/**
  * Cleans up at the end of the cron job.
  *
  * Figures out class parents, class member lists, class member overrides, and
@@ -2293,6 +2314,11 @@ function api_shutdown() {
         ->from($select)
         ->execute();
     }
+  }
+
+  // Recalculate reference counts for each touched branch.
+  foreach (_api_branch_touched() as $id) {
+    _api_calculate_reference_counts($id);
   }
 
   cache_clear_all();
@@ -2716,4 +2742,90 @@ function _api_has_documentation($object) {
     }
   }
   return FALSE;
+}
+
+/**
+ * Calculates and stores aggregate reference counts for a branch.
+ *
+ * @param int branch_id
+ *   ID of the branch to calculate counts for.
+ *
+ * @see api_find_references()
+ */
+function _api_calculate_reference_counts($branch_id) {
+  // Remove existing reference counts for this branch.
+  db_delete('api_reference_counts')
+    ->condition('branch_id', $branch_id)
+    ->execute();
+
+  // Calculate use counts for classes, with fully-qualified namespaced class
+  // name. The entries in {api_namespace} have the namespace declarations,
+  // which are missing the initial \ character.
+  $select = db_select('api_namespace', 'an');
+  $select->leftJoin('api_documentation', 'ad', 'an.did = ad.did');
+  $select->addExpression("CONCAT('\\\\', an.class_name)", 'object_name');
+  $select->addExpression($branch_id, 'branch_id');
+  $select->addExpression("'use'", 'reference_type');
+  $select->addExpression('COUNT(*)', 'reference_count');
+  $select
+    ->condition('an.object_type', 'use_alias')
+    ->condition('ad.branch_id', $branch_id)
+    ->groupBy('an.class_name');
+  db_insert('api_reference_counts')
+    ->from($select)
+    ->execute();
+
+  // Calculate call counts for functions and methods, including usage of
+  // constants, and extend/implements for classes/interfaces. For simple
+  // functions, these will not have namespaces on them. For class members and
+  // extend/implements of classes, they will have namespaces.
+  $select = db_select('api_reference_storage', 'ars');
+  $select->addField('ars', 'object_name', 'object_name');
+  $select->addExpression($branch_id, 'branch_id');
+  $select->addExpression("'call'", 'reference_type');
+  $select->addExpression('COUNT(*)', 'reference_count');
+  $select
+    ->condition('ars.object_type', array('function', 'constant', 'member-class', 'computed-member', 'class', 'interface'))
+    ->condition('ars.branch_id', $branch_id)
+    ->groupBy('ars.object_name');
+  db_insert('api_reference_counts')
+    ->from($select)
+    ->execute();
+
+  // Calculate string reference counts. Some strings have namespaces, and some
+  // don't, similar to the 'call' reference count above.
+  $select = db_select('api_reference_storage', 'ars');
+  $select->addField('ars', 'object_name', 'object_name');
+  $select->addExpression($branch_id, 'branch_id');
+  $select->addExpression("'string'", 'reference_type');
+  $select->addExpression('COUNT(*)', 'reference_count');
+  $select
+    ->condition('ars.object_type', array('potential callback', 'potential file', 'service_class', 'yaml string'))
+    ->condition('ars.branch_id', $branch_id)
+    ->groupBy('ars.object_name');
+  db_insert('api_reference_counts')
+    ->from($select)
+    ->execute();
+
+  // Calculate override counts for methods and other class members. For
+  // disambiguation, store the namespaced name of the class::member.
+  $select = db_select('api_overrides', 'ao');
+  $select->leftJoin('api_documentation', 'ad', 'ao.did = ad.did');
+  $select->leftJoin('api_documentation', 'ado', 'ao.overrides_did = ado.did');
+  // Object name is the name of the overridden method.
+  $select->addExpression('ado.namespaced_name', 'object_name');
+  $select->addExpression($branch_id, 'branch_id');
+  $select->addExpression("'override'", 'reference_type');
+  $select->addExpression('COUNT(*)', 'reference_count');
+  $select
+    // Some records in api_overrides are just about where the documentation is.
+    // Filter these out.
+    ->condition('ao.overrides_did', 0, '<>')
+    // Some overrides may be in other branches. Filter these out too.
+    ->condition('ad.branch_id', $branch_id)
+    ->condition('ado.branch_id', $branch_id)
+    ->groupBy('ado.object_name');
+  db_insert('api_reference_counts')
+    ->from($select)
+    ->execute();
 }

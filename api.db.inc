@@ -64,8 +64,11 @@ function api_delete_branch($branch_id, $finalize = TRUE) {
     ->execute()
     ->fetchCol();
 
-  // Fully delete these items, and the branch record.
+  // Fully delete these items, reference counts, and the branch record.
   api_delete_items($dids);
+  db_delete('api_reference_counts')
+    ->condition('branch_id', $branch_id)
+    ->execute();
   db_delete('api_branch')
     ->condition('branch_id', $branch_id)
     ->execute();

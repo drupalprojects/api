@@ -180,9 +180,11 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // At this point, make sure the reference storage table is cleared out
     // too. We haven't been tracking it.
     $counts['api_reference_storage'] = 0;
+    $counts['api_reference_counts'] = 0;
     $this->verifyCounts($counts, 0, 'Branch deleted');
     // Go back to not tracking reference storage.
     unset($counts['api_reference_storage']);
+    unset($counts['api_reference_counts']);
 
     // Add a job using the deleted branch to the queue, and attempt to parse it.
     // Verify that the log message is generated.
@@ -275,6 +277,7 @@ class ApiCruftTestCase extends ApiWebPagesBaseTest {
     // At this point, make sure the reference storage table is cleared out
     // too. We haven't been tracking it.
     $counts['api_reference_storage'] = 0;
+    $counts['api_reference_counts'] = 0;
     $this->verifyCounts($counts, 0, 'Project deleted');
 
     // Add both sample and fake PHP/API branches again.
