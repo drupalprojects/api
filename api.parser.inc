@@ -164,61 +164,73 @@ function api_parse_php_file($docblock) {
     return;
   }
 
+  $error_logged = FALSE;
   $parser = (new ParserFactory())->create(ParserFactory::PREFER_PHP7);
   try {
     $statements = $parser->parse($docblock['source']);
   }
   catch (\PhpParser\Error $e) {
+    $error_logged = TRUE;
     watchdog('api', 'File @name could not be parsed. ' . $e->getMessage(), array('@name' => $docblock['file_name']), WATCHDOG_ERROR);
   }
 
-  // Find all the references in the whole file. We will omit the ones that
-  // belong to particular functions etc. in the file.
-  $references = _api_find_php_references($statements, $docblock['is_drupal']);
+  if ($statements && is_array($statements)) {
+    // Find all the references in the whole file. We will omit the ones that
+    // belong to particular functions etc. in the file.
+    $references = _api_find_php_references($statements, $docblock['is_drupal'], $docblock['file_name']);
 
-  // Make the first doc block be for the file as a whole.
-  $docblock['code'] = _api_format_statements($statements, $docblock['is_drupal'], TRUE);
-  $docblocks = array($docblock);
+    // Make the first doc block be for the file as a whole.
+    $docblock['code'] = _api_format_statements($statements, $docblock['is_drupal'], TRUE);
+    $docblocks = array($docblock);
 
-  // Set default documentation block array for items other than the file.
-  $default_block = array(
-    'branch' => $docblock['branch'],
-    'file_name' => $docblock['file_name'],
-    'class' => '',
-    'object_type' => '',
-    'documentation' => '',
-    'references' => array(),
-    'see' => '',
-    'deprecated' => '',
-    'start_line' => 0,
-    'namespaced_name' => '',
-    'modifiers' => '',
-    'is_drupal' => $docblock['is_drupal'],
-    'code' => '',
-  );
+    // Set default documentation block array for items other than the file.
+    $default_block = array(
+      'branch' => $docblock['branch'],
+      'file_name' => $docblock['file_name'],
+      'class' => '',
+      'object_type' => '',
+      'documentation' => '',
+      'references' => array(),
+      'see' => '',
+      'deprecated' => '',
+      'start_line' => 0,
+      'namespaced_name' => '',
+      'modifiers' => '',
+      'is_drupal' => $docblock['is_drupal'],
+      'code' => '',
+    );
 
-  $found_references = _api_build_php_docblocks($statements, $default_block, $docblocks);
+    $found_references = _api_build_php_docblocks($statements, $default_block, $docblocks);
 
-  // For the file, save only the references not found in parsing the
-  // statements within the file. This will only save references to function
-  // calls in the global area of the file, excluding those found in
-  // functions declared in the file. This doesn't apply to namespace and use
-  // references though -- these are found only in _api_build_php_docblocks().
+    // For the file, save only the references not found in parsing the
+    // statements within the file. This will only save references to function
+    // calls in the global area of the file, excluding those found in
+    // functions declared in the file. This doesn't apply to namespace and use
+    // references though -- these are found only in _api_build_php_docblocks().
 
-  foreach ($found_references as $type => $list) {
-    // For namespaces and use aliases, merge these into the main references.
-    if ($type == 'namespace' || $type == 'use_alias') {
-      $refs = array($type => $list);
-      $references = _api_merge_references($references, $refs);
-    }
-    else {
-      // For other references, remove them.
-      foreach ($list as $name => $info) {
-        unset($references[$type][$name]);
+    foreach ($found_references as $type => $list) {
+      // For namespaces and use aliases, merge these into the main references.
+      if ($type == 'namespace' || $type == 'use_alias') {
+        $refs = array($type => $list);
+        $references = _api_merge_references($references, $refs, $docblock['file_name']);
+      }
+      else {
+        // For other references, remove them.
+        foreach ($list as $name => $info) {
+          unset($references[$type][$name]);
+        }
       }
     }
+    $docblocks[0]['references'] = $references;
   }
-  $docblocks[0]['references'] = $references;
+  else {
+    // We at least want to save the empty docblock so the file record is
+    // updated.
+    $docblocks = array($docblock);
+    if (!$error_logged) {
+      watchdog('api', 'File @name could not be parsed. ', array('@name' => $docblock['file_name']), WATCHDOG_ERROR);
+    }
+  }
 
   _api_save_docblocks($docblocks);
 
@@ -279,7 +291,7 @@ function api_parse_yaml_file($docblock) {
     }
   }
 
-  $references = _api_find_yaml_references($parsed, $key_level);
+  $references = _api_find_yaml_references($parsed, $key_level, $docblock['file_name']);
   // For services files, we do not want the YML strings references, because
   // really only the services are relevant.
   if ($is_services) {
@@ -382,11 +394,13 @@ function _api_length_compare($a, $b) {
  *   Parsed YAML object.
  * @param int $key_refs_level
  *   Store references to the keys on this level, where 1 is the current level.
+ * @param string $filename
+ *   File name for watchdog messages.
  *
  * @return array
  *   Array of references suitable for use in $docblock['references'].
  */
-function _api_find_yaml_references($yaml, $key_refs_level) {
+function _api_find_yaml_references($yaml, $key_refs_level, $filename) {
   if (empty($yaml)) {
     return array('potential callback' => array());
   }
@@ -411,7 +425,7 @@ function _api_find_yaml_references($yaml, $key_refs_level) {
       }
     }
     elseif (is_array($value) || is_object($value)) {
-      $references = _api_merge_references($references, _api_find_yaml_references($value, $key_refs_level - 1));
+      $references = _api_merge_references($references, _api_find_yaml_references($value, $key_refs_level - 1, $filename), $filename);
     }
   }
 
@@ -584,8 +598,8 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
         $docblock['object_name'] = $class_prefix . $docblock['member_name'];
         $docblock['title'] = $docblock['object_name'];
         $docblock['code'] = _api_format_statements(array($statement), $docblock['is_drupal']);
-        $docblock['references'] = _api_find_php_references(array($statement), $docblock['is_drupal']);
-        $all_references = _api_merge_references($all_references, $docblock['references']);
+        $docblock['references'] = _api_find_php_references(array($statement), $docblock['is_drupal'], $docblock['file_name']);
+        $all_references = _api_merge_references($all_references, $docblock['references'], $docblock['file_name']);
         $docblock['signature'] = _api_get_function_signature($statement);
         if ($type == 'Stmt_ClassMethod') {
           $docblock['modifiers'] = _api_get_statement_modifiers($statement);
@@ -637,20 +651,26 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
         if (!empty($statement->stmts)) {
           $last_index = count($docblocks) - 1;
           $references = _api_build_php_docblocks($statement->stmts, array_merge($default_block, array('class' => $docblock['object_name'])), $docblocks);
-          $all_references = _api_merge_references($all_references, $references);
+          $all_references = _api_merge_references($all_references, $references, $docblock['file_name']);
           $docblocks[$last_index]['references'] = $references;
         }
 
         break;
 
       case 'Stmt_Namespace':
-        $namespace = $statement->name->toString();
-        $references = array('namespace' => $namespace);
-        $all_references = _api_merge_references($all_references, $references);
+        if ($statement->name) {
+          $namespace = $statement->name->toString();
+          $references = array('namespace' => $namespace);
+          $all_references = _api_merge_references($all_references, $references, $docblock['file_name']);
+        }
+        else {
+          watchdog('api', 'Empty namespace declaration in file @name', array('@name' => $docblock['file_name']), WATCHDOG_WARNING);
+        }
+
         // The rest of the statements in this file are inside this namespace.
         if (!empty($statement->stmts)) {
           $references = _api_build_php_docblocks($statement->stmts, $default_block, $docblocks);
-          $all_references = _api_merge_references($all_references, $references);
+          $all_references = _api_merge_references($all_references, $references, $docblock['file_name']);
         }
         break;
 
@@ -664,7 +684,7 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
           }
           $references['use_alias'][$alias] = $class;
         }
-        $all_references = _api_merge_references($all_references, $references);
+        $all_references = _api_merge_references($all_references, $references, $docblock['file_name']);
         break;
 
       case 'Stmt_TraitUse':
@@ -682,7 +702,7 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
           $ad_type = strtolower(array_pop($ad_type_parts));
           $references['use_trait'][$trait]['details'][$ad_type][$adaptation->newName] = $adaptation->method;
         }
-        $all_references = _api_merge_references($all_references, $references);
+        $all_references = _api_merge_references($all_references, $references, $docblock['file_name']);
         break;
 
     }
@@ -773,18 +793,20 @@ function _api_clean_comment($text) {
  *   Master list of references.
  * @param array $new
  *   New references to merge in.
+ * @param string $filename
+ *   File name for watchdog messages.
  *
  * @return array
  *   Merged references. References in $new are appended to references in
  *   $master, and if there are duplicate namespace or use references, the
  *   $master list is used and a warning is generated.
  */
-function _api_merge_references($master, $new) {
+function _api_merge_references($master, $new, $filename) {
 
   // We're supporting only one namespace declaration per file.
   if (isset($master['namespace']) && isset($new['namespace'])) {
     if ($master['namespace'] != $new['namespace']) {
-      watchdog('api', 'Multiple namespace declarations found in file. Only first is used.', array(), WATCHDOG_WARNING);
+      watchdog('api', 'Multiple namespace declarations found in file @file. Only first is used.', array('@file' => $filename), WATCHDOG_WARNING);
     }
     unset($new['namespace']);
   }
@@ -793,7 +815,7 @@ function _api_merge_references($master, $new) {
   if (isset($new['use_alias']) && isset($master['use_alias'])) {
     foreach ($new['use_alias'] as $alias => $class) {
       if (isset($master['use_alias'][$alias]) && $master['use_alias'][$alias] != $class) {
-        watchdog('api', 'Conflicting use declarations for %name found in file. Only first is used.', array('%name' => $alias), WATCHDOG_WARNING);
+        watchdog('api', 'Conflicting use declarations for %name found in file @file. Only first is used.', array('%name' => $alias, '@file' => $filename), WATCHDOG_WARNING);
         unset($new['use_alias'][$alias]);
       }
     }
@@ -1663,8 +1685,10 @@ function _api_documentation_summary($documentation) {
  * @param array $statements
  *   Array of statements to traverse from PhpParser parsing.
  * @param bool $is_drupal
- *   (optional) TRUE (default) if this is Drupal code; FALSE if not. This turns
- *   on recognition of things like hooks and theme calls.
+ *   TRUE if this is Drupal code; FALSE if not. This turns on recognition of
+ *   things like hooks and theme calls.
+ * @param string $filename
+ *   File name for watchdog messages.
  * @param array $state
  *   (optional) Array to keep track of state for recursive calls.
  *
@@ -1674,12 +1698,18 @@ function _api_documentation_summary($documentation) {
  *   types of references ('function', 'potential hook', etc.), and the values
  *   are arrays of the names of this type that were found.
  */
-function _api_find_php_references($statements, $is_drupal = TRUE, $state = array()) {
+function _api_find_php_references($statements, $is_drupal, $filename, $state = array()) {
   $references = array();
 
   $invoke_function_names = ApiPrettyPrinter::invokeFunctionsList();
 
   foreach ($statements as $statement) {
+    if (!$statement) {
+      // This could happen if some of the "sub-statements" in a recursive call
+      // were actually empty.
+      continue;
+    }
+
     $type = $statement->getType();
     $sub_nodes = $statement->getSubNodeNames();
     $sub_statements = NULL;
@@ -1832,7 +1862,7 @@ function _api_find_php_references($statements, $is_drupal = TRUE, $state = array
       if (!is_array($sub_statements)) {
         $sub_statements = array($sub_statements);
       }
-      $references = _api_merge_references($references, _api_find_php_references($sub_statements, $is_drupal, $sub_state));
+      $references = _api_merge_references($references, _api_find_php_references($sub_statements, $is_drupal, $filename, $sub_state), $filename);
     }
 
     // After processing the first argument of functions, unset some state
