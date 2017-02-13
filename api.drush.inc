@@ -5,8 +5,6 @@
  * Drush commands for the API module.
  */
 
-module_load_include('inc', 'api', 'api.db');
-
 /**
  * Implements hook_drush_command().
  */
@@ -59,6 +57,7 @@ function api_drush_command() {
  *   branch.
  */
 function drush_api_reparse($branch_or_file = NULL) {
+  module_load_include('inc', 'api', 'api.db');
   $num = api_mark_for_reparse($branch_or_file);
 
   drush_log(dt('Marked @number files for reparsing.', array('@number' => $num)), 'ok');
@@ -68,6 +67,7 @@ function drush_api_reparse($branch_or_file = NULL) {
  * Resets the parsing queue.
  */
 function drush_api_reset_queue() {
+  module_load_include('inc', 'api', 'api.db');
   api_reset_parse_queue();
 
   drush_log(dt('API parse queue reset. Necessary jobs will be added in the next cron run'), 'ok');
@@ -115,6 +115,7 @@ function drush_api_list_branches() {
  * Adds or updates an API branch, and project if it doesn't already exist.
  */
 function drush_api_ensure_branch($project, $project_title, $project_type, $branch_name, $branch_title, $directory, $core_compatibility, $update_frequency) {
+  module_load_include('inc', 'api', 'api.db');
 
   // Update the project.
   api_save_project((object) array('project_name' => $project, 'project_title' => $project_title, 'project_type' => $project_type));
