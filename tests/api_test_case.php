@@ -42,6 +42,9 @@ class ApiTestCase extends DrupalWebTestCase {
   function baseSetUp($extra_modules = array()) {
     $modules = array_merge(array('api', 'ctools', 'composer_manager', 'node', 'comment', 'dblog', 'views'), $extra_modules);
     DrupalWebTestCase::setUp($modules);
+    // Load the autoloader for this thread, since composer_manager_init() is
+    // not invoked.
+    composer_manager_register_autoloader();
 
     // Set the line break tag to nothing for most tests.
     variable_set('api_breaks_tag', '');
