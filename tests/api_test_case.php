@@ -44,7 +44,7 @@ class ApiTestCase extends DrupalWebTestCase {
     DrupalWebTestCase::setUp($modules);
     // Load the autoloader for this thread, since composer_manager_init() is
     // not invoked.
-    composer_manager_register_autoloader();
+    include DRUPAL_ROOT . '/vendor/autoload.php';
 
     // Set the line break tag to nothing for most tests.
     variable_set('api_breaks_tag', '');
