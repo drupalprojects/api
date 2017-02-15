@@ -42,10 +42,8 @@ class ApiTestCase extends DrupalWebTestCase {
   function baseSetUp($extra_modules = array()) {
     $modules = array_merge(array('api', 'ctools', 'composer_manager', 'node', 'comment', 'dblog', 'views'), $extra_modules);
     DrupalWebTestCase::setUp($modules);
-    // Load the autoloader for this thread, since composer_manager_init() is
-    // not invoked.
-    variable_set('composer_manager_vendor_dir', 'vendor');
-    composer_manager_register_autoloader();
+
+    $this->ensureAutoLoader();
 
     // Set the line break tag to nothing for most tests.
     variable_set('api_breaks_tag', '');
@@ -80,6 +78,29 @@ class ApiTestCase extends DrupalWebTestCase {
       'administer site configuration',
     ));
     $this->drupalLogin($this->super_user);
+  }
+
+  /**
+   * Ensures that the Composer auto-loader is set up properly.
+   *
+   * If running tests locally on an API site, the Composer auto-loader will be
+   * working automatically. But on the DrupalCI testing site, Composer is
+   * using a different directory, and also hook_boot()/hook_init() don't get run
+   * because the Composer Manager module is enabled after Drupal starts up. So,
+   * this method ensures (hopefully) that whichever platform is running the
+   * tests, the auto-loader gets found and initialized.
+   *
+   * Must be run after the composer_manager module is enabled.
+   */
+  protected function ensureAutoLoader() {
+    // Test to see if one of the classes that the auto-loader should know
+    // about has been defined.
+    if (!class_exists('Symfony\Component\Yaml\Parser')) {
+      // This most likely means that we are running on DrupalCI, so set
+      // up for that.
+      variable_set('composer_manager_vendor_dir', 'vendor');
+      composer_manager_register_autoloader();
+    }
   }
 
   /**
