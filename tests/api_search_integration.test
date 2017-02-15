@@ -26,6 +26,7 @@ class ApiSearchIntegrationTestCase extends ApiWebPagesBaseTest {
 
   function setUp() {
     DrupalWebTestCase::setUp('api', 'ctools', 'views', 'composer_manager', 'node', 'search', 'dblog', 'api_search');
+    $this->ensureAutoLoader();
 
     // Set up a new super-user.
     $this->super_user = $this->drupalCreateUser(array(

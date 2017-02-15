@@ -56,7 +56,12 @@ class ApiEnableTestCase extends ApiWebPagesBaseTest {
     $this->assertFalse(module_exists('api'), 'API module is not enabled');
     $modules = system_rebuild_module_data();
     $this->assertTrue(isset($modules['api']), 'System knows about API module');
+
     module_enable(array('api'), FALSE);
+    // At this point, the Composer Manager module should be enabled, and we
+    // need to set up the auto-loader.
+    $this->ensureAutoLoader();
+
     $this->resetAll();
     $this->assertTrue(module_exists('api'), 'API module is enabled');
     $this->cronRun();
