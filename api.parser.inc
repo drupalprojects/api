@@ -1765,7 +1765,7 @@ function _api_find_php_references($statements, $is_drupal, $filename, $state = a
         $class = $statement->class->toString();
       }
       if ($name && $class) {
-        if ($class == 'self') {
+        if ($class == 'self' || $class == 'static') {
           $references['member-self'][$name] = $name;
         }
         elseif ($class == 'parent') {
