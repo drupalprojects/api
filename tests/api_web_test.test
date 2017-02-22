@@ -1069,6 +1069,8 @@ class ApiEmptyPageLinksTestCase extends ApiWebPagesBaseTest {
     $this->assertLink(t('Constants'), 0, 'Constants link is present');
     $this->assertLink(t('Globals'), 0, 'Globals link is present');
     $this->assertLink(t('Topics'), 0, 'Topics link is present');
+    $this->assertLink(t('Elements'), 0, 'Elements link is present');
+    $this->assertLink(t('Deprecated'), 0, 'Deprecated link is present');
 
     // Project/branch with only files/functions.
     $this->drupalGet('api/' . $this->branch_info_2['project'] . '/sample2.php/function/second_sample_function');

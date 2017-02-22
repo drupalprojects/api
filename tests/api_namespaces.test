@@ -160,6 +160,16 @@ class ApiNamespacesTestCase extends ApiWebPagesBaseTest {
     $this->clickLink('pdq');
     $this->assertText('Method to inherit', 'Clicking to trait method page went to right place');
 
+    // Turn on the navigation block. This needs to be near the end of the test,
+    // because there are tests verifying the word Namespace is not on pages.
+    $this->drupalPost('admin/structure/block/list', array(
+        'blocks[api_navigation][region]' => 'sidebar_first',
+      ),
+      t('Save blocks')
+    );
+    // Verify the Namespaces link is present in the navigation block.
+    $this->assertLink(t('Namespaces'), 0, 'Namespaces navigation link is present');
+
     // Set the breaks tag variable and test Classes and Namespaces pages.
     variable_set('api_breaks_tag', '<wbr />');
     $this->drupalGet('api/' . $this->branch_info['project'] . '/namespaces');

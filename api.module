@@ -1873,7 +1873,9 @@ function api_listing_types($branch) {
     return $cache[$branch->branch_id];
   }
 
-  // Make the conditions for each type of listing.
+  // Make the conditions for each type of listing. The objective is to
+  // count to see if there is at least one object of that type to list on the
+  // corresponding listing page.
   $type_conditions = [
     'groups' => "object_type = 'group'",
     'classes' => "object_type IN ('class', 'interface', 'trait') AND class_did = 0",
@@ -1884,18 +1886,14 @@ function api_listing_types($branch) {
     'namespaces' => "namespace <> ''",
     'deprecated' => "deprecated <> ''",
     'services' => "object_type = 'service'",
-    'elements' => "object_type = 'element'"
+    'elements' => "object_type = 'element'",
   ];
 
-  // These queries mirror what is done in the views used by api_page_listing().
   $args = [':branch_id' => $branch->branch_id];
   foreach ($type_conditions as $type => $condition) {
-    $sql = "
-      SELECT 1 FROM {api_documentation}
-      WHERE branch_id = :branch_id
-      AND $condition
-      ORDER BY branch_id
-    ";
+    $table = ($type == 'elements') ? 'api_reference_storage' : 'api_documentation';
+    $sql = 'SELECT 1 FROM {' . $table . '} WHERE branch_id = :branch_id AND '
+      . $condition . ' ORDER BY branch_id';
     $cache[$branch->branch_id][$type] = (bool) db_query_range($sql, 1, 1, $args)->fetchField();
   }
 

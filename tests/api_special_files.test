@@ -32,6 +32,14 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->resetBranchesAndCache();
     $this->updateBranches();
     $this->processApiParseQueue();
+
+    // Display the navigation block.
+    $this->drupalPost('admin/structure/block/list', array(
+        'blocks[api_navigation][region]' => 'sidebar_first',
+      ),
+      t('Save blocks')
+    );
+
   }
 
   /**
@@ -190,6 +198,9 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/container.trait');
     $this->assertNoText('Tags', 'Tags header is not there');
     $this->assertText('Abstract', 'Listed as abstract');
+
+    // Verify that the Services link is in the navigation block.
+    $this->assertLink(t('Services'), 0, 'Services link is present');
 
     $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/config.storage');
     $this->assertNoText('Tags', 'Tags header is not there');
