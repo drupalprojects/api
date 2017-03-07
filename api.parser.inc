@@ -1742,7 +1742,7 @@ function _api_find_php_references($statements, $is_drupal, $filename, $state = a
         $name = $statement->name;
       }
       // Also only save it if it's a method on $this.
-      if ($name && $statement->var && $statement->var->name && $statement->var->name == 'this') {
+      if ($name && $statement->var && isset($statement->var->name) && $statement->var->name == 'this') {
         $references['member-self'][$name] = $name;
         if ($is_drupal && isset($invoke_function_names[$name])) {
           $sub_state['invoke_call'] = $invoke_function_names[$name];
