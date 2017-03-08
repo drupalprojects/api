@@ -228,7 +228,7 @@ function api_parse_php_file($docblock) {
     // updated.
     $docblocks = array($docblock);
     if (!$error_logged) {
-      watchdog('api', 'File @name could not be parsed. ', array('@name' => $docblock['file_name']), WATCHDOG_ERROR);
+      watchdog('api', 'File @name had no statements.', array('@name' => $docblock['file_name']), WATCHDOG_WARNING);
     }
   }
 
@@ -265,7 +265,7 @@ function api_parse_yaml_file($docblock) {
   }
   catch (Exception $e) {
     $parsed = array();
-    watchdog('api', 'YAML parsing failed for %filename with message %msg', array('%filename' => $docblock['file_name'], '%msg' => $e->getMessage()), WATCHDOG_WARNING);
+    watchdog('api', 'YAML parsing failed for %filename with message %msg', array('%filename' => $docblock['file_name'], '%msg' => $e->getMessage()), WATCHDOG_ERROR);
   }
 
   // Find potential references, which are array values that look like they
