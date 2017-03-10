@@ -11,10 +11,10 @@
 /**
  * Counts items by type for a branch.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing the branch to count.
  *
- * @return
+ * @return array
  *   Associative array where the keys are the type of listing ('functions',
  *   'classes', etc.) and the values are the count of how many there are in
  *   that listing for the given branch.

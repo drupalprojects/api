@@ -50,7 +50,7 @@ function api_drush_command() {
 /**
  * Flags a branch, or all branches, to be reparsed on the next cron run.
  *
- * @param $branch_or_file
+ * @param string|null $branch_or_file
  *   (optional) Identifier of the branch to reparse, or name of a single file to
  *   reparse. If omitted all branches will be reparsed. File name must include
  *   the path relative to the common path to the directories indexed by this
@@ -118,7 +118,11 @@ function drush_api_ensure_branch($project, $project_title, $project_type, $branc
   module_load_include('inc', 'api', 'api.db');
 
   // Update the project.
-  api_save_project((object) array('project_name' => $project, 'project_title' => $project_title, 'project_type' => $project_type));
+  api_save_project((object) array(
+      'project_name' => $project,
+      'project_title' => $project_title,
+      'project_type' => $project_type,
+    ));
 
   // Try to load the branch if possible.
   $branch = api_get_branch_by_name($project, $branch_name);

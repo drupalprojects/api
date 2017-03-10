@@ -70,7 +70,17 @@ function api_search_node_view($node, $view_mode, $langcode) {
   $node->title = $title;
 
   // Add extra fields of information.
-  $fields = array('namespaced_name', 'modifiers', 'object_type', 'summary', 'documentation', 'var', 'parameters', 'return_value', 'throws');
+  $fields = array(
+    'namespaced_name',
+    'modifiers',
+    'object_type',
+    'summary',
+    'documentation',
+    'var',
+    'parameters',
+    'return_value',
+    'throws',
+  );
 
   foreach ($fields as $field) {
     if (isset($doc->$field) && trim($doc->$field)) {
@@ -248,7 +258,7 @@ function api_search_facetapi_facet_info(array $searcher_info) {
 /**
  * Makes a "node" title for an API documentation item.
  *
- * @param $doc
+ * @param object $doc
  *   Loaded documentation object.
  *
  * @return string
@@ -394,9 +404,9 @@ function api_search_check_compatibility($obj) {
 /**
  * Removes API nodes from Solr and core Search indexes using Batch API.
  *
- * @param $dids
+ * @param int[] $dids
  *   IDs of the documentation items to remove.
- * @param $context
+ * @param array $context
  *   Batch context.
  */
 function api_search_remove_nodes($dids, &$context) {
