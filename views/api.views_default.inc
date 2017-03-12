@@ -1644,7 +1644,6 @@ function api_views_default_views() {
 
   $views[$view->name] = $view;
 
-
   // API Namespaces view.
 
   $view = new view();

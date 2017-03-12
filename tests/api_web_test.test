@@ -434,7 +434,6 @@ class ApiSimpleItemPagesTestCase extends ApiWebPagesBaseTest {
     $this->assertText('This function is deprecated for sample purposes.', 'First part of text with deprecated appears on the page');
     $this->assertLink('sample_in_code_links', 0, 'Link in deprecated section appears');
 
-
     // Verify the "functions that call this" text exists and references the
     // classes.php file, which calls this function from the global scope.
     $this->assertRaw('1 call to sample_class_function()', 'Calling functions text is there');

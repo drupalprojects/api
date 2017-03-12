@@ -315,7 +315,6 @@ class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
         'api_php_documentation' => 2,
       ), 0, 'Branches set up');
 
-
     // Set the core compatibility to 7.x.
     $this->drupalPost('admin/config/development/api', array(
         'api_default_core_compatibility' => '7.x',

@@ -936,7 +936,6 @@ function api_update_7107( &$sandbox) {
     db_query("DELETE FROM {api_overrides} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_overrides}.did )");
     db_query("DELETE FROM {api_reference_storage} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_reference_storage}.from_did )");
 
-
     // Initiate batch for future calls.
     $sandbox['last'] = 0;
     $sandbox['count'] = 0;

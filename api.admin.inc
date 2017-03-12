@@ -170,7 +170,6 @@ function api_page_admin_form($form, &$form_state) {
     '#title' => t('HTML tag or entity to use to indicate breaks'),
   );
 
-
   $form = system_settings_form($form);
   $form['#submit'][] = 'api_reset_branches';
 

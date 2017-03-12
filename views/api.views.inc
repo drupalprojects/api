@@ -1008,7 +1008,6 @@ function api_views_data() {
       ),
     ),
 
-
     'reference_type' => array(
       'title' => t('Reference type'),
       'help' => t('Reference type: call, string, use, override'),
