@@ -464,7 +464,7 @@ function api_delete_items($dids, $interactive = TRUE) {
   if ($interactive) {
     batch_set(array(
         'operations' => array(
-          array('_api_delete_nodes_batch', array($dids))
+          array('_api_delete_nodes_batch', array($dids)),
         ),
         'file' => drupal_get_path('module', 'api') . '/api.db.inc',
       ));

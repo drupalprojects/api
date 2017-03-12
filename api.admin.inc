@@ -103,7 +103,7 @@ function api_page_admin_overview() {
   $rows[] = array(
     t('Branch update'),
     $num,
-    ''
+    '',
   );
 
   $queue = DrupalQueue::get('api_node_delete');
@@ -111,7 +111,7 @@ function api_page_admin_overview() {
   $rows[] = array(
     t('Node cleanup'),
     $num,
-    ''
+    '',
   );
 
   $output['queue_status'] = array(

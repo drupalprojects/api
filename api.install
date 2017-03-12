@@ -179,7 +179,7 @@ function api_schema() {
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
-      )
+      ),
     ),
     'primary key' => array('branch_id'),
     'indexes' => array(
