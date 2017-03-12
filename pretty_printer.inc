@@ -161,7 +161,8 @@ class ApiPrettyPrinter extends Standard {
     }
     if ($indent) {
       return preg_replace('~\n(?!$|' . $this->noIndentToken . ')~', "\n" . $this->options['indentation'], $result);
-    } else {
+    }
+    else {
       return $result;
     }
   }
@@ -605,7 +606,8 @@ class ApiPrettyPrinter extends Standard {
       $this->options['shortArraySyntax'] ? Expr\Array_::KIND_SHORT : Expr\Array_::KIND_LONG);
     if ($syntax === Expr\Array_::KIND_SHORT) {
       return "[\n" . $this->pCommaSeparatedMultiLine($node->items) . "]";
-    } else {
+    }
+    else {
       if ($this->options['html']) {
         return '<span class="php-keyword">array</span>(' . "\n" . $this->pCommaSeparatedMultiLine($node->items) . ")";
       }
@@ -904,7 +906,8 @@ class ApiPrettyPrinter extends Standard {
       return '<span class="php-keyword">namespace</span> ' .
         '<span class="php-function-or-constant">' . $this->p($node->name) . '</span>;' .
         "\n" . $this->pStmts($node->stmts, false);
-    } else {
+    }
+    else {
       return '<span class="php-keyword">namespace</span>' .
         (null !== $node->name ?
           ' <span class="php-function-or-constant">' . $this->p($node->name) . '</span>' : '') .

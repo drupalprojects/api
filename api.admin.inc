@@ -216,7 +216,8 @@ function api_php_branch_list() {
 
     if ($branch->reference_type == 'php') {
       $ops[] = l(t('edit'), 'admin/config/development/api/php_branches/' . $branch->branch_id);
-    } elseif ($branch->reference_type == 'api') {
+    }
+    elseif ($branch->reference_type == 'api') {
       $ops[] = l(t('edit'), 'admin/config/development/api/api_branches/' . $branch->branch_id);
     }
 
@@ -699,7 +700,7 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#title' => t('Branch full_list URL'),
     '#default_value' => $branch->url,
     '#required' => TRUE,
-    '#description' => t('The URL of the API documentation dump, such as http://api.drupal.org/api/drupal/full_list/7'),
+    '#description' => t('The URL of the API documentation dump, such as https://api.drupal.org/api/drupal/full_list/7'),
   );
 
   $form['data']['search_url'] = array(
@@ -707,7 +708,7 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#title' => t('Branch search URL'),
     '#default_value' => $branch->search_url,
     '#required' => TRUE,
-    '#description' => t('The URL to use for searching by appending the search term, such as http://api.drupal.org/api/drupal/7/search/'),
+    '#description' => t('The URL to use for searching by appending the search term, such as https://api.drupal.org/api/drupal/7/search/'),
   );
 
   $form['data']['core_compatibility'] = array(

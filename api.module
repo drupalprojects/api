@@ -8,7 +8,7 @@
  * specification, tuned to produce output that best benefits the Drupal Codex
  * base. It is designed to assume the code it documents follows Drupal coding
  * conventions, and supports documentation blocks in formats described on
- * http://drupal.org/node/1354
+ * https://drupal.org/node/1354
  */
 
 /**
@@ -47,7 +47,7 @@ function api_help($path, $arg) {
 <p>Indexing of PHP functions is also supported, by setting up a PHP Reference Branch. If the site has internet access, then the default settings should work fine. For local development environments that have a PHP manual installed, you can edit the link path to point to the appropriate location.</p>
 
 <p>The module indexes code branches during cron runs, so make sure the site has cron functionality set up properly.</p>
-', array('!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'), '!doxygen_link' => l('http://drupal.org/node/1354', 'http://drupal.org/node/1354')));
+', array('!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'), '!doxygen_link' => l('https://drupal.org/node/1354', 'https://drupal.org/node/1354')));
 
     case 'admin/config/development/api':
       return '<h3>' . t('Definitions:') . '</h3><ul>' .
