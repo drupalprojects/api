@@ -232,10 +232,11 @@ function api_php_branch_list() {
   $output['branch_list'] = array(
     '#type' => 'markup',
     '#markup' => theme('table', array(
-    'header' => $header,
-    'rows' => $rows,
-    'empty' => t('There are no reference branches set up. You can <a href="@url">add a PHP reference branch</a> or <a href="@apiurl">add an API reference branch</a>.', array('@url' => url('admin/config/development/api/php_branches/new'), '@apiurl' => url('admin/config/development/api/api_branches/new'))),
-  )));
+      'header' => $header,
+      'rows' => $rows,
+      'empty' => t('There are no reference branches set up. You can <a href="@url">add a PHP reference branch</a> or <a href="@apiurl">add an API reference branch</a>.', array('@url' => url('admin/config/development/api/php_branches/new'), '@apiurl' => url('admin/config/development/api/api_branches/new'))),
+    )),
+  );
 
   return $output;
 }
