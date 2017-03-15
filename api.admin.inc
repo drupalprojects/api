@@ -11,7 +11,7 @@ module_load_include('inc', 'api', 'api.utilities');
 /**
  * Page callback: Builds the overview page for API module administration.
  *
- * @return
+ * @return array
  *   Render array for the page.
  */
 function api_page_admin_overview() {
@@ -179,7 +179,7 @@ function api_page_admin_form($form, &$form_state) {
 /**
  * Page callback: Builds a list of PHP branches.
  *
- * @return
+ * @return array
  *   Render array for the page.
  */
 function api_php_branch_list() {
@@ -268,7 +268,7 @@ function api_admin_project_list() {
 /**
  * Page callback: Generates the branches admin page.
  *
- * @return
+ * @return array
  *   Render array for the page.
  */
 function api_admin_branch_list() {
@@ -317,7 +317,7 @@ function api_reset_queue_form_submit($form, &$form_state) {
 /**
  * Form constructor for the edit form for a branch.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to edit.
  *
  * @see api_branch_edit_form_validate()
@@ -437,7 +437,15 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#title' => t('Branch update frequency'),
     '#description' => t('During cron runs, this branch will be checked for updated files. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
-    '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+    '#options' => drupal_map_assoc(array(
+        1,
+        3600,
+        10800,
+        21600,
+        43200,
+        86400,
+        604800,
+      ), 'format_interval'),
   );
 
   $form['submit'] = array(
@@ -470,7 +478,13 @@ function api_branch_edit_form_validate($form, &$form_state) {
   }
 
   // Check for duplicate branch names.
-  if (db_query("SELECT 1 FROM {api_branch} WHERE branch_id <> :branch_id AND project = :project AND branch_name = :branch_name", array(':branch_id' => $form['#branch']->branch_id, ':project' => $project, ':branch_name' => $branch_name))->fetchField()) {
+  if (db_query(
+      "SELECT 1 FROM {api_branch} WHERE branch_id <> :branch_id AND project = :project AND branch_name = :branch_name",
+      array(
+        ':branch_id' => $form['#branch']->branch_id,
+        ':project' => $project,
+        ':branch_name' => $branch_name,
+      ))->fetchField()) {
     form_set_error('branch_name', t('%project and %branch_name is already used by another branch.', array('%project' => $project, '%branch_name' => $branch_name)));
   }
 
@@ -548,7 +562,7 @@ function api_branch_edit_form_submit($form, &$form_state) {
 /**
  * Form constructor for the edit form for a PHP reference branch.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to edit.
  *
  * @see api_php_branch_edit_form_submit()
@@ -611,7 +625,15 @@ function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#title' => t('Branch update frequency'),
     '#description' => t('During cron runs, this branch will be checked for updates in the function list. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
-    '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+    '#options' => drupal_map_assoc(array(
+        1,
+        3600,
+        10800,
+        21600,
+        43200,
+        86400,
+        604800,
+      ), 'format_interval'),
   );
 
   $form['submit'] = array(
@@ -650,7 +672,7 @@ function api_php_branch_edit_form_submit($form, &$form_state) {
 /**
  * Form constructor for the edit form for an API reference branch.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to edit.
  *
  * @see api_php_branch_edit_form_submit()
@@ -732,7 +754,15 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#title' => t('Branch update frequency'),
     '#description' => t('During cron runs, this branch will be checked for updates in the information. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
-    '#options' => drupal_map_assoc(array(1, 3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+    '#options' => drupal_map_assoc(array(
+        1,
+        3600,
+        10800,
+        21600,
+        43200,
+        86400,
+        604800,
+      ), 'format_interval'),
   );
 
   $form['data']['page_limit'] = array(
@@ -771,7 +801,7 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
 /**
  * Form constructor for the edit form for a project.
  *
- * @param $project_name
+ * @param string $project_name
  *   Name of the project to edit.
  *
  * @see api_project_edit_form_submit()
@@ -855,7 +885,7 @@ function api_project_edit_form_submit($form, &$form_state) {
 /**
  * Form constructor for the confirmation form for deleting a branch.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to delete.
  *
  * @see api_branch_delete_form_submit()
@@ -881,7 +911,7 @@ function api_branch_delete_form_submit($form, &$form_state) {
 /**
  * Form constructor for the confirmation form for deleting a PHP branch.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to delete.
  *
  * @see api_php_branch_delete_form_submit()
@@ -909,7 +939,7 @@ function api_php_branch_delete_form_submit($form, &$form_state) {
 /**
  * Form constructor for the confirmation form for deleting a project.
  *
- * @param $project_name
+ * @param string $project_name
  *   Name of the project to delete.
  *
  * @see api_project_delete_form_submit()
@@ -1008,7 +1038,7 @@ function api_apply_comment_settings() {
 /**
  * Page callback: Marks a branch for reparsing and redirects to branches page.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to mark for reparsing.
  *
  * @see api_menu()
@@ -1035,10 +1065,10 @@ function api_admin_reparse($branch_id) {
 /**
  * Page callback: Marks a branch for update and redirects to branches page.
  *
- * @param $type
+ * @param string $type
  *   'branch' for a regular branch, and 'php_branch' for a PHP reference
  *   branch.
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to mark for update.
  *
  * @see api_menu()

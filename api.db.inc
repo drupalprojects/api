@@ -8,7 +8,7 @@
 /**
  * Saves an API branch.
  *
- * @param $branch
+ * @param object $branch
  *   A branch object.
  */
 function api_save_branch($branch) {
@@ -50,9 +50,9 @@ function api_save_branch($branch) {
 /**
  * Deletes a branch and all of its related documentation records.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   The numeric ID of the branch to delete.
- * @param $finalize
+ * @param bool $finalize
  *   TRUE to redo the menus etc., FALSE to postpone (because other deletes
  *   are coming).
  */
@@ -81,7 +81,7 @@ function api_delete_branch($branch_id, $finalize = TRUE) {
 /**
  * Saves an API reference branch.
  *
- * @param $branch
+ * @param object $branch
  *   A reference branch object.
  */
 function api_save_php_branch($branch) {
@@ -106,7 +106,7 @@ function api_save_php_branch($branch) {
 /**
  * Deletes a reference branch and all of its related documentation records.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   The numeric ID of the branch to delete.
  */
 function api_delete_php_branch($branch_id) {
@@ -128,9 +128,9 @@ function api_delete_php_branch($branch_id) {
 /**
  * Saves an API project.
  *
- * @param $project
+ * @param object $project
  *   A project to save.
- * @param $old_name
+ * @param string $old_name
  *   If the project_name (primary key) field is changing, provide the previous
  *   name.
  */
@@ -163,7 +163,7 @@ function api_save_project($project, $old_name = '') {
 /**
  * Deletes a project and all of its branches and documentation records.
  *
- * @param $project_name
+ * @param string $project_name
  *   The name of the project to delete.
  */
 function api_delete_project($project_name) {
@@ -189,10 +189,10 @@ function api_delete_project($project_name) {
 /**
  * Checks to see if a project exists.
  *
- * @param project_name
+ * @param string project_name
  *   Name to check for.
  *
- * @return
+ * @return bool
  *   TRUE if the project exists, and FALSE if not.
  */
 function api_project_exists($project_name) {
@@ -336,19 +336,19 @@ function api_branch_sort($a, $b) {
  * removed. If there are a lot, the batch API may be invoked, or a job may
  * be queued.
  *
- * @param $dids
+ * @param int[] $dids
  *   Array of the IDs of the items to delete.
- * @param $interactive
+ * @param bool $interactive
  *   TRUE if the batch_set() can be used if there are too many items to delete;
  *   FALSE if queue jobs need to be set up instead.
  *
- * @return
+ * @return bool
  *   TRUE if the items were deleted directly; FALSE if a batch or queue job
  *   was set up to delete some of them. In this case, in interactive mode, the
  *   calling function needs to ensure that the batch is processed. This is
  *   automatic if it's part of a form submission handler, but not otherwise.
  */
-function api_delete_items($dids, $interactive = TRUE) {
+function api_delete_items(array $dids, $interactive = TRUE) {
   // Count the cumulative effect of calls in this page request.
   $total_count = &drupal_static(__FUNCTION__, 0);
 
@@ -425,7 +425,6 @@ function api_delete_items($dids, $interactive = TRUE) {
 
     // We need to do something similar in api_reference_storage with the
     // extends_did column.
-
     db_delete('api_reference_storage')
       ->condition('from_did', $this_batch)
       ->execute();
@@ -463,11 +462,11 @@ function api_delete_items($dids, $interactive = TRUE) {
   // If we get here, we need to use batch/queue to delete the nodes.
   if ($interactive) {
     batch_set(array(
-        'operations' => array(
-          array('_api_delete_nodes_batch', array($dids)),
-        ),
-        'file' => drupal_get_path('module', 'api') . '/api.db.inc',
-      ));
+      'operations' => array(
+        array('_api_delete_nodes_batch', array($dids)),
+      ),
+      'file' => drupal_get_path('module', 'api') . '/api.db.inc',
+    ));
   }
   else {
     $queue = DrupalQueue::get('api_node_delete');
@@ -485,12 +484,12 @@ function api_delete_items($dids, $interactive = TRUE) {
 /**
  * Deletes API nodes using the Batch API.
  *
- * @param $nids
+ * @param int[] $nids
  *   IDs of the nodes to delete.
- * @param $context
+ * @param array $context
  *   Batch context.
  */
-function _api_delete_nodes_batch($nids, &$context) {
+function _api_delete_nodes_batch(array $nids, array &$context) {
   if (!isset($context['sandbox']['progress'])) {
     $context['sandbox']['progress'] = 0;
     $context['sandbox']['max'] = count($nids);
@@ -510,17 +509,17 @@ function _api_delete_nodes_batch($nids, &$context) {
 /**
  * Flags a file, branch, or all branches, to be reparsed on the next cron run.
  *
- * @param $branch_or_file
+ * @param string|id|null $branch_or_file
  *   (optional) Identifier or ID number of the branch to reparse, or name of a
  *   single file to reparse. If omitted all branches will be reparsed. File
  *   names must include the path relative to the common path to the directories
  *   indexed by this branch.
- * @param $is_branch_name
+ * @param bool $is_branch_name
  *   If passing in a branch name, set to TRUE so that if it happens to be an
  *   integer, it won't be considered to be a branch ID number by mistake.
  *   Otherwise, just leave this as the default FALSE.
  *
- * @return
+ * @return int
  *   Number of files marked for reparsing.
  */
 function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
@@ -530,8 +529,8 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
   if (empty($branch_or_file)) {
     return db_update('api_file')
       ->fields(array(
-          'modified' => $time_in_past,
-        ))
+        'modified' => $time_in_past,
+      ))
       ->execute();
   }
 
@@ -567,8 +566,8 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
   if ($did) {
     $out = db_update('api_file')
       ->fields(array(
-          'modified' => $time_in_past,
-        ))
+        'modified' => $time_in_past,
+      ))
       ->condition('did', $did)
       ->execute();
 
@@ -584,7 +583,7 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
  * @param int[] $dids
  *   Documentation IDs whose files need reparsing.
  */
-function api_mark_items_for_reparse($dids) {
+function api_mark_items_for_reparse(array $dids) {
   $count = count($dids);
   if ($count < 1) {
     return;
@@ -639,7 +638,7 @@ function api_reset_parse_queue() {
 
   db_update('api_file')
     ->fields(array(
-        'queued' => 0,
-      ))
+      'queued' => 0,
+    ))
     ->execute();
 }

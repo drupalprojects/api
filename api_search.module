@@ -174,7 +174,7 @@ function api_search_form_apachesolr_index_config_form_alter(&$form, &$form_state
 }
 
 /**
- * Implements hook_apachesolr_index_document_build_ENTITY_TYPE() (node).
+ * Implements hook_apachesolr_index_document_build_ENTITY_TYPE() for node.
  *
  * Node title is set in the Solr indexing document earlier than the call to
  * node_view(), so we have to fix it after the fact. Also, we add custom
@@ -409,7 +409,7 @@ function api_search_check_compatibility($obj) {
  * @param array $context
  *   Batch context.
  */
-function api_search_remove_nodes($dids, &$context) {
+function api_search_remove_nodes(array $dids, array &$context) {
   if (!isset($context['sandbox']['progress'])) {
     $context['sandbox']['progress'] = 0;
     $context['sandbox']['max'] = count($dids);

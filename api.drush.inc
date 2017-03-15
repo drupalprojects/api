@@ -119,10 +119,10 @@ function drush_api_ensure_branch($project, $project_title, $project_type, $branc
 
   // Update the project.
   api_save_project((object) array(
-      'project_name' => $project,
-      'project_title' => $project_title,
-      'project_type' => $project_type,
-    ));
+    'project_name' => $project,
+    'project_title' => $project_title,
+    'project_type' => $project_type,
+  ));
 
   // Try to load the branch if possible.
   $branch = api_get_branch_by_name($project, $branch_name);
