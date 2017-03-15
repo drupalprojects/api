@@ -41,10 +41,10 @@ define('API_RE_WORD_BOUNDARY_END', '(?=$|[\s.,:;?!)\<\[\|])');
 /**
  * Attempts to locate a core branch corresponding to the given branch.
  *
- * @param $branch
+ * @param object $branch
  *   Branch object to find a core branch for.
  *
- * @return
+ * @return object|false
  *   Branch object for the core branch, if there is one. If not, FALSE.
  */
 function api_find_core_branch($branch) {
@@ -73,17 +73,17 @@ function api_find_core_branch($branch) {
 /**
  * Displays the output of a view, assumed to be a block display.
  *
- * @param $view_name
+ * @param string $view_name
  *   Machine name of the view.
- * @param $display_name
+ * @param string $display_name
  *   Machine name of the display within the view.
- * @param $args
+ * @param array $args
  *   (optional) Array of arguments for the view display.
  *
- * @return
+ * @return string
  *   String containing the view output. If the view was empty, an empty string.
  */
-function api_display_view($view_name, $display_name, $args = array()) {
+function api_display_view($view_name, $display_name, array $args = array()) {
   $output = '';
 
   // Load the view.
@@ -119,7 +119,7 @@ function api_display_view($view_name, $display_name, $args = array()) {
  * @return string
  *   Fully-qualified name of the class, starting with a backslash.
  */
-function api_full_classname($name, $namespace = '', $use_aliases = array()) {
+function api_full_classname($name, $namespace = '', array $use_aliases = array()) {
 
   // Break off the class name from the rest.
   $classname = $name;
@@ -191,10 +191,10 @@ function api_add_breaks($text) {
 /**
  * Decodes HTML entities.
  *
- * @param $text
+ * @param string $text
  *   Text to decode.
  *
- * @return
+ * @return string
  *   Text with all HTML entities decoded.
  */
 function api_entity_decode($text) {
@@ -209,10 +209,10 @@ function api_entity_decode($text) {
 /**
  * Trims whitespace, and removes trailing directory separators and blank lines.
  *
- * @param $list
- *   Array of directories.
+ * @param string $list
+ *   String containing a newline-separated list of directories.
  *
- * @return
+ * @return string
  *   String with cleaned-up directories, separated by newlines.
  */
 function api_clean_directory_list($list) {
@@ -229,7 +229,7 @@ function api_clean_directory_list($list) {
 /**
  * Creates a new documentation object node (for comments).
  *
- * @return
+ * @return int
  *   Node ID of the created node.
  */
 function api_new_documentation_node() {
@@ -237,7 +237,7 @@ function api_new_documentation_node() {
   $node->type = 'api';
   $node->uid = 0;
   if (module_exists('comment')) {
-    $node->comment =  variable_get('comment_api', COMMENT_NODE_OPEN);
+    $node->comment = variable_get('comment_api', COMMENT_NODE_OPEN);
   }
   node_save($node);
 
@@ -249,12 +249,13 @@ function api_new_documentation_node() {
  *
  * These cannot come from the schema, because TEXT fields have no defaults.
  *
- * @param $record
- *   Record about to be written to the database with drupal_write_record().
- * @param $table
+ * @param array $record
+ *   Record about to be written to the database with drupal_write_record(),
+ *   passed by reference and modified in place.
+ * @param string $table
  *   Table $record is going into.
  */
-function api_add_text_defaults(&$record, $table) {
+function api_add_text_defaults(array &$record, $table) {
   switch ($table) {
     case 'api_documentation':
       $record += array(

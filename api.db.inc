@@ -189,7 +189,7 @@ function api_delete_project($project_name) {
 /**
  * Checks to see if a project exists.
  *
- * @param string project_name
+ * @param string $project_name
  *   Name to check for.
  *
  * @return bool

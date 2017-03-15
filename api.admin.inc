@@ -244,7 +244,7 @@ function api_php_branch_list() {
 /**
  * Page callback: Generates the projects admin page.
  *
- * @return
+ * @return array
  *   Render array for the page.
  */
 function api_admin_project_list() {
@@ -438,14 +438,14 @@ function api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#description' => t('During cron runs, this branch will be checked for updated files. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
     '#options' => drupal_map_assoc(array(
-        1,
-        3600,
-        10800,
-        21600,
-        43200,
-        86400,
-        604800,
-      ), 'format_interval'),
+      1,
+      3600,
+      10800,
+      21600,
+      43200,
+      86400,
+      604800,
+    ), 'format_interval'),
   );
 
   $form['submit'] = array(
@@ -626,14 +626,14 @@ function api_php_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#description' => t('During cron runs, this branch will be checked for updates in the function list. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
     '#options' => drupal_map_assoc(array(
-        1,
-        3600,
-        10800,
-        21600,
-        43200,
-        86400,
-        604800,
-      ), 'format_interval'),
+      1,
+      3600,
+      10800,
+      21600,
+      43200,
+      86400,
+      604800,
+    ), 'format_interval'),
   );
 
   $form['submit'] = array(
@@ -755,14 +755,14 @@ function api_api_branch_edit_form($form, $form_state, $branch_id = NULL) {
     '#description' => t('During cron runs, this branch will be checked for updates in the information. This sets a minimum time to wait before checking.'),
     '#default_value' => isset($branch->update_frequency) ? $branch->update_frequency : 1,
     '#options' => drupal_map_assoc(array(
-        1,
-        3600,
-        10800,
-        21600,
-        43200,
-        86400,
-        604800,
-      ), 'format_interval'),
+      1,
+      3600,
+      10800,
+      21600,
+      43200,
+      86400,
+      604800,
+    ), 'format_interval'),
   );
 
   $form['data']['page_limit'] = array(
