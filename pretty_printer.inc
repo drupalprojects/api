@@ -47,7 +47,6 @@ class ApiPrettyPrinter extends Standard {
    * - in_array: TRUE if we are currently printing an array element.
    * - array_key: Key of the array element we are printing, if it is a string.
    *
-   *
    * @var array
    */
   protected $state = array('function_calls' => array(), 'in_array' => FALSE);
@@ -170,7 +169,7 @@ class ApiPrettyPrinter extends Standard {
   /**
    * Overrides pretty-printing of nodes to add HTML in some cases.
    *
-   * @param Node $node
+   * @param \PhpParser\Node $node
    *   Node to be pretty printed.
    *
    * @return string
@@ -269,7 +268,7 @@ class ApiPrettyPrinter extends Standard {
    * and there are empty lines between comment blocks. HTML spans are also
    * added.
    *
-   * @param Comment[] $comments
+   * @param \PhpParser\Comment[] $comments
    *   List of comments.
    *
    * @return string
@@ -310,7 +309,7 @@ class ApiPrettyPrinter extends Standard {
   /**
    * Figures out the comment prefix.
    *
-   * @param Comment $comment
+   * @param \PhpParser\Comment $comment
    *   Comment object.
    *
    * @return string
@@ -344,7 +343,6 @@ class ApiPrettyPrinter extends Standard {
       case Scalar\String_::KIND_SINGLE_QUOTED:
         $this->state['last_string'] = $node->value;
         return $span . "'" . $this->pNoIndent(htmlentities(addcslashes($node->value, '\'\\'))) . "'" . $endspan;
-        break;
 
       case Scalar\String_::KIND_DOUBLE_QUOTED:
         $this->state['last_string'] = $node->value;
@@ -352,7 +350,6 @@ class ApiPrettyPrinter extends Standard {
 
       default:
         return htmlentities(parent::pScalar_String($node));
-        break;
     }
   }
 
@@ -575,7 +572,7 @@ class ApiPrettyPrinter extends Standard {
   /**
    * Pretty-prints an array of nodes, comma separated, on separate lines.
    *
-   * @param Node[] $nodes
+   * @param \PhpParser\Node[] $nodes
    *   Array of Nodes to be printed.
    * @param bool $comma_at_end
    *   (optional) TRUE (default) if there should be a comma at the end of the
@@ -636,7 +633,7 @@ class ApiPrettyPrinter extends Standard {
 
     $amp = ($this->options['html'] ? htmlentities('&') : '&');
 
-    $result .= (null !== $key ? $key . ' => ' : '')
+    $result .= (NULL !== $key ? $key . ' => ' : '')
       . ($node->byRef ? $amp : '') . $this->p($node->value);
 
     $this->state['in_array'] = FALSE;
@@ -650,7 +647,7 @@ class ApiPrettyPrinter extends Standard {
    *
    * Overrides the default to have the { on the same line, and add HTML.
    *
-   * @param Node $node
+   * @param \PhpParser\Node $node
    *   If, else, or elseif statement to print.
    * @param string $keyword
    *   Keyword to print, 'if', 'else', or 'elseif'.
@@ -763,14 +760,14 @@ class ApiPrettyPrinter extends Standard {
     if ($this->options['html']) {
       return $this->pModifiers($node->flags) .
         '<span class="php-keyword">class</span><span class="php-function-or-constant">' . $afterClassToken . '</span>' .
-        (null !== $node->extends ? ' <span class="php-keyword">extends</span> ' . $this->p($node->extends) : '') .
+        (NULL !== $node->extends ? ' <span class="php-keyword">extends</span> ' . $this->p($node->extends) : '') .
         (!empty($node->implements) ? ' <span class="php-keyword">implements</span> ' . $this->pCommaSeparated($node->implements) : '') .
         ' {' . $this->pStmts($node->stmts) . "\n\n" . '}';
     }
     else {
       return $this->pModifiers($node->flags) .
         'class' . $afterClassToken .
-        (null !== $node->extends ? ' extends ' . $this->p($node->extends) : '') .
+        (NULL !== $node->extends ? ' extends ' . $this->p($node->extends) : '') .
         (!empty($node->implements) ? ' implements ' . $this->pCommaSeparated($node->implements) : '') .
         ' {' . $this->pStmts($node->stmts) . "\n\n" . '}';
     }
@@ -796,7 +793,7 @@ class ApiPrettyPrinter extends Standard {
     return $function . ($node->byRef ? $amp : '') .
       $name_span . $node->name . $name_end_span .
       '(' . $this->pCommaSeparated($node->params) . ')' .
-      (null !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '') .
+      (NULL !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '') .
       ' {' . $this->pStmts($node->stmts) . "\n" . '}';
   }
 
@@ -821,8 +818,8 @@ class ApiPrettyPrinter extends Standard {
       $function . ($node->byRef ? $amp : '') .
       $name_span . $node->name . $name_end_span .
       '(' . $this->pCommaSeparated($node->params) . ')' .
-      (null !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '') .
-      (null !== $node->stmts
+      (NULL !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '') .
+      (NULL !== $node->stmts
         ? ' {' . $this->pStmts($node->stmts) . "\n" . '}'
         : ';');
   }
@@ -849,8 +846,8 @@ class ApiPrettyPrinter extends Standard {
     return ($node->static ? $span . 'static' . $endspan . ' ' : '')
       . $span . 'function' . $endspan . ' ' . ($node->byRef ? $amp : '')
       . '(' . $this->pCommaSeparated($node->params) . ')'
-      . (!empty($node->uses) ? ' ' . $span . 'use' . $endspan . ' (' . $this->pCommaSeparated($node->uses) . ')': '')
-      . (null !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '')
+      . (!empty($node->uses) ? ' ' . $span . 'use' . $endspan . ' (' . $this->pCommaSeparated($node->uses) . ')' : '')
+      . (NULL !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '')
       . ' {' . $this->pStmts($node->stmts) . "\n" . '}';
   }
 
@@ -887,7 +884,7 @@ class ApiPrettyPrinter extends Standard {
       return parent::pStmt_InlineHTML($node);
     }
 
-    $newline = $node->getAttribute('hasLeadingNewline', true) ? "\n" : '';
+    $newline = $node->getAttribute('hasLeadingNewline', TRUE) ? "\n" : '';
 
     return '<span class="php-boundary">' . htmlentities('?>') . '</span>' .
       htmlentities($this->pNoIndent($newline . $node->value)) .
@@ -905,11 +902,11 @@ class ApiPrettyPrinter extends Standard {
     if ($this->canUseSemicolonNamespaces) {
       return '<span class="php-keyword">namespace</span> ' .
         '<span class="php-function-or-constant">' . $this->p($node->name) . '</span>;' .
-        "\n" . $this->pStmts($node->stmts, false);
+        "\n" . $this->pStmts($node->stmts, FALSE);
     }
     else {
       return '<span class="php-keyword">namespace</span>' .
-        (null !== $node->name ?
+        (NULL !== $node->name ?
           ' <span class="php-function-or-constant">' . $this->p($node->name) . '</span>' : '') .
         ' {' . $this->pStmts($node->stmts) . "\n" . '}';
     }
@@ -979,7 +976,7 @@ class ApiPrettyPrinter extends Standard {
       return parent::pStmt_TraitUseAdaptation_Alias($node);
     }
 
-    $trait = (null != $node->trait ? $this->p($node->trait) : '');
+    $trait = (NULL != $node->trait ? $this->p($node->trait) : '');
     if ($trait) {
       $span_class = 'php-function-or-constant function member-of-class-' . $trait;
     }
@@ -990,8 +987,8 @@ class ApiPrettyPrinter extends Standard {
     return ($trait ? '<span class="php-function-or-constant">' . $trait . '</span>::' : '') .
       '<span class="' . $span_class . '">' . $node->method . '</span> ' .
       '<span class="php-keyword">as</span>' .
-      (null !== $node->newModifier ? ' ' . rtrim($this->pModifiers($node->newModifier), ' ') : '') .
-      (null !== $node->newName ? ' <span class="php-function-or-constant">' . $node->newName . '</span>' : '') . ';';
+      (NULL !== $node->newModifier ? ' ' . rtrim($this->pModifiers($node->newModifier), ' ') : '') .
+      (NULL !== $node->newName ? ' <span class="php-function-or-constant">' . $node->newName . '</span>' : '') . ';';
   }
 
   /**
