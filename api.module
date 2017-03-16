@@ -2490,8 +2490,10 @@ function api_queue_parse_file($data) {
   }
   $branch = $new_branch;
 
-  // Verify that it's still a valid parse job (if the branch has been updated,
-  // the parse job is not valid any more).
+  // Verify that it's still a valid parse job. If the branch has been updated,
+  // the parse job is not valid any more, and the file should have been marked
+  // as unqueued in api_save_branch(), so it will get requeued at the next
+  // update.
   $when_queued = (isset($data['timestamp']) ? $data['timestamp'] : 0);
   $valid_time = (isset($branch->queue_valid) ? $branch->queue_valid : 0);
   if ($when_queued < $valid_time) {
@@ -2499,12 +2501,17 @@ function api_queue_parse_file($data) {
     return;
   }
 
-  if ($when_queued >= $valid_time) {
-    watchdog('api', 'API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
-
-    module_load_include('inc', 'api', 'api.parser');
-    api_parse_file($data['parser'], $data['path'], $branch, $data['file']);
+  // Verify the file actually exists. If not, the branch update will delete
+  // its record the next time the branch is updated.
+  if (!file_exists($data['path'])) {
+    watchdog('api', 'Skipped API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
+    return;
   }
+
+  // Parse the file.
+  watchdog('api', 'API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
+  module_load_include('inc', 'api', 'api.parser');
+  api_parse_file($data['parser'], $data['path'], $branch, $data['file']);
 }
 
 /**
