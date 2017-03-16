@@ -1,6 +1,7 @@
 <?php
 
 /**
+ * @file
  * Views integration for the API module.
  *
  * Functions whose names start with _ in this file are only intended to be
@@ -1163,7 +1164,8 @@ class api_views_join_extras extends views_join {
       $left_field = "$left[alias].$this->left_field";
     }
     else {
-      // This can be used if left_field is a formula or something. It should be used only *very* rarely.
+      // This can be used if left_field is a formula or something. It should be
+      // used only *very* rarely.
       $left_field = $this->left_field;
     }
 
@@ -1194,8 +1196,7 @@ class api_views_join_extras extends views_join {
           }
 
           // Convert a single-valued array of values to the single-value case,
-          // and transform from IN() notation to = notation
-
+          // and transform from IN() notation to = notation.
           // API: Allow value to be omitted.
           if (!isset($info['value'])) {
             if (isset($info['prepend_left']) && $info['prepend_left']) {

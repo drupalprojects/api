@@ -62,10 +62,10 @@ function api_update_all_branches() {
  * Queries the branch URL to get an updated list of functions, and saves each
  * function in the database.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing a PHP branch to update.
  *
- * @return
+ * @return bool
  *   TRUE if the branch was updated, and FALSE if there was an error.
  *
  * @see api_update_all_branches()
@@ -112,10 +112,10 @@ function api_update_branch_php($branch) {
  * Queries the branch URL to get an updated item dump, and saves each item in
  * the database.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing an API branch to update.
  *
- * @return
+ * @return bool
  *   TRUE if the branch was updated, and FALSE if there was an error.
  *
  * @see api_update_all_branches()
@@ -182,10 +182,10 @@ function api_update_branch_api($branch) {
 /**
  * Checks to see if we need to queue a branch for updates or not.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing the branch.
  *
- * @return
+ * @return bool
  *   TRUE if we should queue this branch, and FALSE if not.
  */
 function _api_should_queue($branch) {
@@ -211,7 +211,7 @@ function _api_should_queue($branch) {
 /**
  * Returns the list of parsing functions for file extensions.
  *
- * @return
+ * @return array
  *   An associative array whose keys are file extensions, and whose values are
  *   the functions used to parse files with that extension. The function should
  *   parse the contents of the file, and save one or more documentation objects
@@ -262,11 +262,12 @@ function api_parse_functions() {
  * documentation from new files, and updates documentation for any files that
  * have changed.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing a files branch to update.
  *
- * @return
- *   TRUE to indicate that the branch was updated.
+ * @return bool
+ *   TRUE to indicate that the branch was updated, FALSE if there was a
+ *   problem.
  *
  * @see api_update_all_branches()
  */
@@ -302,18 +303,26 @@ function api_update_branch_files($branch) {
       if (isset($files[$file_name])) {
         $parse = (filemtime($path) > $files[$file_name]->modified) && !$files[$file_name]->queued;
         $file = $files[$file_name];
-        unset($files[$file_name]); // All remaining files will be removed.
+        // All remaining files will be removed.
+        unset($files[$file_name]);
       }
-      else { // New file.
+      else {
+        // New file.
         $parse = TRUE;
         $new = TRUE;
       }
       if ($parse) {
         $queue = DrupalQueue::get('api_parse');
-        $queue->createItem(array('parser' => $parse_functions[$matches[1]], 'path' => $path, 'branch' => $branch, 'file' => $file_name, 'branch_name' => $branch->branch_name, 'timestamp' => time()));
+        $queue->createItem(array(
+          'parser' => $parse_functions[$matches[1]],
+          'path' => $path,
+          'branch' => $branch,
+          'file' => $file_name,
+          'branch_name' => $branch->branch_name,
+          'timestamp' => time(),
+        ));
 
         // Make sure this doesn't get added to the parse queue again.
-
         if ($new) {
           // Add stub to the {api_documentation} and {api_file} table for this
           // file so it doesn't get added to the parse queue again.
@@ -367,15 +376,15 @@ function api_update_branch_files($branch) {
 /**
  * Finds all the files in the directories specified for a branch.
  *
- * @param $directories
+ * @param string $directories
  *   List of directories to scan, as text (separated by newlines).
- * @param $excluded_directories
+ * @param string $excluded_directories
  *   List of directories to exclude, as text (separated by newlines).
- * @param $regexps
+ * @param string $regexps
  *   List of regular expressions to exclude (files or directories), separated
  *   by newlines.
  *
- * @return
+ * @return array
  *   Associative array of files, where the keys are the full paths to the
  *   files and the values are the file names. File names exclude the part of
  *   the full path that is shared by all directories in the scan list. Only
@@ -428,7 +437,7 @@ function _api_scan_directories($directories, $excluded_directories, $regexps) {
     foreach ($files as $path => $file) {
       // Exclude anything that matches one of our regular expressions.
       $ok = TRUE;
-      foreach($regexps as $regexp) {
+      foreach ($regexps as $regexp) {
         if (preg_match($regexp, $path)) {
           $ok = FALSE;
           break;
@@ -467,10 +476,10 @@ function _api_scan_directories($directories, $excluded_directories, $regexps) {
 /**
  * Saves PHP branch documentation information to the database.
  *
- * @param $docblocks
+ * @param array $docblocks
  *   An array containing information about functions found in the branch.
  */
-function _api_save_php_documentation($docblocks) {
+function _api_save_php_documentation(array $docblocks) {
   // Remove all the old items from this branch. We don't care about preserving
   // IDs, so there is no reason to use complicated logic and update existing
   // records.
@@ -484,7 +493,14 @@ function _api_save_php_documentation($docblocks) {
     if (!$count) {
       // Build up queries and save the documentation in chunks, for speed.
       $insertQuery = db_insert('api_php_documentation')
-        ->fields(array('did', 'branch_id', 'object_name', 'member_name', 'object_type', 'documentation'));
+        ->fields(array(
+          'did',
+          'branch_id',
+          'object_name',
+          'member_name',
+          'object_type',
+          'documentation',
+        ));
     }
     $docblock['did'] = $did;
     $insertQuery->values($docblock);
@@ -506,10 +522,10 @@ function _api_save_php_documentation($docblocks) {
 /**
  * Saves API branch documentation information to the database.
  *
- * @param $docblocks
+ * @param array $docblocks
  *   An array containing information about functions found in the branch.
  */
-function _api_save_api_documentation($docblocks) {
+function _api_save_api_documentation(array $docblocks) {
   // Remove all the old items from this branch. We don't care about preserving
   // IDs, so there is no reason to use complicated logic and update existing
   // records.
@@ -523,7 +539,17 @@ function _api_save_api_documentation($docblocks) {
     if (!$count) {
       // Build up queries and save the documentation in chunks, for speed.
       $insertQuery = db_insert('api_external_documentation')
-        ->fields(array('did', 'branch_id', 'object_name', 'namespaced_name', 'title', 'member_name', 'summary', 'object_type', 'url'));
+        ->fields(array(
+          'did',
+          'branch_id',
+          'object_name',
+          'namespaced_name',
+          'title',
+          'member_name',
+          'summary',
+          'object_type',
+          'url',
+        ));
     }
     $docblock['did'] = $did;
     $insertQuery->values($docblock);

@@ -1,6 +1,7 @@
 <?php
 
 /**
+ * @file
  * Default views for the API module, for lists of documentation items.
  */
 
