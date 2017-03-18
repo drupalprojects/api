@@ -909,11 +909,10 @@ function api_update_7106() {
     'not null' => TRUE,
     'default' => '',
     ),
-    array('indexes' => array(
-      'object_name' => array(
-        'object_name',
-        'branch_id',
-        'object_type',
+    array('indexes' => array('object_name' => array(
+      'object_name',
+      'branch_id',
+      'object_type',
     ))));
 }
 
@@ -1613,7 +1612,10 @@ function api_update_7128() {
  * Add an index to the api_documentation table.
  */
 function api_update_7129() {
-  db_add_index('api_documentation', 'branch_object_class', array('branch_id', 'object_type', 'class_did'));
+  db_add_index(
+    'api_documentation',
+    'branch_object_class',
+    array('branch_id', 'object_type', 'class_did'));
 }
 
 /**
@@ -1710,11 +1712,11 @@ function api_update_7136() {
     $info = pathinfo($file->file_name);
     db_insert('api_file')
       ->fields(array(
-          'did' => $file->did,
-          'basename' => $info['basename'],
-          'modified' => 0,
-          'queued' => 0,
-        ))
+        'did' => $file->did,
+        'basename' => $info['basename'],
+        'modified' => 0,
+        'queued' => 0,
+      ))
       ->execute();
   }
 }
@@ -1729,7 +1731,7 @@ function api_update_7137() {
     'length' => 127,
     'not null' => FALSE,
     'default' => NULL,
-    ));
+  ));
 }
 
 /**

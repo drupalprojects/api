@@ -1162,7 +1162,7 @@ function _api_make_match_member_link($namespaced_name, $text, $branch = NULL, $c
   // not case sensitive).
   $results = $query->execute();
   if (count($results) != 1) {
-    return;
+    return FALSE;
   }
 
   $found = NULL;
@@ -1451,14 +1451,14 @@ function _api_link_member_name($text, $branch, $prepend = '', $append = '', $fil
  *
  * @param string $name
  *   Name to match (text found in the code).
- * @param array $namespaced_info
+ * @param array $namespace_info
  *   Namespace information for the file context
  *   (output of _api_get_namespace_info()).
  * @param string $member_type
  *   What type of reference to find: 'parent', 'self', 'variable', or
  *   'class-NAME'. This is set up in the parser.
  * @param string $object_type
- *   'function' if this is a member function, etc.
+ *   Type of object, such as 'function' if this is a member function, etc.
  * @param int|null $class_did
  *   Documentation ID of the class this is part of (if any).
  * @param int|null $file_did
@@ -1551,14 +1551,14 @@ function _api_make_match_link_class_member($name, array $namespace_info, $member
     $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
     $query
       ->fields('ad', array(
-          'branch_id',
-          'title',
-          'object_name',
-          'summary',
-          'object_type',
-          'file_name',
-          'did',
-          'member_name',
+        'branch_id',
+        'title',
+        'object_name',
+        'summary',
+        'object_type',
+        'file_name',
+        'did',
+        'member_name',
       ))
       ->fields('b', array('branch_name', 'project'))
       ->fields('am', array('member_alias'))
@@ -1600,7 +1600,16 @@ function _api_make_match_link_class_member($name, array $namespace_info, $member
       $query = db_select('api_documentation', 'ad');
       $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
       $query
-        ->fields('ad', array('branch_id', 'title', 'object_name', 'summary', 'object_type', 'file_name', 'did', 'member_name'))
+        ->fields('ad', array(
+            'branch_id',
+            'title',
+            'object_name',
+            'summary',
+            'object_type',
+            'file_name',
+            'did',
+            'member_name',
+        ))
         ->fields('b', array('branch_name', 'project'))
         ->condition('ad.member_name', $name);
 
