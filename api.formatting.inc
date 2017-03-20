@@ -1601,14 +1601,14 @@ function _api_make_match_link_class_member($name, array $namespace_info, $member
       $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
       $query
         ->fields('ad', array(
-            'branch_id',
-            'title',
-            'object_name',
-            'summary',
-            'object_type',
-            'file_name',
-            'did',
-            'member_name',
+          'branch_id',
+          'title',
+          'object_name',
+          'summary',
+          'object_type',
+          'file_name',
+          'did',
+          'member_name',
         ))
         ->fields('b', array('branch_name', 'project'))
         ->condition('ad.member_name', $name);
