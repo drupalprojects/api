@@ -39,7 +39,7 @@ function api_search_redirect() {
   $results = $query
     ->condition('ad.title', $tail)
     ->orderBy('b.weight', 'DESC')
-    ->range(0,1)
+    ->range(0, 1)
     ->fields('b', array('project', 'branch_name'))
     ->execute();
   foreach ($results as $branch) {
@@ -54,7 +54,7 @@ function api_search_redirect() {
   $results = $query
     ->condition('ad.title', '%' . $tail . '%', 'LIKE')
     ->orderBy('b.weight', 'DESC')
-    ->range(0,1)
+    ->range(0, 1)
     ->fields('b', array('project', 'branch_name'))
     ->execute();
   foreach ($results as $branch) {
@@ -106,7 +106,7 @@ EOD;
 /**
  * Page callback: Prints JSON-formatted potential matches for OpenSearch.
  *
- * @param $search
+ * @param string $search
  *   The string to search for.
  *
  * @see http://www.opensearch.org/Specifications/OpenSearch/Extensions/Suggestions/1.0
@@ -125,7 +125,7 @@ function api_suggest($search = '') {
 /**
  * Page callback: Prints a list of functions in text format, for use in IDEs.
  *
- * @param $branch_name
+ * @param string $branch_name
  *   Name of the branch to list functions for.
  *
  * @see api_menu()
@@ -211,12 +211,12 @@ function api_dump_full_list($branch, $project = '') {
 /**
  * Page callback: Performs a search.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing the branch to search.
  * @param ...
- *   The string to search for.
+ *   The string to search for, encompassing the rest of the ... arguments.
  *
- * @return
+ * @return string|null
  *   HTML output for the search results. If there is exactly one result,
  *   redirects to that page instead of displaying the results page.
  *
@@ -283,12 +283,12 @@ function api_search_listing($branch) {
 /**
  * Renders a list of links to search other branches for the same text.
  *
- * @param $branch
+ * @param object $branch
  *   The current branch being searched.
- * @param $search_text
+ * @param string $search_text
  *   The text being searched for.
  *
- * @return
+ * @return string
  *   HTML for links to search other branches for the same text, and a link to
  *   the Projects page.
  */
@@ -369,10 +369,10 @@ function api_project_form_submit($form, &$form_state) {
 /**
  * Page callback: Displays documentation for a file.
  *
- * @param $file
+ * @param object $file
  *   Documentation object representing the file to display.
  *
- * @return
+ * @return string
  *   HTML output for the file documentation page.
  *
  * @see api_menu()
@@ -434,7 +434,7 @@ function api_page_file($file) {
  *   (optional) If $branch is not given, display this project's default branch.
  *   Ignored if $branch is given.
  *
- * @return
+ * @return array
  *   Render array for the page.
  *
  * @see api_menu()
@@ -496,7 +496,7 @@ function api_page_branch($branch, $project = '') {
  *   Name of the project. Used if $branch is NULL, meaning find the default
  *   branch for this project.
  *
- * @return
+ * @return array
  *   Render array for the listing page.
  */
 function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '') {
@@ -560,31 +560,31 @@ function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '')
 
   }
 
-  if ($object_type === 'function' || $object_type == 'constant' || $object_type == 'global' ) {
+  if ($object_type === 'function' || $object_type == 'constant' || $object_type == 'global') {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_listing', array($object_type, $branch->branch_id)),
     );
   }
-  elseif ($object_type === 'group' ) {
+  elseif ($object_type === 'group') {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_groups', array($branch->branch_id)),
     );
   }
-  elseif ($object_type === 'service' ) {
+  elseif ($object_type === 'service') {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_services', array($branch->branch_id)),
     );
   }
-  elseif ($object_type === 'element' ) {
+  elseif ($object_type === 'element') {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_elements', array($branch->branch_id)),
     );
   }
-  elseif ( $object_type === 'file') {
+  elseif ($object_type === 'file') {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_files', array($branch->branch_id)),
@@ -602,7 +602,7 @@ function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '')
       '#markup' => api_display_view('api_namespaces', 'block_namespace_list', array($branch->branch_id)),
     );
   }
-  elseif ($object_type === 'deprecated' ) {
+  elseif ($object_type === 'deprecated') {
     $output['listing'] = array(
       '#type' => 'markup',
       '#markup' => api_display_view('api_listings', 'block_deprecated', array($branch->branch_id)),
@@ -645,8 +645,8 @@ function _api_make_navigation($branch, $object_type = '') {
       $suffix = 'deprecated';
       break;
 
-      default:
-        $suffix = $object_type . 's';
+    default:
+      $suffix = $object_type . 's';
   }
 
   // Make links to all the other branches' listing pages within this
@@ -693,14 +693,14 @@ function _api_make_navigation($branch, $object_type = '') {
 /**
  * Page callback: Generates a namespace page.
  *
- * @param $project
+ * @param string $project
  *   Short name of project to generate page for.
- * @param $branch_name
+ * @param string $branch_name
  *   Short name of branch to generate page for.
- * @param $namespace
+ * @param string $namespace
  *   Namespace to generate page for (with substitution characters).
  *
- * @return
+ * @return string
  *   HTML for the namespace page.
  */
 function api_page_namespace($project, $branch_name, $namespace) {
@@ -744,9 +744,10 @@ function api_page_namespace($project, $branch_name, $namespace) {
 /**
  * Generates a link to the projects page if there is more than one project.
  *
- * @param $wrap_in_p
+ * @param bool $wrap_in_p
  *   TRUE to wrap in a P tag; FALSE to not do that.
- * @return
+ *
+ * @return string
  *   Link to the API projects page, maybe inside a P tag, or an empty string if
  *   there would only be one project to display on that page.
  */
@@ -775,10 +776,10 @@ function api_other_projects_link($wrap_in_p = TRUE) {
 /**
  * Page callback: Displays documentation for a function.
  *
- * @param $function
+ * @param object $function
  *   Documentation object representing the function to display.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  *
  * @see api_menu()
@@ -866,7 +867,7 @@ function api_page_function($function) {
     foreach ($tokens as $token) {
       $depth += in_array($token, array('(', '{', '[')) - in_array($token, array(')', '}', ']'));
       if ($depth == 1 && $start && is_array($token) && $token[0] == T_VARIABLE) {
-        // New argument
+        // New argument.
         $arg_index += 1;
         $signature_info[$n]['arguments'][$arg_index] = $token[1];
         $signature_info[$n]['other'][$arg_index] = '';
@@ -946,12 +947,12 @@ function api_page_function($function) {
 /**
  * Page callback: Displays a list of instances where a function is called.
  *
- * @param $function
+ * @param object $function
  *   Documentation object representing the function to display.
- * @param $type
+ * @param string $type
  *   Type of page to generate. See api_find_references() for list.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  */
 function api_page_function_calls($function, $type) {
@@ -967,10 +968,10 @@ function api_page_function_calls($function, $type) {
 /**
  * Page callback: Displays a full class hierarchy.
  *
- * @param $class
+ * @param object $class
  *   Documentation object representing the class to display.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  */
 function api_page_class_hierarchy($class) {
@@ -985,10 +986,10 @@ function api_page_class_hierarchy($class) {
 /**
  * Page callback: Displays a full interface implementations list.
  *
- * @param $class
+ * @param object $class
  *   Documentation object representing the interface to display.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  */
 function api_page_interface_implements($class) {
@@ -1029,12 +1030,12 @@ function api_page_interface_implements($class) {
  * and functions are a special case as well, because they display signatures
  * and variations).
  *
- * @param $item
+ * @param object $item
  *   Documentation object representing the item to display.
- * @param $type
+ * @param string $type
  *   Type of item, one of: 'constant', 'global', 'property'.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  *
  * @see api_menu()
@@ -1073,10 +1074,10 @@ function api_page_simple_item($item, $type) {
 /**
  * Page callback: Displays documentation for a class.
  *
- * @param $class
+ * @param object $class
  *   Documentation object representing the class to display.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  *
  * @see api_menu()
@@ -1131,10 +1132,10 @@ function api_page_class($class) {
 /**
  * Page callback: Displays documentation for a service.
  *
- * @param $service
+ * @param object $service
  *   Documentation object representing the service to display.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  *
  * @see api_menu()
@@ -1175,10 +1176,10 @@ function api_page_service($service) {
 /**
  * Page callback: Displays documentation for a group (topic).
  *
- * @param $group
+ * @param object $group
  *   Documentation object representing the group (topic) to display.
  *
- * @return
+ * @return string
  *   HTML output for the page.
  *
  * @see api_menu()
@@ -1227,14 +1228,14 @@ function api_page_group($group) {
 /**
  * Sets the page title and breadcrumb for an object display page.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing the branch.
- * @param $object
+ * @param object $object
  *   Object representing the documentation item on the current page.
- * @param $title
+ * @param string|null $title
  *   A string to be used as a replacement for the title (optional). Assumed to
  *   already be sanitized.
- * @param $object_name_in_breadcrumb
+ * @param bool $object_name_in_breadcrumb
  *   A boolean indicating whether to add the object name to the breadcrumb.
  */
 function _api_object_title_and_breadcrumb($branch, $object, $title = NULL, $object_name_in_breadcrumb = FALSE) {
@@ -1293,15 +1294,15 @@ function _api_object_title_and_breadcrumb($branch, $object, $title = NULL, $obje
 /**
  * Renders a class hierarchy, either full or partial.
  *
- * @param $class
+ * @param object $class
  *   Class object with at least did, branch_id, file_name, object_type, and
  *   object_name properties.
- * @param $type
+ * @param string $type
  *   One of the following strings to indicate what type of hierarchy:
  *   - 'full': Full hierarchy, showing all parents, siblings, children, etc.
  *   - 'ancestors': Only direct ancestors of this class.
  *
- * @return
+ * @return string
  *   HTML string containing the class hierarchy, or an empty string if the
  *   only thing to display would be the class itself.
  */
@@ -1407,12 +1408,12 @@ function _api_class_hierarchy($class, $type = 'ancestors') {
 /**
  * Finds and renders the children of a class within the same branch.
  *
- * @param $class
+ * @param object $class
  *   Documentation object for the class.
- * @param $current_did
+ * @param int $current_did
  *   Documentation ID of the class on the current page.
  *
- * @return
+ * @return array
  *   Array of children. Keys are class names, and values are output
  *   of _api_class_hierarchy_line().
  */
@@ -1452,7 +1453,7 @@ function _api_class_children($class, $current_did = 0) {
  *   Array of classes found to implement the interface. Keys are the
  *   a sort index; values are lines like in a class hierarchy.
  */
-function _api_interface_process_inherits($interface, &$to_process, &$processed, &$found) {
+function _api_interface_process_inherits($interface, array &$to_process, array &$processed, array &$found) {
   // Find interfaces that directly extend this one.
   $exclude = array_merge(array_keys($to_process), array_keys($processed));
   $query = db_select('api_reference_storage', 'ars');
@@ -1526,13 +1527,13 @@ function _api_class_process_inherits($class, &$to_process, &$processed, &$found)
 /**
  * Renders the class hierarchy line for a single class.
  *
- * @param $class
+ * @param object $class
  *   Documentation object for the class to render.
- * @param $current_did
+ * @param int $current_did
  *   Documentation ID of the class that the current page is showing. If this
  *   class is being shown, it will have an 'active' class on the link.
  *
- * @return
+ * @return string
  *   HTML for this class in the class hierarchy.
  */
 function _api_class_hierarchy_line($class, $current_did = 0) {
@@ -1612,10 +1613,10 @@ function _api_class_hierarchy_line($class, $current_did = 0) {
 /**
  * Renders comments for a documentation object.
  *
- * @param $documentation_object
+ * @param object $documentation_object
  *   Object to render comments for.
  *
- * @return
+ * @return string
  *   Rendered comments to display with the object.
  */
 function _api_add_comments($documentation_object) {
@@ -1658,25 +1659,25 @@ function _api_add_comments($documentation_object) {
 /**
  * Returns a link to the file a documentation object is in.
  *
- * @param $object
+ * @param object $object
  *   Documentation object.
  *
- * @return
+ * @return string
  *   Formatted link to the file the object is in.
  */
 function api_file_link($object) {
-  return api_add_breaks(dirname($object->file_name) . '/' ) . l(basename($object->file_name), api_url($object, TRUE));
+  return api_add_breaks(dirname($object->file_name) . '/') . l(basename($object->file_name), api_url($object, TRUE));
 }
 
 /**
  * Creates a section documenting which class a member is from.
  *
- * @param $item
+ * @param object $item
  *   Documentation item for the member.
- * @param $branch
+ * @param object $branch
  *   Branch the item is in.
  *
- * @return
+ * @return string|false
  *   HTML for the section, or FALSE if it is not a class member.
  */
 function _api_class_section($item, $branch) {
@@ -1696,11 +1697,11 @@ function _api_class_section($item, $branch) {
 /**
  * Counts or lists references to a function or file.
  *
- * @param $name
+ * @param string $name
  *   Name of the function/file to check (see $type), or the object itself.
- * @param $branch
+ * @param object $branch
  *   Object representing the branch to check.
- * @param $type
+ * @param string $type
  *   Type of reference. One of:
  *   - 'calls': $name is the name of a function, find function calls.
  *   - 'implementations': $name is the name of a hook, find implementations.
@@ -1724,18 +1725,18 @@ function _api_class_section($item, $branch) {
  *     documentation ID. Find references to keys in this file.
  *   - 'services': $name is a class, find services that reference it.
  *   - 'use': $name is a service, find functions that reference its name.
- * @param $count
+ * @param bool $count
  *   If TRUE (default), return a count. If FALSE, return an array.
- * @param $exclude_did
+ * @param int|null $exclude_did
  *   (optional) Document ID to exclude from the query, or to use as the ID for
  *   overrides and element_invokes.
- * @param $limit
+ * @param int $limit
  *   (optional) Limit the number of references returned to this amount.
  * @param bool $is_drupal
  *   (optional) If set to FALSE, and $type is a Drupal-specific type (related
  *   to themes, hooks, or YAML), just return an empty list or zero count.
  *
- * @return
+ * @return int|array
  *   The number of references or an array of references.
  */
 function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0, $is_drupal = TRUE) {
@@ -2030,7 +2031,17 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   if ($group) {
     $base_query->groupBy('d.did');
   }
-  $base_query->fields('d', array('branch_id', 'object_name', 'title', 'summary', 'file_name', 'object_type', 'class_did', 'is_drupal'))
+  $base_query->fields('d',
+    array(
+      'branch_id',
+      'object_name',
+      'title',
+      'summary',
+      'file_name',
+      'object_type',
+      'class_did',
+      'is_drupal',
+    ))
     ->orderBy('d.title', 'ASC');
   if ($limit > 0) {
     $base_query->range(0, $limit);
@@ -2052,13 +2063,13 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
 /**
  * Generates a list of references as HTML.
  *
- * @param $object
+ * @param object $object
  *   Object to list references for.
- * @param $branch
+ * @param object $branch
  *   Branch the object is in.
- * @param $type
+ * @param string $type
  *   Type of references: see api_find_references() for list.
- * @param $limit
+ * @param int $limit
  *   (optional) Limit list to a few references.
  * @param bool $is_drupal
  *   (optional) If set to FALSE, and $type is a Drupal-specific type (such as
@@ -2084,19 +2095,19 @@ function api_list_references($object, $branch, $type, $limit = 0, $is_drupal = F
 /**
  * Builds and returns a references section for a documentation object.
  *
- * @param $types
+ * @param string[] $types
  *   Types of references to make (see api_find_references() for the list).
- * @param $object
+ * @param object $object
  *   Documentation object to find references for.
- * @param $branch
+ * @param object $branch
  *   Branch to find references in.
  *
- * @return
+ * @return string[]
  *   Array of HTML strings for the references section. Each one is a
  *   collapsible list of a few references, with a link to the full references
  *   page. Empty sections are omitted.
  */
-function api_build_references_section($types, $object, $branch) {
+function api_build_references_section(array $types, $object, $branch) {
   $output = array();
   foreach ($types as $type) {
     $count = api_find_references($object, $branch, $type, TRUE, $object->did, 0, $object->is_drupal);
@@ -2105,10 +2116,20 @@ function api_build_references_section($types, $object, $branch) {
       $section = '';
       $section .= api_list_references($object, $branch, $type, $limit, $object->is_drupal);
       if ($count > $limit) {
-        $section .= '<p>' . theme('api_function_reference_link', array('type' => $type, 'count' => $count, 'function' => $object, 'override_text' => t('... See full list'))) . '</p>';
+        $section .= '<p>' . theme(
+          'api_function_reference_link',
+          array(
+            'type' => $type,
+            'count' => $count,
+            'function' => $object,
+            'override_text' => t('... See full list'),
+          )) . '</p>';
       }
       $title = api_reference_text($type, $count, $object);
-      $output[] = theme('ctools_collapsible', array('content' => $section, 'handle' => $title, 'collapsed' => TRUE));
+      $output[] = theme(
+        'ctools_collapsible',
+        array('content' => $section, 'handle' => $title, 'collapsed' => TRUE)
+      );
     }
   }
 
@@ -2118,17 +2139,17 @@ function api_build_references_section($types, $object, $branch) {
 /**
  * Returns the page title or link text for a references page/link.
  *
- * @param $type
+ * @param string $type
  *   The type of reference link. This is either one of the values listed in
  *   api_find_references(), or:
  *   - 'hierarchy': Class hierarchy ($count is ignored).
  *   - 'implements': Interface implements list ($count is ignored).
- * @param $count
+ * @param int $count
  *   The number of referenced items.
- * @param $function
+ * @param object $function
  *   The function, class, or file object being referenced.
  *
- * @return
+ * @return string
  *   Text to be used as the link to the reference listing page, or the title
  *   of the page.
  */
@@ -2146,49 +2167,103 @@ function api_reference_text($type, $count, $function) {
   }
 
   if ($type == 'calls') {
-    return format_plural($count, '1 call to !name', '@count calls to !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 call to !name',
+      '@count calls to !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'constants') {
-    return format_plural($count, '1 use of !name', '@count uses of !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 use of !name',
+      '@count uses of !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'implementations') {
-    return format_plural($count, '1 function implements !name', '@count functions implement !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 function implements !name',
+      '@count functions implement !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'uses') {
-    return format_plural($count, '1 file declares its use of !name', '@count files declare their use of !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 file declares its use of !name',
+      '@count files declare their use of !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'overrides') {
-    return format_plural($count, '1 method overrides !name', '@count methods override !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 method overrides !name',
+      '@count methods override !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'element_invokes') {
-    return format_plural($count, '1 #type use of !name', '@count #type uses of !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 #type use of !name',
+      '@count #type uses of !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'theme_invokes') {
-    return format_plural($count, '1 theme call to !name', '@count theme calls to !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 theme call to !name',
+      '@count theme calls to !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'theme_references') {
-    return format_plural($count, '1 string reference to the theme hook from !name', '@count string references to the theme hook from !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 string reference to the theme hook from !name',
+      '@count string references to the theme hook from !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'invokes') {
-    return format_plural($count, '1 invocation of !name', '@count invocations of !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 invocation of !name',
+      '@count invocations of !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'references' || $type == 'use') {
-    return format_plural($count, '1 string reference to !name', '@count string references to !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 string reference to !name',
+      '@count string references to !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'annotations') {
-    return format_plural($count, '1 class is annotated with !name', '@count classes are annotated with !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 class is annotated with !name',
+      '@count classes are annotated with !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'services') {
-    return format_plural($count, '1 service uses !name', '@count services use !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 service uses !name',
+      '@count services use !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'yml_keys') {
-    return format_plural($count, '1 string reference to YAML keys in !name', '@count string references to YAML keys in !name', array('!name' => $name_to_use));
+    return format_plural(
+      $count,
+      '1 string reference to YAML keys in !name',
+      '@count string references to YAML keys in !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'hierarchy') {
-    return t('Expanded class hierarchy of !name', array('!name' => $name_to_use));
+    return t('Expanded class hierarchy of !name',
+      array('!name' => $name_to_use));
   }
   if ($type == 'implements') {
-    return t('All classes that implement !name', array('!name' => $name_to_use));
+    return t('All classes that implement !name',
+      array('!name' => $name_to_use));
   }
 
   return '';
