@@ -918,7 +918,9 @@ function api_update_7106() {
           'object_name',
           'branch_id',
           'object_type',
-        ))));
+        ),
+      ),
+    ));
 }
 
 /**
@@ -1199,7 +1201,9 @@ function api_update_7109() {
       'indexes' => array(
         'core_preferred' => array(
           'core_compatibility', 'preferred',
-        ))));
+        ),
+      ),
+    ));
 
   db_add_field('api_branch', 'last_updated',
     array(

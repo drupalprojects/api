@@ -29,7 +29,7 @@ define('API_FILEPATH_SEPARATOR_REPLACEMENT', '!');
 /**
  * File path separator replacement for API v 1.3.
  */
-define('API_v1_3_FILEPATH_SEPARATOR_REPLACEMENT', '--');
+define('API_V1_3_FILEPATH_SEPARATOR_REPLACEMENT', '--');
 
 /**
  * Implements hook_help().
@@ -47,7 +47,11 @@ function api_help($path, $arg) {
 <p>Indexing of PHP functions is also supported, by setting up a PHP Reference Branch. If the site has internet access, then the default settings should work fine. For local development environments that have a PHP manual installed, you can edit the link path to point to the appropriate location.</p>
 
 <p>The module indexes code branches during cron runs, so make sure the site has cron functionality set up properly.</p>
-', array('!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'), '!doxygen_link' => l('https://drupal.org/node/1354', 'https://drupal.org/node/1354')));
+        ',
+        array(
+          '!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'),
+          '!doxygen_link' => l('https://drupal.org/node/1354', 'https://drupal.org/node/1354'),
+        ));
 
     case 'admin/config/development/api':
       return '<h3>' . t('Definitions:') . '</h3><ul>' .
@@ -400,7 +404,8 @@ function api_menu() {
   // File pages and their references pages.
   $items['api/%api_project/%api_filename/%'] = array(
     'title' => 'File',
-    'load arguments' => array(1, 3), // project, branch
+    // Arguments: project, branch.
+    'load arguments' => array(1, 3),
     'page callback' => 'api_page_file',
     'page arguments' => array(2),
     'access arguments' => array('access API reference'),
@@ -409,7 +414,8 @@ function api_menu() {
   );
   $items['api/%api_project/%api_filename/theme_invokes'] = array(
     'title' => 'File',
-    'load arguments' => array(1, 4), // project, branch
+     // Arguments: project, branch.
+    'load arguments' => array(1, 4),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(2, 'theme_invokes'),
     'access arguments' => array('access API reference'),
@@ -418,7 +424,8 @@ function api_menu() {
   );
   $items['api/%api_project/%api_filename/theme_references'] = array(
     'title' => 'File',
-    'load arguments' => array(1, 4), // project, branch
+     // Arguments: project, branch.
+    'load arguments' => array(1, 4),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(2, 'theme_references'),
     'access arguments' => array('access API reference'),
@@ -427,7 +434,8 @@ function api_menu() {
   );
   $items['api/%api_project/%api_filename/yml_config'] = array(
     'title' => 'File',
-    'load arguments' => array(1, 4), // project, branch
+     // Arguments: project, branch.
+    'load arguments' => array(1, 4),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(2, 'yml_config'),
     'access arguments' => array('access API reference'),
@@ -436,7 +444,8 @@ function api_menu() {
   );
   $items['api/%api_project/%api_filename/yml_keys'] = array(
     'title' => 'File',
-    'load arguments' => array(1, 4), // project, branch
+     // Arguments: project, branch.
+    'load arguments' => array(1, 4),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(2, 'yml_keys'),
     'access arguments' => array('access API reference'),
@@ -446,11 +455,11 @@ function api_menu() {
 
   // Individual item pages for functions, classes, etc., and their
   // references pages.
-
   // Function pages.
   $items['api/%api_project/%/function/%api_item'] = array(
     'title' => 'Function',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_function',
     'page arguments' => array(4),
     'access arguments' => array('access API reference'),
@@ -459,7 +468,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/function/calls/%api_item'] = array(
     'title' => 'Function calls',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'calls'),
     'access arguments' => array('access API reference'),
@@ -468,7 +478,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/function/implementations/%api_item'] = array(
     'title' => 'Function implementations',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'implementations'),
     'access arguments' => array('access API reference'),
@@ -477,7 +488,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/function/references/%api_item'] = array(
     'title' => 'Function references',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'references'),
     'access arguments' => array('access API reference'),
@@ -486,7 +498,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/function/invokes/%api_item'] = array(
     'title' => 'Hook invocations',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'invokes'),
     'access arguments' => array('access API reference'),
@@ -495,7 +508,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/function/theme_invokes/%api_item'] = array(
     'title' => 'Theme invokes',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'theme_invokes'),
     'access arguments' => array('access API reference'),
@@ -504,7 +518,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/function/theme_references/%api_item'] = array(
     'title' => 'Theme invokes',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'theme_references'),
     'access arguments' => array('access API reference'),
@@ -513,7 +528,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/function/overrides/%api_item'] = array(
     'title' => 'Function calls',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'overrides'),
     'access arguments' => array('access API reference'),
@@ -524,7 +540,8 @@ function api_menu() {
   // Constant pages.
   $items['api/%api_project/%/constant/%api_item'] = array(
     'title' => 'Constant',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_simple_item',
     'page arguments' => array(4, 'constant'),
     'access arguments' => array('access API reference'),
@@ -533,7 +550,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/constant/constants/%api_item'] = array(
     'title' => 'Constant uses',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'constants'),
     'access arguments' => array('access API reference'),
@@ -544,7 +562,8 @@ function api_menu() {
   // Global variable pages.
   $items['api/%api_project/%/global/%api_item'] = array(
     'title' => 'Global',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_simple_item',
     'page arguments' => array(4, 'global'),
     'access arguments' => array('access API reference'),
@@ -555,7 +574,8 @@ function api_menu() {
   // Property pages.
   $items['api/%api_project/%/property/%api_item'] = array(
     'title' => 'Property',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_simple_item',
     'page arguments' => array(4, 'property'),
     'access arguments' => array('access API reference'),
@@ -566,7 +586,8 @@ function api_menu() {
   // Class pages.
   $items['api/%api_project/%/class/%api_item'] = array(
     'title' => 'Class',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_class',
     'page arguments' => array(4),
     'access arguments' => array('access API reference'),
@@ -575,7 +596,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/class/hierarchy/%api_item'] = array(
     'title' => 'Class hierarchy',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_class_hierarchy',
     'page arguments' => array(5),
     'access arguments' => array('access API reference'),
@@ -584,7 +606,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/class/uses/%api_item'] = array(
     'title' => 'Class uses',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'uses'),
     'access arguments' => array('access API reference'),
@@ -593,7 +616,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/class/references/%api_item'] = array(
     'title' => 'Class references',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'references'),
     'access arguments' => array('access API reference'),
@@ -602,7 +626,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/class/annotations/%api_item'] = array(
     'title' => 'Class annotations',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'annotations'),
     'access arguments' => array('access API reference'),
@@ -611,7 +636,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/class/services/%api_item'] = array(
     'title' => 'Class services',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'services'),
     'access arguments' => array('access API reference'),
@@ -620,7 +646,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/class/element_invokes/%api_item'] = array(
     'title' => 'Element uses',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'element_invokes'),
     'access arguments' => array('access API reference'),
@@ -631,7 +658,7 @@ function api_menu() {
   // Interface pages.
   $items['api/%api_project/%/interface/%api_item'] = array(
     'title' => 'Interface',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_class',
     'page arguments' => array(4),
     'access arguments' => array('access API reference'),
@@ -640,7 +667,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/interface/hierarchy/%api_item'] = array(
     'title' => 'Class hierarchy',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_class_hierarchy',
     'page arguments' => array(5),
     'access arguments' => array('access API reference'),
@@ -649,7 +677,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/interface/implements/%api_item'] = array(
     'title' => 'Interface implementations',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_interface_implements',
     'page arguments' => array(5),
     'access arguments' => array('access API reference'),
@@ -658,7 +687,7 @@ function api_menu() {
   );
   $items['api/%api_project/%/interface/uses/%api_item'] = array(
     'title' => 'Class uses',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'uses'),
     'access arguments' => array('access API reference'),
@@ -667,7 +696,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/interface/references/%api_item'] = array(
     'title' => 'Class references',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'references'),
     'access arguments' => array('access API reference'),
@@ -676,7 +706,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/interface/services/%api_item'] = array(
     'title' => 'Class services',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'services'),
     'access arguments' => array('access API reference'),
@@ -687,7 +718,8 @@ function api_menu() {
   // Trait pages.
   $items['api/%api_project/%/trait/%api_item'] = array(
     'title' => 'Trait',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_class',
     'page arguments' => array(4),
     'access arguments' => array('access API reference'),
@@ -696,7 +728,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/trait/uses/%api_item'] = array(
     'title' => 'Class uses',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'uses'),
     'access arguments' => array('access API reference'),
@@ -705,7 +738,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/trait/references/%api_item'] = array(
     'title' => 'Class references',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'references'),
     'access arguments' => array('access API reference'),
@@ -716,7 +750,8 @@ function api_menu() {
   // Service pages.
   $items['api/%api_project/%/service/%api_item'] = array(
     'title' => 'Service',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_service',
     'page arguments' => array(4),
     'access arguments' => array('access API reference'),
@@ -725,7 +760,8 @@ function api_menu() {
   );
   $items['api/%api_project/%/service/use/%api_item'] = array(
     'title' => 'Service uses',
-    'load arguments' => array(1, 6, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 6, 2, 3),
     'page callback' => 'api_page_function_calls',
     'page arguments' => array(5, 'use'),
     'access arguments' => array('access API reference'),
@@ -736,7 +772,8 @@ function api_menu() {
   // Group/topic pages.
   $items['api/%api_project/%/group/%api_item'] = array(
     'title' => 'Topic',
-    'load arguments' => array(1, 5, 2, 3), // project, branch, filename, type
+    // Arguments: project, branch, filename, type.
+    'load arguments' => array(1, 5, 2, 3),
     'page callback' => 'api_page_group',
     'page arguments' => array(4),
     'access arguments' => array('access API reference'),
@@ -748,7 +785,8 @@ function api_menu() {
   $items['api/%api_project/namespace/%/%'] = array(
     'title' => 'Namespace',
     'page callback' => 'api_page_namespace',
-    'page arguments' => array(1, 4, 3), // project, branch, namespace
+    // Arguments: project, branch, namespace.
+    'page arguments' => array(1, 4, 3),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
     'file' => 'api.pages.inc',
@@ -758,7 +796,6 @@ function api_menu() {
   // accessed with either just the project name in the URL (meaning: go to the
   // default branch within that project), or project and branch (for a specific
   // branch).
-
   // Branch home page.
   $items['api/%api_project'] = array(
     'title' => 'API reference',
@@ -771,7 +808,7 @@ function api_menu() {
   $items['api/%api_project/%api_branch'] = array(
     'title' => 'API reference',
     'page callback' => 'api_page_branch',
-    'page arguments' => array(2,1),
+    'page arguments' => array(2, 1),
     'load arguments' => array('%map'),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
@@ -1011,7 +1048,6 @@ function api_menu() {
   );
 
   // Legacy links.
-
   // Redirect 1.0 file links.
   $items['api/file/%menu_tail'] = array(
     'page callback' => 'api_file_redirect',
@@ -1024,7 +1060,11 @@ function api_menu() {
   // Legacy search.
   $items['api/search'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/' . $default_branch->branch_name . '/search', array(), '301'),
+    'page arguments' => array(
+      'api/' . $default_branch->project . '/' . $default_branch->branch_name . '/search',
+      array(),
+      '301',
+    ),
     'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
@@ -1044,7 +1084,7 @@ function api_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
-  $items['api/function/%api_legacy_1_2_object/%'] =  $items['api/function/%api_legacy_1_2_object'];
+  $items['api/function/%api_legacy_1_2_object/%'] = $items['api/function/%api_legacy_1_2_object'];
   $items['api/constant/%api_legacy_1_2_object'] = array(
     'load arguments' => array('constant', 3),
     'page callback' => 'drupal_goto',
@@ -1073,31 +1113,51 @@ function api_menu() {
   // Legacy listing pages.
   $items['api/functions'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/functions', array(), '301'),
+    'page arguments' => array(
+      'api/' . $default_branch->project . '/functions',
+      array(),
+      '301',
+    ),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/files'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/files', array(), '301'),
+    'page arguments' => array(
+      'api/' . $default_branch->project . '/files',
+      array(),
+      '301',
+    ),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/constants'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/constants', array(), '301'),
+    'page arguments' => array(
+      'api/' . $default_branch->project . '/constants',
+      array(),
+      '301',
+    ),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/globals'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/globals', array(), '301'),
+    'page arguments' => array(
+      'api/' . $default_branch->project . '/globals',
+      array(),
+      '301',
+    ),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
   $items['api/groups'] = array(
     'page callback' => 'drupal_goto',
-    'page arguments' => array('api/' . $default_branch->project . '/groups', array(), '301'),
+    'page arguments' => array(
+      'api/' . $default_branch->project . '/groups',
+      array(),
+      '301',
+    ),
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -1194,14 +1254,14 @@ function _api_make_menu_projects() {
 /**
  * Finds objects for old URLs and returns the new URL.
  *
- * @param $object_name
+ * @param string $object_name
  *   Name of the object to find the URL of.
- * @param $object_type
+ * @param string $object_type
  *   Type of object ('function', 'constant', etc.).
- * @param $branch_name
+ * @param string $branch_name
  *   Name of the branch to find the object in (across projects).
  *
- * @return
+ * @return string|false
  *   First matching URL for this combination of object name, type, and branch
  *   name, or FALSE if none is found (so it can be used as a hook_menu() magic
  *   argument loader function).
@@ -1220,12 +1280,12 @@ function api_legacy_1_2_object_load($object_name, $object_type, $branch_name) {
 /**
  * Returns the current path to listing pages accessed with old URLs.
  *
- * @param $branch_name
+ * @param string $branch_name
  *   Name of the branch to redirect.
- * @param $type
+ * @param string $type
  *   Type of listing page ('functions', etc.), or NULL for the home page.
  *
- * @return
+ * @return string
  *   URL to redirect this listing to, in the default project.
  */
 function api_legacy_1_2_listing_load($branch_name, $type = NULL) {
@@ -1251,13 +1311,13 @@ function api_legacy_1_2_listing_load($branch_name, $type = NULL) {
  *
  * Menu object load callback for %api_item in menu paths.
  *
- * @param $object_name
+ * @param string $object_name
  *   The object name matching {api_documentation}.object_name.
- * @param $project
+ * @param string $project
  *   The project name matching {api_branch}.project.
- * @param $branch_name
+ * @param string $branch_name
  *   The branch name matching {api_branch}.branch_name.
- * @param $file_name
+ * @param string $file_name
  *   The name of the file the object is in, with API_FILEPATH_SEPARATOR for path
  *   separators. We convert all API_FILEPATH_SEPARATOR_REPLACEMENTs back to
  *   API_FILEPATH_SEPARATORs to maintain the original file path information.
@@ -1265,34 +1325,44 @@ function api_legacy_1_2_listing_load($branch_name, $type = NULL) {
  *   API_FILEPATH_SEPARATORs in the original file path are replaced with
  *   API_FILEPATH_SEPARATOR_REPLACEMENTs so that API_FILEPATH_SEPARATORs won't
  *   be interpreted as part the of URL.
- * @param $type
+ * @param string $type
  *   API item type; one of function, constant, global, property, class,
  *   interface, or group.
  *
- * @return
+ * @return object|false
  *   Loaded documentation object, or FALSE if not found (returning FALSE will
  *   cause the Drupal menu system to recognize it's a 404 error).
  */
 function api_item_load($object_name, $project, $branch_name, $file_name, $type) {
-  // Check type
-  if (!in_array($type, array('function', 'constant', 'global', 'property', 'class', 'interface', 'trait', 'group', 'service'))) {
+  // Check type.
+  if (!in_array($type, array(
+        'function',
+        'constant',
+        'global',
+        'property',
+        'class',
+        'interface',
+        'trait',
+        'group',
+        'service',
+      ))) {
     return FALSE;
   }
 
-  // Load branch
+  // Load branch.
   $branch = api_get_branch_by_name($project, $branch_name);
   if (is_null($branch)) {
     return FALSE;
   }
 
-  // Load object
+  // Load object.
   $back_to_orig_filename = str_replace(API_FILEPATH_SEPARATOR_REPLACEMENT, API_FILEPATH_SEPARATOR, $file_name);
   $doc_object = api_object_load($object_name, $branch, $type, $back_to_orig_filename);
 
-  if (empty($doc_object) && (strpos($file_name, API_v1_3_FILEPATH_SEPARATOR_REPLACEMENT) !== FALSE)) {
+  if (empty($doc_object) && (strpos($file_name, API_V1_3_FILEPATH_SEPARATOR_REPLACEMENT) !== FALSE)) {
     // May be an API 1.3 style path. See if we can load a valid object with the
     // old replacement pattern.
-    $doc_object = api_object_load($object_name, $branch, $type, str_replace(API_v1_3_FILEPATH_SEPARATOR_REPLACEMENT, API_FILEPATH_SEPARATOR, $file_name) );
+    $doc_object = api_object_load($object_name, $branch, $type, str_replace(API_V1_3_FILEPATH_SEPARATOR_REPLACEMENT, API_FILEPATH_SEPARATOR, $file_name));
     // If we could, redirect to the current URL.
     if (!empty($doc_object)) {
       drupal_goto(api_url($doc_object));
@@ -1313,19 +1383,19 @@ function api_item_load($object_name, $project, $branch_name, $file_name, $type) 
  *
  * API v 1.3 replaced all '/'s in the file path with '--' for the URL generated
  * for the file. We need to handle a URL with '--' (=
- * API_v1_3_FILEPATH_SEPARATOR_REPLACEMENT) and redirected it to the current,
+ * API_V1_3_FILEPATH_SEPARATOR_REPLACEMENT) and redirected it to the current,
  * correct URL.  We now convert all '/'s (= API_FILEPATH_SEPARATOR) to
  * API_FILEPATH_SEPARATOR_REPLACEMENT when a URL is created for a documentatio
  * object. Here we need to go back to the original filename and path.
  *
- * @param $file_name
+ * @param string $file_name
  *   Name of the file to load.
- * @param $project
+ * @param string $project
  *   Name of the project the file is in.
- * @param $branch_name
+ * @param string $branch_name
  *   Name of the branch the file is in.
  *
- * @return
+ * @return object|false
  *   Loaded documentation object, or FALSE if not found (returning FALSE will
  *   cause the Drupal menu system to recognize it's a 404 error).
  */
@@ -1337,10 +1407,10 @@ function api_filename_load($file_name, $project, $branch_name) {
 
   $doc_object = api_object_load(str_replace(API_FILEPATH_SEPARATOR_REPLACEMENT, API_FILEPATH_SEPARATOR, $file_name), $branch, 'file');
 
-  if (empty($doc_object) && (strpos($file_name, API_v1_3_FILEPATH_SEPARATOR_REPLACEMENT) !== FALSE)) {
+  if (empty($doc_object) && (strpos($file_name, API_V1_3_FILEPATH_SEPARATOR_REPLACEMENT) !== FALSE)) {
     // May be an API 1.3 style path. See if we can load a valid object with the
     // old replacement pattern.
-    $doc_object = api_object_load(str_replace(API_v1_3_FILEPATH_SEPARATOR_REPLACEMENT, API_FILEPATH_SEPARATOR, $file_name), $branch, 'file');
+    $doc_object = api_object_load(str_replace(API_V1_3_FILEPATH_SEPARATOR_REPLACEMENT, API_FILEPATH_SEPARATOR, $file_name), $branch, 'file');
     // If we could, redirect to the current URL.
     if (!empty($doc_object)) {
       drupal_goto(api_url($doc_object));
@@ -1357,18 +1427,18 @@ function api_filename_load($file_name, $project, $branch_name) {
 /**
  * Loads a documentation object.
  *
- * @param $object_name_or_did
+ * @param string|int $object_name_or_did
  *   The string object name or integer documentation ID to load.
- * @param $branch
+ * @param object|null $branch
  *   Branch object. Ignored if $object_name_or_did is an integer.
- * @param $object_type
+ * @param string|array|null $object_type
  *   A string type, or array of strings: class, interface, function, etc.
  *   Can be omitted if $object_name_or_did is an integer.
- * @param $file_name
+ * @param string|null $file_name
  *   Name of the file the object is in (if needed). Ignored if
  *   $object_name_or_did is an integer.
  *
- * @return
+ * @return object|null
  *   Object with information about the matching documentation, or NULL if it
  *   does not exist.
  */
@@ -1392,7 +1462,6 @@ function api_object_load($object_name_or_did, $branch = NULL, $object_type = '',
   }
 
   // We don't have a cached value. Prepare the query.
-
   // Set up the basic query.
   $query = db_select('api_documentation', 'ad');
   $ao = $query->leftJoin('api_overrides', 'ao', 'ao.did = ad.did');
@@ -1437,7 +1506,15 @@ function api_object_load($object_name_or_did, $branch = NULL, $object_type = '',
     if (!empty($result_object->documented_did) && $result_object->documented_did !== $result_object->did) {
       $documented_object = api_object_load((int) $result_object->documented_did, $branch, $object_type);
       if (isset($documented_object)) {
-        foreach (array('documentation', 'parameters', 'return_value', 'see', 'deprecated', 'throws', 'var') as $member) {
+        foreach (array(
+            'documentation',
+            'parameters',
+            'return_value',
+            'see',
+            'deprecated',
+            'throws',
+            'var',
+          ) as $member) {
           $result_object->$member = $documented_object->$member;
         }
       }
@@ -1502,7 +1579,10 @@ function api_theme() {
         'throws' => NULL,
         'class' => NULL,
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-function-page',
       'file' => 'api.theme.inc',
@@ -1519,7 +1599,10 @@ function api_theme() {
         'class' => NULL,
         'call_links' => array(),
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-constant-page',
       'file' => 'api.theme.inc',
@@ -1534,7 +1617,10 @@ function api_theme() {
         'see' => NULL,
         'deprecated' => NULL,
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-global-page',
       'file' => 'api.theme.inc',
@@ -1551,7 +1637,10 @@ function api_theme() {
         'var' => NULL,
         'class' => NULL,
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-property-page',
       'file' => 'api.theme.inc',
@@ -1570,7 +1659,10 @@ function api_theme() {
         'deprecated' => NULL,
         'call_links' => array(),
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-class-page',
       'file' => 'api.theme.inc',
@@ -1584,7 +1676,10 @@ function api_theme() {
         'tags' => NULL,
         'call_links' => array(),
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-service-page',
       'file' => 'api.theme.inc',
@@ -1601,7 +1696,10 @@ function api_theme() {
         'defined' => '',
         'call_links' => array(),
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-file-page',
       'file' => 'api.theme.inc',
@@ -1615,7 +1713,10 @@ function api_theme() {
         'see' => NULL,
         'related_topics' => NULL,
       ),
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_object_page'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_object_page',
+      ),
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-group-page',
       'file' => 'api.theme.inc',
@@ -1645,7 +1746,10 @@ function api_theme() {
       'path' => drupal_get_path('module', 'api') . '/templates',
       'template' => 'api-class-section',
       'file' => 'api.theme.inc',
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_api_class_section'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_api_class_section',
+      ),
     ),
     'api_views_view_dl_list' => array(
       'variables' => array(
@@ -1653,7 +1757,10 @@ function api_theme() {
       'template' => 'api-views-view-dl-list',
       'path' => drupal_get_path('module', 'api') . '/templates',
       'file' => 'api.theme.inc',
-      'preprocess functions' => array('template_preprocess', 'api_preprocess_views_view_dl_list'),
+      'preprocess functions' => array(
+        'template_preprocess',
+        'api_preprocess_views_view_dl_list',
+      ),
     ),
   );
 }
@@ -1857,10 +1964,10 @@ function api_block_view($delta) {
 /**
  * Get item types used for a branch.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing the branch.
  *
- * @return
+ * @return array
  *   Associative array where the keys are the type of listing ('functions',
  *   'classes', etc.) and the values are TRUE if there is an item of that type
  *   for the given branch.
@@ -1928,8 +2035,11 @@ function api_filter_documentation_tips($filter, $format, $long) {
  * function names into links on output, using the currently active branch.
  * Other parameters are passed to this function, but they are not actually used.
  *
- * @param $text
+ * @param string $text
  *   Text to be filtered.
+ *
+ * @return string
+ *   Filtered text.
  */
 function api_filter_documentation_process($text) {
   module_load_include('inc', 'api', 'api.formatting');
@@ -1983,14 +2093,14 @@ function api_forms() {
  * Constructs a URL for an object, replacing any API_FILEPATH_SEPARATOR in a
  * file path with API_FILEPATH_SEPARATOR_REPLACEMENT.
  *
- * @param $object
+ * @param object $object
  *   An API object with object_type, object_name, branch_id, and file_name
  *   properties.
  * @param bool $file
  *   TRUE links to the object’s containing file, FALSE links to the object
  *   itself.
  *
- * @return
+ * @return string
  *   A URL string, or an empty string if there was a problem.
  */
 function api_url($object, $file = FALSE) {
@@ -2019,12 +2129,12 @@ function api_url($object, $file = FALSE) {
  * Constructs a URL for a namespace, replacing any API_NAMESPACE_SEPARATOR in a
  * file path with API_FILEPATH_SEPARATOR_REPLACEMENT.
  *
- * @param $branch_id
+ * @param int $branch_id
  *   ID of the branch to make the link in.
- * @param $namespace
+ * @param string $namespace
  *   Namespace to make the link for.
  *
- * @return
+ * @return string
  *   A URL string, or an empty string if there was a problem.
  */
 function api_namespace_url($branch_id, $namespace) {
@@ -2305,7 +2415,7 @@ function api_get_branch_by_name($project, $branch_name = NULL) {
   $compatibility = variable_get('api_default_core_compatibility', '');
   foreach (api_get_branches() as $branch) {
     if ($branch->project === $project) {
-      if((!empty($branch_name) && $branch->branch_name === $branch_name) ||
+      if ((!empty($branch_name) && $branch->branch_name === $branch_name) ||
         (empty($branch_name) && $branch->core_compatibility == $compatibility && $branch->preferred)) {
         return $branch;
       }
@@ -2555,10 +2665,10 @@ function api_queue_update_branch($data) {
 /**
  * Deletes obsolete nodes.
  *
- * @param $data
+ * @param array $data
  *   Array with element 'nids' giving the IDs of the nodes to delete.
  */
-function api_queue_node_delete($data) {
+function api_queue_node_delete(array $data) {
   watchdog('api', 'Removing a batch of %count obsolete nodes.', array('%count' => count($data['nids'])));
   node_delete_multiple($data['nids']);
 }
@@ -2566,10 +2676,10 @@ function api_queue_node_delete($data) {
 /**
  * Verifies that the required libraries are loaded for parsing.
  *
- * @param $watchdog
+ * @param bool $watchdog
  *   TRUE to log an error if the library is not loaded (first time only).
  *
- * @return
+ * @return bool
  *   TRUE if OK, FALSE if parsing will not work.
  */
 function api_libraries_loaded($watchdog = TRUE) {
