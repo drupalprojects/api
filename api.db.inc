@@ -550,6 +550,7 @@ function api_mark_for_reparse($branch_or_file = NULL, $is_branch_name = FALSE) {
     // Reparse a branch.
     // This is a query using a WHERE EXISTS, and there is no apparent way
     // to write it using the database API, so use ANSI syntax.
+    // @codingStandardsIgnoreLine
     $out = db_query("UPDATE {api_file} SET modified = :mod_time WHERE EXISTS ( SELECT * FROM {api_documentation} d WHERE d.branch_id = :branch_id AND d.object_type = 'file' AND d.did = {api_file}.did )", array(':mod_time' => $time_in_past, ':branch_id' => $branch_id));
     return $out->rowCount();
   }

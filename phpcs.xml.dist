@@ -35,7 +35,7 @@
   </rule>
 
   <!-- Exclude default views export file from inline comment rule. -->
-  <rule ref="Drupal.Commenting.InlineComment.SpacingAfter">
+  <rule ref="Drupal.Commenting.InlineComment">
     <exclude-pattern>./views/api.views_default.inc</exclude-pattern>
   </rule>
 
