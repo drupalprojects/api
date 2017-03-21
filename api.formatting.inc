@@ -870,13 +870,13 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
   if (in_array($type, array('function', 'function_or_constant', 'class'))) {
     $original_name = $name;
     $name = $namespaced_name;
-    $match_name = $query->addField('ad', 'namespaced_name', 'match_name');
+    $query->addField('ad', 'namespaced_name', 'match_name');
     $match_name_field = 'ad.namespaced_name';
     $search_name = $query->addField('ad', 'object_name', 'search_name');
     $search_name_field = 'ad.object_name';
   }
   elseif ($type != 'theme' && $type != 'file' && $type != 'yaml_string' && $type != 'element') {
-    $match_name = $query->addField('ad', 'object_name', 'match_name');
+    $query->addField('ad', 'object_name', 'match_name');
     $match_name_field = 'ad.object_name';
     $search_name_field = NULL;
   }
@@ -885,7 +885,6 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
   $potential_names = array($name);
   $prefer_shorter = FALSE;
   $prefer_earlier = FALSE;
-  $search_term = NULL;
 
   if ($type == 'hook') {
     $potential_names = array(
@@ -899,7 +898,6 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     );
     $prefer_earlier = TRUE;
     $query->condition('ad.object_type', 'function');
-    $search_term = '_' . $name;
   }
   elseif ($type == 'alter hook') {
     $potential_names = array('hook_' . $name . '_alter');
@@ -922,14 +920,14 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     // Because this needs to match theme files, match on object title (which is
     // the file base name).
     $query->condition('ad.object_type', array('file', 'function'));
-    $match_name = $query->addField('ad', 'title', 'match_name');
+    $query->addField('ad', 'title', 'match_name');
     $match_name_field = 'ad.title';
   }
   elseif ($type == 'element') {
     // The string is the machine name of an element, and we want to link
     // to the element class.
     $query->innerJoin('api_reference_storage', 'ars', "ad.did = ars.from_did AND ars.object_type = 'element'");
-    $match_name = $query->addField('ars', 'object_name', 'match_name');
+    $query->addField('ars', 'object_name', 'match_name');
     $match_name_field = 'ars.object_name';
     $search_name_field = 'none';
   }
@@ -959,12 +957,12 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     // join to the file table and match on the basename field.
     if ($using_api_branch) {
       $query->condition('ad.object_type', array('file'));
-      $match_name = $query->addField('ad', 'title', 'match_name');
+      $query->addField('ad', 'title', 'match_name');
       $match_name_field = 'ad.title';
     }
     else {
       $query->leftJoin('api_file', 'af', 'ad.did = af.did');
-      $match_name = $query->addField('af', 'basename', 'match_name');
+      $query->addField('af', 'basename', 'match_name');
       $match_name_field = 'af.basename';
     }
   }
@@ -983,7 +981,7 @@ function _api_make_match_link($name, $namespaced_name, $text, $type, $try_link =
     // or routing file. This would be stored in the {api_reference_storage}
     // table.
     $query->innerJoin('api_reference_storage', 'ar', 'ad.did = ar.from_did');
-    $match_name = $query->addField('ar', 'object_name', 'match_name');
+    $query->addField('ar', 'object_name', 'match_name');
     $query->condition('ar.object_type', 'yaml string');
     $match_name_field = 'ar.object_name';
     $search_name_field = NULL;
@@ -1547,7 +1545,7 @@ function _api_make_match_link_class_member($name, array $namespace_info, $member
     // table to find the right method, since it includes members inherited from
     // parent classes.
     $query = db_select('api_members', 'am');
-    $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
+    $query->innerJoin('api_documentation', 'ad', 'ad.did = am.did');
     $query->innerJoin('api_branch', 'b', 'ad.branch_id = b.branch_id');
     $query
       ->fields('ad', array(

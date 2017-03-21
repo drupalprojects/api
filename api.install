@@ -699,7 +699,6 @@ function api_enable() {
   drupal_static_reset('api_get_php_branches');
 
   // Create the PHP branch if it doesn't already exist.
-  $exists = FALSE;
   $result = db_select('api_php_branch', 'b')
     ->fields('b', array('title'))
     ->condition('reference_type', 'php')
@@ -874,8 +873,7 @@ function api_update_7103() {
   // Also reparse everything, because the old field definition left things
   // in a bad state.
   $count = api_update_mark_for_reparse();
-
-  return 'Due to database change, everything was marked for reparse.';
+  return format_string('@count files marked for reparse, starting at next cron run', array('@count' => $count));
 }
 
 /**
@@ -954,6 +952,8 @@ function api_update_7107(&$sandbox) {
 
     // Delete entries in API tables that don't correspond to existing entries
     // in {api_documentation}.
+    // These are queries using a WHERE EXISTS, and there is no apparent way
+    // to write it using the database API, so use ANSI syntax.
     db_query("DELETE FROM {api_file} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_file}.did )");
     db_query("DELETE FROM {api_function} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_function}.did )");
     db_query("DELETE FROM {api_members} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_members}.did )");
@@ -1244,7 +1244,7 @@ function api_update_7109() {
     ));
 
   // Attempt to set the core compatibility field values and variable.
-  variable_set('api_default_core_compatibility', $default_compat = _api_extract_compatibility(isset($default_branch->branch_name) ? $default_branch->branch_name : ''));
+  variable_set('api_default_core_compatibility', _api_extract_compatibility(isset($default_branch->branch_name) ? $default_branch->branch_name : ''));
 
   $branches = db_select('api_branch', 'b')
     ->fields('b')

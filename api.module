@@ -345,7 +345,7 @@ function api_menu() {
   $items['api'] = array(
     'page callback' => 'drupal_goto',
     'page arguments' => array('api/' . $default_branch->project, array(), '302'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
 
@@ -1053,7 +1053,7 @@ function api_menu() {
     'page callback' => 'api_file_redirect',
     'page arguments' => array(2),
     'load arguments' => array('%map', '%index'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'file' => 'legacy.inc',
   );
 
@@ -1081,7 +1081,7 @@ function api_menu() {
     'load arguments' => array('function', 3),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/function/%api_legacy_1_2_object/%'] = $items['api/function/%api_legacy_1_2_object'];
@@ -1089,7 +1089,7 @@ function api_menu() {
     'load arguments' => array('constant', 3),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/constant/%api_legacy_1_2_object/%'] = $items['api/constant/%api_legacy_1_2_object'];
@@ -1097,7 +1097,7 @@ function api_menu() {
     'load arguments' => array('global', 3),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/global/%api_legacy_1_2_object/%'] = $items['api/global/%api_legacy_1_2_object'];
@@ -1105,7 +1105,7 @@ function api_menu() {
     'load arguments' => array('group', 3),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/group/%api_legacy_1_2_object/%'] = $items['api/group/%api_legacy_1_2_object'];
@@ -1118,7 +1118,7 @@ function api_menu() {
       array(),
       '301',
     ),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/files'] = array(
@@ -1128,7 +1128,7 @@ function api_menu() {
       array(),
       '301',
     ),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/constants'] = array(
@@ -1138,7 +1138,7 @@ function api_menu() {
       array(),
       '301',
     ),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/globals'] = array(
@@ -1148,7 +1148,7 @@ function api_menu() {
       array(),
       '301',
     ),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/groups'] = array(
@@ -1158,7 +1158,7 @@ function api_menu() {
       array(),
       '301',
     ),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
 
@@ -1167,35 +1167,35 @@ function api_menu() {
     'load arguments' => array('functions'),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/files/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('files'),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/constants/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('constants'),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/globals/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('globals'),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
   $items['api/groups/%api_legacy_1_2_listing'] = array(
     'load arguments' => array('groups'),
     'page callback' => 'drupal_goto',
     'page arguments' => array(2, array(), '301'),
-    'access callback' => TRUE,
+    'access arguments' => array('access API reference'),
     'type' => MENU_CALLBACK,
   );
 
@@ -1335,17 +1335,18 @@ function api_legacy_1_2_listing_load($branch_name, $type = NULL) {
  */
 function api_item_load($object_name, $project, $branch_name, $file_name, $type) {
   // Check type.
-  if (!in_array($type, array(
-        'function',
-        'constant',
-        'global',
-        'property',
-        'class',
-        'interface',
-        'trait',
-        'group',
-        'service',
-      ))) {
+  if (!in_array($type,
+    array(
+      'function',
+      'constant',
+      'global',
+      'property',
+      'class',
+      'interface',
+      'trait',
+      'group',
+      'service',
+    ))) {
     return FALSE;
   }
 
@@ -1507,14 +1508,14 @@ function api_object_load($object_name_or_did, $branch = NULL, $object_type = '',
       $documented_object = api_object_load((int) $result_object->documented_did, $branch, $object_type);
       if (isset($documented_object)) {
         foreach (array(
-            'documentation',
-            'parameters',
-            'return_value',
-            'see',
-            'deprecated',
-            'throws',
-            'var',
-          ) as $member) {
+          'documentation',
+          'parameters',
+          'return_value',
+          'see',
+          'deprecated',
+          'throws',
+          'var',
+        ) as $member) {
           $result_object->$member = $documented_object->$member;
         }
       }
@@ -1752,8 +1753,7 @@ function api_theme() {
       ),
     ),
     'api_views_view_dl_list' => array(
-      'variables' => array(
-      ),
+      'variables' => array(),
       'template' => 'api-views-view-dl-list',
       'path' => drupal_get_path('module', 'api') . '/templates',
       'file' => 'api.theme.inc',
@@ -1805,12 +1805,11 @@ function api_set_html_page_title($title = NULL) {
  * autodiscovery link. Redirects nodes of type 'api' to the correct URL.
  */
 function api_init() {
-  $branch = api_get_active_branch();
-
   // If we happen to be on an API node page, redirect.
   if (($node = menu_get_object('node')) && $node->type == 'api') {
     $result = db_select('api_documentation', 'd')
-      ->fields('d', array('branch_id', 'object_type', 'file_name', 'object_name'))
+      ->fields('d',
+        array('branch_id', 'object_type', 'file_name', 'object_name'))
       ->condition('did', $node->nid)
       ->range(0, 1)
       ->execute()
@@ -1823,15 +1822,15 @@ function api_init() {
   $url = url('api/opensearch', array('absolute' => TRUE));
   $weight = 100;
   drupal_add_html_head(array(
-      '#tag' => 'link',
-      '#weight' => $weight,
-      '#attributes' => array(
-        'href' => $url,
-        'title' => $title,
-        'rel' => 'search',
-        'type' => 'application/opensearchdescription+xml',
-      ),
-    ), $title);
+    '#tag' => 'link',
+    '#weight' => $weight,
+    '#attributes' => array(
+      'href' => $url,
+      'title' => $title,
+      'rel' => 'search',
+      'type' => 'application/opensearchdescription+xml',
+    ),
+  ), $title);
 }
 
 /**
@@ -1913,7 +1912,6 @@ function api_block_view($delta) {
       if (user_access('access API reference') && !empty($branch)) {
         // Figure out if this is the default branch for this project, the same
         // way the menu system decides.
-
         $projects = _api_make_menu_projects();
         $is_default = ($branch->branch_name === $projects[$branch->project]['use branch']);
         $suffix = ($is_default) ? '' : '/' . $branch->branch_name;
@@ -2223,7 +2221,7 @@ function api_get_active_branch() {
     // Search pages have a different format.
     elseif (strpos($item['path'], 'api/search') === 0 && isset($branch_names[$item['page_arguments'][0]])) {
       // This is a search page for a particular branch. Figure out what project
-      // it corresponds to, using the default project if possible
+      // it corresponds to, using the default project if possible.
       foreach ($branches as $possible_branch) {
         if ($possible_branch->project === $branches[$default_branch]->project && $possible_branch->branch_name === $item['page_arguments'][0]) {
           // Best case, this is a branch on the default project.
@@ -2595,7 +2593,13 @@ function api_queue_parse_file($data) {
   $branch = $data['branch'];
   $new_branch = api_get_branch_by_id($branch->branch_id);
   if (is_null($new_branch)) {
-    watchdog('api', 'Invalid or deleted branch requested in API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
+    watchdog('api',
+      'Invalid or deleted branch requested in API parse %project branch %branch %file',
+      array(
+        '%branch' => $branch->branch_name,
+        '%project' => $branch->project,
+        '%file' => $data['file'],
+      ));
     return;
   }
   $branch = $new_branch;
@@ -2607,19 +2611,40 @@ function api_queue_parse_file($data) {
   $when_queued = (isset($data['timestamp']) ? $data['timestamp'] : 0);
   $valid_time = (isset($branch->queue_valid) ? $branch->queue_valid : 0);
   if ($when_queued < $valid_time) {
-    watchdog('api', 'Skipped API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
+    watchdog(
+      'api',
+      'Skipped API parse %project branch %branch %file',
+      array(
+        '%branch' => $branch->branch_name,
+        '%project' => $branch->project,
+        '%file' => $data['file'],
+      ));
     return;
   }
 
   // Verify the file actually exists. If not, the branch update will delete
   // its record the next time the branch is updated.
   if (!file_exists($data['path'])) {
-    watchdog('api', 'Skipped API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
+    watchdog(
+      'api',
+      'Skipped API parse %project branch %branch %file',
+      array(
+        '%branch' => $branch->branch_name,
+        '%project' => $branch->project,
+        '%file' => $data['file'],
+      ));
     return;
   }
 
   // Parse the file.
-  watchdog('api', 'API parse %project branch %branch %file', array('%branch' => $branch->branch_name, '%project' => $branch->project, '%file' => $data['file']));
+  watchdog(
+    'api',
+    'API parse %project branch %branch %file',
+    array(
+      '%branch' => $branch->branch_name,
+      '%project' => $branch->project,
+      '%file' => $data['file'],
+    ));
   module_load_include('inc', 'api', 'api.parser');
   api_parse_file($data['parser'], $data['path'], $branch, $data['file']);
 }
@@ -2659,7 +2684,11 @@ function api_queue_update_branch($data) {
     }
   }
 
-  watchdog('api', 'Invalid or deleted branch requested in API update %type branch %branch', array('%type' => $type, '%branch' => $id), WATCHDOG_ERROR);
+  watchdog(
+    'api',
+    'Invalid or deleted branch requested in API update %type branch %branch',
+    array('%type' => $type, '%branch' => $id),
+    WATCHDOG_ERROR);
 }
 
 /**
@@ -2669,7 +2698,10 @@ function api_queue_update_branch($data) {
  *   Array with element 'nids' giving the IDs of the nodes to delete.
  */
 function api_queue_node_delete(array $data) {
-  watchdog('api', 'Removing a batch of %count obsolete nodes.', array('%count' => count($data['nids'])));
+  watchdog(
+    'api',
+    'Removing a batch of %count obsolete nodes.',
+    array('%count' => count($data['nids'])));
   node_delete_multiple($data['nids']);
 }
 
@@ -2690,7 +2722,7 @@ function api_libraries_loaded($watchdog = TRUE) {
 
   // Verify that the external classes exist.
   if (!class_exists('\PhpParser\ParserFactory') || !class_exists('\Symfony\Component\Yaml\Parser')) {
-    drupal_set_message('PHP and/or YAML parsing libraries are not properly installed via Composer.', 'error');
+    drupal_set_message(t('PHP and/or YAML parsing libraries are not properly installed via Composer.'), 'error');
     if ($watchdog) {
       watchdog('api', 'PHP and/or YAML parsing libraries are not properly installed via Composer.', array(), WATCHDOG_ERROR);
     }

@@ -17,11 +17,33 @@
   <rule ref="Drupal" />
   <rule ref="DrupalPractice" />
 
-  <!-- Exclude Views and PrettyPrinter classes from the camel case rules. -->
+  <!-- Exclude Views and PrettyPrinter classes from method camel case rules.
+       PrettyPrinter has a bunch of methods overridden from a parent class in a
+       different project. Views doesn't follow the conventions. -->
   <rule ref="Drupal.NamingConventions.ValidFunctionName">
     <exclude-pattern>./pretty_printer.inc</exclude-pattern>
     <exclude-pattern>./views/handlers/*</exclude-pattern>
     <exclude-pattern>./views/plugins/*</exclude-pattern>
+    <exclude-pattern>./views/api.views.inc</exclude-pattern>
+  </rule>
+
+  <!-- Exclude Views from class name rules. It doesn't follow conventions. -->
+  <rule ref="Drupal.NamingConventions.ValidClassName">
+    <exclude-pattern>./views/handlers/*</exclude-pattern>
+    <exclude-pattern>./views/plugins/*</exclude-pattern>
+    <exclude-pattern>./views/api.views.inc</exclude-pattern>
+  </rule>
+
+  <!-- Exclude default views export file from inline comment rule. -->
+  <rule ref="Drupal.Commenting.InlineComment.SpacingAfter">
+    <exclude-pattern>./views/api.views_default.inc</exclude-pattern>
+  </rule>
+
+  <!-- Exclude PrettyPrinter class from use declaration rules. PrettyPrinter
+       has a bunch of methods overridden from a parent class in a
+       different project. -->
+  <rule ref="Drupal.Classes.FullyQualifiedNamespace">
+    <exclude-pattern>./pretty_printer.inc</exclude-pattern>
   </rule>
 
 </ruleset>

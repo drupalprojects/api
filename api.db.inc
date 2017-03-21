@@ -313,7 +313,7 @@ function api_branch_sort($a, $b) {
     }
 
     // Otherwise, sort by version.
-    $result = version_compare($a->core_compatibility, $b->core_compatibility);
+    return version_compare($a->core_compatibility, $b->core_compatibility);
   }
 
   // Sort by preferred (preferred over not preferred within one project and

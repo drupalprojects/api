@@ -189,7 +189,7 @@ function api_search_apachesolr_index_document_build_node(ApacheSolrDocument $doc
   // PHP notices in the apachesolr.index.inc function entity_bundle_label()
   // because the API "content type" is not a real bundle. So, get around this.
   // First, trigger generating the list of labels.
-  $label = entity_bundle_label('node', 'api');
+  entity_bundle_label('node', 'api');
   // Then, fix it up so next time we don't get more PHP notices.
   $labels = &drupal_static('entity_bundle_label', array());
   if (!empty($labels) && !isset($labels['node']['api'])) {
