@@ -13,10 +13,15 @@
   <exclude-pattern>./tests/sample_namespace/*</exclude-pattern>
   <exclude-pattern>./tests/special_files/*</exclude-pattern>
 
-  <!-- Include all categories of rules. -->
+  <!-- Include the standard Drupal rule set, plus DrupalPractice. -->
   <rule ref="Drupal" />
-  <rule ref="Generic" />
-  <rule ref="PSR2" />
-  <rule ref="Squiz" />
+  <rule ref="DrupalPractice" />
+
+  <!-- Exclude Views and PrettyPrinter classes from the camel case rules. -->
+  <rule ref="Generic.NamingConventions.CamelCapsFunctionName">
+    <exclude-pattern>./pretty_printer.inc</exclude-pattern>
+    <exclude-pattern>./views/handlers/*</exclude-pattern>
+    <exclude-pattern>./views/plugins/*</exclude-pattern>
+  </rule>
 
 </ruleset>
