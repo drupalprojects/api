@@ -954,11 +954,13 @@ function api_update_7107(&$sandbox) {
     // in {api_documentation}.
     // These are queries using a WHERE EXISTS, and there is no apparent way
     // to write it using the database API, so use ANSI syntax.
+    // @codingStandardsIgnoreStart
     db_query("DELETE FROM {api_file} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_file}.did )");
     db_query("DELETE FROM {api_function} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_function}.did )");
     db_query("DELETE FROM {api_members} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_members}.did )");
     db_query("DELETE FROM {api_overrides} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_overrides}.did )");
     db_query("DELETE FROM {api_reference_storage} WHERE NOT EXISTS ( SELECT * FROM {api_documentation} d WHERE d.did = {api_reference_storage}.from_did )");
+    // @codingStandardsIgnoreEnd
 
     // Initiate batch for future calls.
     $sandbox['last'] = 0;

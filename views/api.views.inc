@@ -1151,7 +1151,7 @@ class api_views_join_extras extends views_join {
    * This is exactly the same as the base class, except where indicated
    * with an API comment.
    */
-  function build_join($select_query, $table, $view_query) {
+  public function build_join($select_query, $table, $view_query) {
     if (empty($this->definition['table formula'])) {
       $right_table = $this->table;
     }
@@ -1177,7 +1177,6 @@ class api_views_join_extras extends views_join {
       if (is_array($this->extra)) {
         $extras = array();
         foreach ($this->extra as $info) {
-          $extra = '';
           // Figure out the table name. Remember, only use aliases provided
           // if at all possible.
           $join_table = '';

@@ -50,10 +50,15 @@ function api_help($path, $arg) {
         ',
         array(
           '!api_settings_page' => l(t('API settings page'), 'admin/config/development/api'),
+          // Ignore coding standards warning about translating the link text.
+          // @codingStandardsIgnoreLine
           '!doxygen_link' => l('https://drupal.org/node/1354', 'https://drupal.org/node/1354'),
         ));
 
     case 'admin/config/development/api':
+      // Ignore coding standards warnings about string concat. More readable
+      // this way.
+      // @codingStandardsIgnoreStart
       return '<h3>' . t('Definitions:') . '</h3><ul>' .
         '<li>' . t('File parse queue: parses PHP and other files for display.') . '</li>' .
         '<li>' . t('Branch update queue: scans branches for files that have been updated or removed, and adds jobs to the file parse and node cleanup queues.') . '</li>' .
@@ -61,14 +66,18 @@ function api_help($path, $arg) {
         '<li>' . t('Reset the file parse queue: remove existing jobs and mark files as not queued for parsing. Next time each branch is scanned, files will be re-added to the queue as needed.') . '</li>' .
         '<li>' . t('OpenSearch: This module provides an OpenSearch discovery link in the HTML header, which needs a name and description. See <a href="http://en.wikipedia.org/wiki/OpenSearch">OpenSearch on Wikipedia</a> for more information.') . '</li>' .
         '</ul>';
+      // @codingStandardsIgnoreEnd
 
     case 'admin/config/development/api/projects':
+      // @codingStandardsIgnoreStart
       return '<h3>' . t('Definitions:') . '</h3><ul>' .
         '<li>' . t('Project: A module, theme, Drupal Core, or other group of files that the API module is parsing.') . '</li>' .
         '<li>' . t('Project type: Normally "core", "module", "theme", or "library". The type "core" is special: core project functions are given priority when turning function, class, and other names into links in code listings.') . '</li>' .
         '</ul>';
+      // @codingStandardsIgnoreEnd
 
     case 'admin/config/development/api/branches':
+      // @codingStandardsIgnoreStart
       return '<h3>' . t('Definitions:') . '</h3><ul>' .
         '<li>' . t('Project: A module, theme, Drupal Core, or other group of files that the API module is parsing. Set up on the Projects tab.') . '</li>' .
         '<li>' . t('Branch: Within a Project, a particular version of the files (6.x-1.x, 7.x, 7.x-1.3, etc.).') . '</li>' .
@@ -76,13 +85,16 @@ function api_help($path, $arg) {
         '<li>' . t('Reparse: Force a parse of every file in the branch, starting next time the branch is updated.') . '</li>' .
         '<li>' . t('Update: Force a scan of the file directories in the branch for updated and removed files. This normally happens during cron runs after a minimum time (set on branch edit page) has passed.') . '</li>' .
         '</ul>';
+      // @codingStandardsIgnoreEnd
 
     case 'admin/config/development/api/php_branches':
+      // @codingStandardsIgnoreStart
       return '<h3>' . t('Definitions:') . '</h3><ul>' .
         '<li>' . t('PHP reference branch: Queries an external PHP web site, such as php.net, for its function list, in order to make links to these functions.') . '</li>' .
         '<li>' . t('API reference branch: Queries an external web site running the API module, such as api.drupal.org, in order to make links to Drupal API classes, functions, etc.') . '</li>' .
         '<li>' . t('Update: Force a scan of the selected branch. This normally happens during cron runs after a minimum time (set on branch edit page) has passed.') . '</li>' .
         '</ul>';
+      // @codingStandardsIgnoreEnd
   }
 }
 

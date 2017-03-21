@@ -1016,6 +1016,7 @@ function api_apply_comment_settings() {
       ->execute();
     // This is a query using a WHERE EXISTS, and there is no apparent way
     // to write it using the database API, so use ANSI syntax.
+    // @codingStandardsIgnoreLine
     db_query("UPDATE {node_revision} SET comment = :comment_setting WHERE EXISTS ( SELECT * FROM {node} n WHERE n.type = 'api')", array(':comment_setting' => $setting));
     // Clear the cache so node_load doesn't load old versions.
     entity_get_controller('node')->resetCache();
