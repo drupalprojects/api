@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="api_module">
+  <description>PHP CodeSniffer configuration for API module.</description>
+
+  <file>.</file>
+  <arg name="extensions" value="inc,install,module,php,profile,test,theme"/>
+
+  <!-- Exclude sample code used in tests only, some of which violates coding standards -->
+  <exclude-pattern>./tests/php_sample/*</exclude-pattern>
+  <exclude-pattern>./tests/sample/*</exclude-pattern>
+  <exclude-pattern>./tests/sample2/*</exclude-pattern>
+  <exclude-pattern>./tests/sample_drupal/*</exclude-pattern>
+  <exclude-pattern>./tests/sample_namespace/*</exclude-pattern>
+  <exclude-pattern>./tests/special_files/*</exclude-pattern>
+
+</ruleset>
