@@ -13,4 +13,10 @@
   <exclude-pattern>./tests/sample_namespace/*</exclude-pattern>
   <exclude-pattern>./tests/special_files/*</exclude-pattern>
 
+  <!-- Include all categories of rules. -->
+  <rule ref="Drupal" />
+  <rule ref="Generic" />
+  <rule ref="PSR2" />
+  <rule ref="Squiz" />
+
 </ruleset>
