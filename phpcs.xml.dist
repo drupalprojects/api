@@ -18,7 +18,7 @@
   <rule ref="DrupalPractice" />
 
   <!-- Exclude Views and PrettyPrinter classes from the camel case rules. -->
-  <rule ref="Generic.NamingConventions.CamelCapsFunctionName">
+  <rule ref="Drupal.NamingConventions.ValidFunctionName">
     <exclude-pattern>./pretty_printer.inc</exclude-pattern>
     <exclude-pattern>./views/handlers/*</exclude-pattern>
     <exclude-pattern>./views/plugins/*</exclude-pattern>
