@@ -10,7 +10,11 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests branch and object creation.
  */
-class ApiBranchCreation extends ApiTestCase {
+class ApiTestBranchCreation extends ApiTestCase {
+
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'Branch and object creation',
@@ -22,7 +26,7 @@ class ApiBranchCreation extends ApiTestCase {
   /**
    * Tests that branch and API objects are created correctly.
    */
-  function testBranchObjects() {
+  public function testBranchObjects() {
     // Make sure we have the right number of doc objects.
     $this->assertObjectCount();
 
@@ -56,6 +60,9 @@ class ApiBranchCreation extends ApiTestCase {
     $this->assertTrue(strpos($object->return_value, 'second paragraph about the return') !== FALSE, 'sample_function() return contains second paragraph.');
 
     // Check list formatting.
+    // Ignoring coding standards checks here because the strings are easier
+    // to read and maintain broken up into lines as they are.
+    // @codingStandardsIgnoreStart
     $list1 = "<p>This is a sample list:</p>" .
       "<ul><li>One item." .
       "</li><li>Another item." .
@@ -73,6 +80,7 @@ class ApiBranchCreation extends ApiTestCase {
       "<li>The following item should not have strong formatting.</li>" .
       "<li>http://example.com</li>" .
       "</ul>";
+    // @codingStandardsIgnoreEnd
 
     // Test the list HTML with no whitespace, and then spot check some of the
     // list text to make sure the spaces are there. Trying to get all the
@@ -183,6 +191,6 @@ class ApiBranchCreation extends ApiTestCase {
       $object = api_filename_load($file, $branch->project, $branch->branch_name);
       $this->assertCodeFormatting($object->code, $branch->directories . '/' . $object->file_name);
     }
-
   }
+
 }

@@ -17,7 +17,7 @@ class ApiTestSearchIntegration extends ApiWebPagesBaseTest {
    *
    * @var object
    */
-  protected $restricted_user;
+  protected $restrictedUser;
 
   /**
    * {@inheritdoc}
@@ -48,7 +48,7 @@ class ApiTestSearchIntegration extends ApiWebPagesBaseTest {
     ));
 
     // Set up a restricted user.
-    $this->restricted_user = $this->drupalCreateUser(array(
+    $this->restrictedUser = $this->drupalCreateUser(array(
       'access content',
       'search content',
     ));
@@ -96,7 +96,7 @@ class ApiTestSearchIntegration extends ApiWebPagesBaseTest {
 
     // Now log in as the restricted user and verify that the searches do
     // not give the API results.
-    $this->drupalLogin($this->restricted_user);
+    $this->drupalLogin($this->restrictedUser);
     foreach ($terms as $term) {
       $this->drupalPost('search/node', array('keys' => $term), t('Search'));
       $this->assertText('Your search yielded no results', 'No search results with restricted user who cannot see API documentation');

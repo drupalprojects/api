@@ -82,9 +82,9 @@ class ApiTestNodeAccess extends ApiWebPagesBaseTest {
   /**
    * Asserts that the correct node IDs and node types are in query results.
    *
-   * @param array|null $results
+   * @param DatabaseStatementInterface|array $results
    *   Result set from a node query, or array of node objects. Must contain the
-   *   type and nid fields.
+   *   type and nid fields on each node.
    * @param string $query_message
    *   String explaining what the query is for assert messages.
    * @param array $nids_yes

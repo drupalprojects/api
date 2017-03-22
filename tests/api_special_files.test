@@ -10,7 +10,11 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests that files containing special issues can be dealt with.
  */
-class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
+class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
+
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'Special files',
@@ -19,7 +23,10 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     $this->baseSetUp(array('api_test'));
 
     // Set up a files branch with the special files directory.
@@ -34,32 +41,31 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
     $this->processApiParseQueue();
 
     // Display the navigation block.
-    $this->drupalPost('admin/structure/block/list', array(
+    $this->drupalPost(
+      'admin/structure/block/list', array(
         'blocks[api_navigation][region]' => 'sidebar_first',
       ),
-      t('Save blocks')
-    );
-
+      t('Save blocks'));
   }
 
   /**
    * Runs the other tests, to avoid reparsing multiple times.
    */
   function testAll() {
-    $this->_testFormatting();
-    $this->_testUnicode();
-    $this->_testBadFileHeader();
-    $this->_testExtendsLoops();
-    $this->_testTwig();
-    $this->_testSearchCaseSensitivity();
-    $this->_testYamlServices();
-    $this->_testParseAlterHook();
+    $this->verifyFormatting();
+    $this->verifyUnicode();
+    $this->verifyBadFileHeader();
+    $this->verifyExtendsLoops();
+    $this->verifyTwig();
+    $this->verifySearchCaseSensitivity();
+    $this->verifyYamlServices();
+    $this->verifyParseAlterHook();
   }
 
   /**
    * Tests that code formatting matches original code for PHP files.
    */
-  function _testFormatting() {
+  protected function verifyFormatting() {
     // ClassWithUnicode.php is omitted, because it has a Unicode error in
     // the file (intentionally), so the formatted output does not work.
     $files = array('badheader.php', 'ClassExtendsLoop.php', 'class_loop.php', 'dup_names.php', 'php54.php');
@@ -72,7 +78,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that files with Unicode can be dealt with.
    */
-  function _testUnicode() {
+  protected function verifyUnicode() {
     // Verify that both files are present on the Files page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
     $this->assertLink('AllUnicodeChars.txt', 0, 'Unicode text file is there');
@@ -108,7 +114,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that a file with defgroup/mainpage in the file header can be parsed.
    */
-  function _testBadFileHeader() {
+  protected function verifyBadFileHeader() {
     // This file is in the special_files directory. Check that it triggered
     // three log messages when it was parsed.
     $this->drupalGet('admin/reports/dblog');
@@ -137,7 +143,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that circular class dependencies do not screw us up.
    */
-  function _testExtendsLoops() {
+  protected function verifyExtendsLoops() {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassExtendsLoop.php/class/FirstClass');
     $this->assertText('First class', 'Description is on the class page');
     $this->clickLink('Expanded class hierarchy of FirstClass');
@@ -148,7 +154,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests Twig files.
    */
-  function _testTwig() {
+  protected function verifyTwig() {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
     $this->assertText('Sample Twig template file, taken from', 'File description is there');
     $this->assertNoText('Available variables', 'Extra information after first line is not shown');
@@ -166,7 +172,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests searching case sensitivity.
    */
-  function _testSearchCaseSensitivity() {
+  protected function verifySearchCaseSensitivity() {
     // Search for lower-case function name should get to the function page.
     $this->drupalPost('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search', array('search' => 'sample_function'), t('Search'));
     $this->assertURLContains('dup_names.php/function/sample_function', 'Got to function page with lower-case search');
@@ -180,7 +186,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests services YAML file parsing and display.
    */
-  function _testYamlServices() {
+  protected function verifyYamlServices() {
     // Test the Services listing page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/services/');
     $this->assertLink('cache_context.url', 0, 'Service is linked');
@@ -234,7 +240,7 @@ class ApiSpecialIssuesTestCase extends ApiWebPagesBaseTest {
    * can be parsed. Verify that the function in this file shows up on the
    * site.
    */
-  function _testParseAlterHook() {
+  protected function verifyParseAlterHook() {
     $this->drupalGet('api/' . $this->branch_info['project'] . '/functions/');
     $this->assertText('only_function_in_file');
   }

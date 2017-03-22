@@ -16,9 +16,12 @@ module_load_include('php', 'api', 'tests/api_test_case');
  * use ! as a directory separator instead of --, so that files with -- in the
  * name could be supported.
  */
-class ApiURLPatternsTest extends ApiTestCase {
+class ApiTestUrlPatterns extends ApiTestCase {
 
-  static function getInfo() {
+  /**
+   * {@inheritdoc}
+   */
+  public static function getInfo() {
     return array(
       'name' => 'URL functioning',
       'description' => 'Test URLs specified in api_menu(), both old and current.',
@@ -33,7 +36,7 @@ class ApiURLPatternsTest extends ApiTestCase {
    * successfully by checking for a 200 response code and expected text.
    * Some 404 patterns are also checked.
    */
-  function testApiUrlPaths() {
+  public function testApiUrlPaths() {
 
     // Check listing pages.
     $project_name = 'test';
@@ -339,4 +342,5 @@ class ApiURLPatternsTest extends ApiTestCase {
       }
     }
   }
+
 }
