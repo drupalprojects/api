@@ -8,10 +8,15 @@
  * called by other functions in this file.
  */
 
-use PhpParser\Node\Stmt;
+use PhpParser\Comment\Doc as CommentDoc;
+use PhpParser\Node\Stmt\Function_ as NodeFunction;
+use PhpParser\Node\Stmt\Class_ as NodeClass;
+use PhpParser\Node\Stmt\ClassLike as NodeClassLike;
 use PhpParser\ParserFactory;
-use PhpParser\PrettyPrinter;
-use Symfony\Component\Yaml;
+use PhpParser\Error as ParserError;
+use PhpParser\PrettyPrinter\Standard as StandardPrettyPrinter;
+use Symfony\Component\Yaml\Parser as YamlParser;
+use Symfony\Component\Yaml\Dumper as YamlDumper;
 
 module_load_include('inc', 'api', 'api.utilities');
 
@@ -169,7 +174,7 @@ function api_parse_php_file(array $docblock) {
   try {
     $statements = $parser->parse($docblock['source']);
   }
-  catch (\PhpParser\Error $e) {
+  catch (ParserError $e) {
     $error_logged = TRUE;
     watchdog('api', 'File @name could not be parsed. ' . $e->getMessage(), array('@name' => $docblock['file_name']), WATCHDOG_ERROR);
   }
@@ -259,7 +264,7 @@ function api_parse_yaml_file(array $docblock) {
   $docblock['documentation'] = $docblock['file_name'];
 
   // Parse the YAML in the file.
-  $parser = new Yaml\Parser();
+  $parser = new YamlParser();
   try {
     $parsed = $parser->parse($docblock['source']);
   }
@@ -314,7 +319,7 @@ function api_parse_yaml_file(array $docblock) {
 
   // For services files, make docblocks for each service.
   if ($is_services && isset($parsed['services'])) {
-    $dumper = new Yaml\Dumper();
+    $dumper = new YamlDumper();
     $dumper->setIndentation(2);
 
     foreach ($parsed['services'] as $name => $info) {
@@ -521,7 +526,7 @@ function _api_build_php_docblocks(array $statements, array $default_block, array
       foreach ($comments as $index => $comment) {
         if (!$in_class &&
           ($index < $count - 1 || in_array($type, $types_without_comments)) &&
-          $comment instanceof \PhpParser\Comment\Doc) {
+          $comment instanceof CommentDoc) {
 
           // This is a global comment. Add it to the list of doc blocks.
           $comment_docblock = $default_block;
@@ -529,7 +534,7 @@ function _api_build_php_docblocks(array $statements, array $default_block, array
           $comment_docblock['start_line'] = $comment->getLine();
           $docblocks[] = $comment_docblock;
         }
-        elseif ($index == $count - 1 && $comment instanceof \PhpParser\Comment\Doc) {
+        elseif ($index == $count - 1 && $comment instanceof CommentDoc) {
           // This is the doc comment for this statement.
           $docblock['content'] = _api_clean_comment($comment->getText());
         }
@@ -722,7 +727,7 @@ function _api_build_php_docblocks(array $statements, array $default_block, array
  */
 function _api_get_function_signature($statement) {
   // Make a function with empty body, pretty-print it, and remove the {}.
-  $empty_function = new Stmt\Function_(
+  $empty_function = new NodeFunction(
     $statement->name,
     array(
       'byRef' => $statement->byRef,
@@ -732,7 +737,7 @@ function _api_get_function_signature($statement) {
 
   // Note: Use the Standard pretty-printer here, not our class that does
   // HTML formatting.
-  $printer = new PrettyPrinter\Standard();
+  $printer = new StandardPrettyPrinter();
   $output = $printer->prettyPrint(array($empty_function));
   $output = preg_replace('|\{.*\}|s', '', $output);
   $output = str_replace('function ', '', $output);
@@ -754,12 +759,12 @@ function _api_get_statement_modifiers($statement) {
   $modifiers = '';
   $modifier_list = array(
     // Note: Keep this list in the order that the modifiers should appear.
-    \PhpParser\Node\Stmt\Class_::MODIFIER_ABSTRACT => 'abstract',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_FINAL => 'final',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_PUBLIC => 'public',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_PROTECTED => 'protected',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_PRIVATE => 'private',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_STATIC => 'static',
+    NodeClass::MODIFIER_ABSTRACT => 'abstract',
+    NodeClass::MODIFIER_FINAL => 'final',
+    NodeClass::MODIFIER_PUBLIC => 'public',
+    NodeClass::MODIFIER_PROTECTED => 'protected',
+    NodeClass::MODIFIER_PRIVATE => 'private',
+    NodeClass::MODIFIER_STATIC => 'static',
   );
   foreach ($modifier_list as $flag => $name) {
     if ($flags & $flag) {
@@ -1561,7 +1566,7 @@ function _api_format_embedded_php($matches) {
   try {
     $statements = $parser->parse("<?php" . $code . "?" . ">");
   }
-  catch (\PhpParser\Error $e) {
+  catch (ParserError $e) {
     // The code block is not valid PHP. It could be JavaScript, annotation,
     // PHP code with a syntax error, or something else. The best we can do is
     // try to find function-like strings and wrap them in spans for formatting.
@@ -1831,7 +1836,7 @@ function _api_find_php_references(array $statements, $is_drupal, $filename, arra
       }
       $sub_statements = $statement->value;
     }
-    elseif ($statement instanceof \PhpParser\Node\Stmt\ClassLike) {
+    elseif ($statement instanceof NodeClassLike) {
       $sub_state['class'] = $statement->name;
       $sub_statements = $statement->stmts;
     }
