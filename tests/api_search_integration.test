@@ -10,12 +10,18 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests search integration for the API module.
  */
-class ApiSearchIntegrationTestCase extends ApiWebPagesBaseTest {
+class ApiTestSearchIntegration extends ApiWebPagesBaseTest {
+
   /**
    * User with permission to search but not see API stuff.
+   *
+   * @var object
    */
   protected $restricted_user;
 
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'Search integration',
@@ -24,7 +30,10 @@ class ApiSearchIntegrationTestCase extends ApiWebPagesBaseTest {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     DrupalWebTestCase::setUp('api', 'ctools', 'views', 'composer_manager', 'node', 'search', 'dblog', 'api_search');
     $this->ensureAutoLoader();
 
@@ -66,7 +75,7 @@ class ApiSearchIntegrationTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that API documentation can be searched.
    */
-  function testSearch() {
+  public function testSearch() {
     $terms = array(
       // Direct name of the function.
       'sample_function',
@@ -76,11 +85,11 @@ class ApiSearchIntegrationTestCase extends ApiWebPagesBaseTest {
       'sample-related',
       // Text in parameter.
       'generic parameter',
-      // Text in the return value
+      // Text in the return value.
       'about return',
     );
 
-    foreach($terms as $term) {
+    foreach ($terms as $term) {
       $this->drupalPost('search/node', array('keys' => $term), t('Search'));
       $this->assertLinkUrlSubstring('sample_function | function | sample.php | ' . $this->branch_info['title'], 'sample.php/function/sample_function', 'sample_function page title is in search results for ' . $term, 'sample_function link is in search results for ' . $term);
     }
@@ -88,9 +97,10 @@ class ApiSearchIntegrationTestCase extends ApiWebPagesBaseTest {
     // Now log in as the restricted user and verify that the searches do
     // not give the API results.
     $this->drupalLogin($this->restricted_user);
-    foreach($terms as $term) {
+    foreach ($terms as $term) {
       $this->drupalPost('search/node', array('keys' => $term), t('Search'));
       $this->assertText('Your search yielded no results', 'No search results with restricted user who cannot see API documentation');
     }
   }
+
 }

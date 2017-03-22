@@ -10,10 +10,11 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests the queue functionality of the API module.
  */
-class ApiQueuesTestCase extends ApiTestCase {
+class ApiTestQueues extends ApiTestCase {
 
-  public $branch_info;
-
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'Parsing queue',
@@ -22,7 +23,10 @@ class ApiQueuesTestCase extends ApiTestCase {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     // This test takes longer than most to run, and times out on some machines.
     $this->timeLimit *= 2;
 
@@ -35,7 +39,7 @@ class ApiQueuesTestCase extends ApiTestCase {
   /**
    * Tests queue functionality.
    */
-  function testQueues() {
+  public function testQueues() {
     // Verify there is nothing in the queue to start with.
     $this->assertEqual($this->countParseQueue(), 0, 'Parse queue is empty');
 
@@ -147,4 +151,5 @@ class ApiQueuesTestCase extends ApiTestCase {
     $this->updateBranches();
     $this->checkAndClearLog(array($branch_message));
   }
+
 }
