@@ -51,7 +51,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
   /**
    * Runs the other tests, to avoid reparsing multiple times.
    */
-  function testAll() {
+  public function testAll() {
     $this->verifyFormatting();
     $this->verifyUnicode();
     $this->verifyBadFileHeader();
