@@ -34,4 +34,3 @@ class api_views_handler_filter_service_tag extends views_handler_filter_string {
   }
 
 }
-

@@ -5,13 +5,15 @@
   <file>.</file>
   <arg name="extensions" value="inc,install,module,php,profile,test,theme"/>
 
-  <!-- Exclude sample code used in tests only, some of which violates coding standards -->
+  <!-- Exclude sample code used in tests only, some of which violates coding
+       standards, and the views exports. -->
   <exclude-pattern>./tests/php_sample/*</exclude-pattern>
   <exclude-pattern>./tests/sample/*</exclude-pattern>
   <exclude-pattern>./tests/sample2/*</exclude-pattern>
   <exclude-pattern>./tests/sample_drupal/*</exclude-pattern>
   <exclude-pattern>./tests/sample_namespace/*</exclude-pattern>
   <exclude-pattern>./tests/special_files/*</exclude-pattern>
+  <exclude-pattern>./views/api.views_default.inc</exclude-pattern>
 
   <!-- Include the standard Drupal rule set, plus DrupalPractice. -->
   <rule ref="Drupal" />
@@ -32,11 +34,6 @@
     <exclude-pattern>./views/handlers/*</exclude-pattern>
     <exclude-pattern>./views/plugins/*</exclude-pattern>
     <exclude-pattern>./views/api.views.inc</exclude-pattern>
-  </rule>
-
-  <!-- Exclude default views export file from inline comment rule. -->
-  <rule ref="Drupal.Commenting.InlineComment">
-    <exclude-pattern>./views/api.views_default.inc</exclude-pattern>
   </rule>
 
   <!-- Exclude PrettyPrinter class from use declaration rules. PrettyPrinter

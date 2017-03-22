@@ -25,4 +25,3 @@ class api_views_handler_filter_project_name extends views_handler_filter_string 
   }
 
 }
-

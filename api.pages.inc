@@ -134,7 +134,7 @@ function api_page_function_dump($branch_name) {
   $query = db_select('api_documentation', 'd')
     ->fields('d', array('summary'))
     ->orderBy('d.title');
-  $f = $query->innerJoin('api_function', 'f', 'd.did = f.did');
+  $query->innerJoin('api_function', 'f', 'd.did = f.did');
   $query->fields('f', array('signature'));
   $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
   $query->condition('b.branch_name', $branch_name)
@@ -321,7 +321,7 @@ function _api_search_links($branch, $search_text) {
 /**
  * Page callback: Displays a list of links to projects using a pager.
  *
- * @return
+ * @return string
  *   Themed HTML output for the page.
  */
 function api_page_projects() {
@@ -434,8 +434,8 @@ function api_page_file($file) {
  *   (optional) If $branch is not given, display this project's default branch.
  *   Ignored if $branch is given.
  *
- * @return array
- *   Render array for the page.
+ * @return array|null
+ *   Render array for the page, or NULL if the page doesn't work.
  *
  * @see api_menu()
  */
@@ -489,15 +489,15 @@ function api_page_branch($branch, $project = '') {
  * @param string $object_type
  *   Type of object to list ('file', 'group', etc.), or 'deprecated' for the
  *   Deprecated page.
- * @param $bool is_page
+ * @param bool $is_page
  *   (optional) TRUE if this is on its own page (default), FALSE if it is
  *   included in another page.
  * @param string $project
  *   Name of the project. Used if $branch is NULL, meaning find the default
  *   branch for this project.
  *
- * @return array
- *   Render array for the listing page.
+ * @return array|null
+ *   Render array for the listing page, or NULL if the page doesn't work.
  */
 function api_page_listing($branch, $object_type, $is_page = TRUE, $project = '') {
   if (!$branch) {
@@ -793,7 +793,6 @@ function api_page_function($function) {
   // Make the signatures section, which lists all the other function signatures
   // (branches and duplicate function names) that we can find. Limit this to
   // the current project.
-  $last_signature = '';
   $signatures = array();
   $n = 0;
   $query = db_select('api_documentation', 'd')
@@ -884,7 +883,6 @@ function api_page_function($function) {
         $start = $start || ($depth == 1 && $token == ',');
       }
     }
-    $last_signature = $signature->signature;
     $n++;
   }
 
@@ -1505,7 +1503,7 @@ function _api_interface_process_inherits($interface, array &$to_process, array &
  *   Array of classes found to implement the interface. Keys are the
  *   a sort index; values are lines like in a class hierarchy.
  */
-function _api_class_process_inherits($class, &$to_process, &$processed, &$found) {
+function _api_class_process_inherits($class, array &$to_process, array &$processed, array &$found) {
   // Find classes that directly extend this one.
   $exclude = array_merge(array_keys($to_process), array_keys($processed));
   $query = db_select('api_reference_storage', 'ars');
@@ -1537,7 +1535,6 @@ function _api_class_process_inherits($class, &$to_process, &$processed, &$found)
  *   HTML for this class in the class hierarchy.
  */
 function _api_class_hierarchy_line($class, $current_did = 0) {
-  $branch = api_get_branch_by_id($class->branch_id);
   $classes = array();
   if ($class->did == $current_did) {
     $classes[] = 'active';
@@ -1548,9 +1545,9 @@ function _api_class_hierarchy_line($class, $current_did = 0) {
   $traits = array();
 
   $query = db_select('api_reference_storage', 'ars');
-  $ref_name = $query->addField('ars', 'object_name', 'ref_name');
+  $query->addField('ars', 'object_name', 'ref_name');
   $ad = $query->leftJoin('api_documentation', 'ad', 'ad.did = ars.extends_did');
-  $obj_name = $query->addField($ad, 'object_name', 'object_name');
+  $query->addField($ad, 'object_name', 'object_name');
   $query
     ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type'))
     ->condition('ars.from_did', $class->did)
@@ -1775,7 +1772,6 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   $matches = array();
   $branch_id = $branch->branch_id;
   $base_query = NULL;
-  $args = array();
 
   if ($type == 'calls' || $type == 'constants') {
     // Use reference storage to find functions that call this one, or
@@ -1789,7 +1785,6 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
   }
   elseif ($type == 'overrides') {
     // Use overrides storage to find overrides of the ID passed in as "exclude".
-    $did = $exclude_did;
     $base_query = db_select('api_overrides', 'o');
     $d = $base_query->leftJoin('api_documentation', 'd', 'o.did = d.did');
     $base_query->condition('d.branch_id', $branch_id)
@@ -2005,7 +2000,7 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     $base_query = db_select('api_reference_storage', 'r')
       ->condition('r.from_did', $exclude_did)
       ->condition('r.object_type', 'element');
-    $r2 = $base_query->innerJoin('api_reference_storage', 'r2', 'r.object_name = r2.object_name AND r.branch_id = r2.branch_id');
+    $base_query->innerJoin('api_reference_storage', 'r2', 'r.object_name = r2.object_name AND r.branch_id = r2.branch_id');
     $base_query->condition('r2.object_type', 'potential element');
     $d = $base_query->innerJoin('api_documentation', 'd', 'r2.from_did = d.did');
   }
