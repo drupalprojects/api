@@ -10,7 +10,11 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests comment functionality.
  */
-class ApiCommentsTestCase extends ApiWebPagesBaseTest {
+class ApiTestComments extends ApiWebPagesBaseTest {
+
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'Comments',
@@ -19,7 +23,10 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     $this->baseSetUp();
 
     // Set up a new super-user.
@@ -40,8 +47,8 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
 
     // Set up comment settings initially as hidden.
     $this->drupalPost('admin/config/development/api/comments', array(
-        'comment' => 0,
-      ), t('Save comment settings'));
+      'comment' => 0,
+    ), t('Save comment settings'));
 
     // Set up a regular files branch.
     $this->branch_info = $this->setUpBranchUI();
@@ -58,7 +65,7 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that comments and comment settings are working.
    */
-  function testComments() {
+  public function testComments() {
     // Verify that with comments turned off, the comment form does not appear.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->assertNoText(t('Add new comment'), 'Comment form is not there');
@@ -68,8 +75,8 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
 
     // Turn comments on. Verify this did not affect old API pages.
     $this->drupalPost('admin/config/development/api/comments', array(
-        'comment' => 2,
-      ), t('Save comment settings'));
+      'comment' => 2,
+    ), t('Save comment settings'));
     $this->assertText(t('Saved API comment settings'), 'Confirm message appears');
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->assertNoText(t('Add new comment'), 'Comment form is not there');
@@ -83,9 +90,9 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
     $this->assertText(t('Applied default comment settings to existing API pages'), 'Confirm message appears');
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
     $this->drupalPost(NULL, array(
-        'subject' => 'Subject 1',
-        'comment_body[und][0][value]' => 'Comment 1 body',
-      ), t('Save'));
+      'subject' => 'Subject 1',
+      'comment_body[und][0][value]' => 'Comment 1 body',
+    ), t('Save'));
     $this->assertText(t('Your comment has been posted'), 'Confirm message appears');
     $this->assertLink('Subject 1', 0, 'Comment subject appears');
     $this->assertText('Comment 1 body', 'Comment body appears');
@@ -105,8 +112,8 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
 
     // Set to closed (apply to all) and verify the comment form disapppears.
     $this->drupalPost('admin/config/development/api/comments', array(
-        'comment' => 1,
-      ), t('Save comment settings'));
+      'comment' => 1,
+    ), t('Save comment settings'));
     $this->assertText(t('Saved API comment settings'), 'Confirm message appears');
     $this->clickLink(t('Apply current default comment settings to existing API pages'));
     $this->assertText(t('Applied default comment settings to existing API pages'), 'Confirm message appears');
@@ -119,8 +126,8 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
 
     // Set to hidden (apply to all) and verify comment disappears.
     $this->drupalPost('admin/config/development/api/comments', array(
-        'comment' => 0,
-      ), t('Save comment settings'));
+      'comment' => 0,
+    ), t('Save comment settings'));
     $this->assertText(t('Saved API comment settings'), 'Confirm message appears');
     $this->clickLink(t('Apply current default comment settings to existing API pages'));
     $this->assertText(t('Applied default comment settings to existing API pages'), 'Confirm message appears');
@@ -133,17 +140,17 @@ class ApiCommentsTestCase extends ApiWebPagesBaseTest {
     $this->assertNoText(t('Subject'), 'Comment form is not there');
     $this->assertNoRaw(t('Save'), 'Comment form is not there');
   }
+
 }
 
 /**
  * Tests the API text format in comments.
  */
-class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
-  // Branch info for Drupal branch.
-  public $branch_info_core;
-  // Branch info for PHP brancn.
-  public $branch_info_php;
+class ApiTestTextFormat extends ApiWebPagesBaseTest {
 
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'API text format',
@@ -152,7 +159,10 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     $this->baseSetUp();
 
     // Set up a new super-user.
@@ -174,8 +184,8 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
 
     // Set up comment settings so comments are allowed.
     $this->drupalPost('admin/config/development/api/comments', array(
-        'comment' => COMMENT_NODE_OPEN,
-      ), t('Save comment settings'));
+      'comment' => COMMENT_NODE_OPEN,
+    ), t('Save comment settings'));
 
     // Remove the PHP branch.
     $this->removePHPBranch();
@@ -185,7 +195,7 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
     $this->php_branch_info = $this->createPHPBranchUI();
 
     // Set up a branch for the Drupal core files.
-    $this->branch_info_core = $this->setUpBranchUI('', TRUE, array(
+    $this->setUpBranchUI('', TRUE, array(
       'project' => 'drupal',
       'project_title' => 'Drupal',
       'project_type' => 'core',
@@ -202,8 +212,8 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
     // Set up the Filtered HTML text format to have the API format as part of
     // it.
     $this->drupalPost('admin/config/content/formats/filtered_html', array(
-        'filters[api_filter][status]' => 1,
-      ), t('Save configuration'));
+      'filters[api_filter][status]' => 1,
+    ), t('Save configuration'));
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -212,9 +222,9 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
   }
 
   /**
-   * Tests the API text format in comments
+   * Tests the API text format in comments.
    */
-  function testApiTextFormat() {
+  public function testApiTextFormat() {
 
     // Go to a namespaced class and make a comment. Verify that links are
     // created and go to the right places.
@@ -222,28 +232,32 @@ class ApiTextFormatTestCase extends ApiWebPagesBaseTest {
     $this->drupalPost(NULL, array(
       'subject' => 'test',
       'comment_body[und][0][value]' => 'This is a test of links to things like MyClassB::bMethod(), another_function(), InterfaceD::dMethod(), foo_function(), and drupal_alter().',
-      ), t('Save'));
+    ), t('Save'));
 
     $this->assertLinkURLSubstring('MyClassB::bMethod', 'ClassB.php/function/ClassB', 'Link to aliased class method is created', 'Link to aliased class method goes to right place');
     $this->assertLinkURLSubstring('another_function', 'no_namespace.php/function/another_function', 'Link to function is created', 'Link to function goes to right place');
     $this->assertLinkURLSubstring('InterfaceD::dMethod', 'InterfaceD.php/function/InterfaceD', 'Link to interface method is created', 'Link to interface method goes to right namespace');
     $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
     $this->assertLinkURLSubstring('drupal_alter', 'drupal.php/function/drupal_alter', 'Link to core function is created', 'Link to core function goes to right place');
-
   }
+
 }
 
 /**
  * Tests the API text format in comments without a regular branch.
  */
-class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
-  // Branch info for API reference branch.
-  public $branch_info_api;
-  // Branch info for PHP brancn.
-  public $branch_info_php;
-  // Node for commenting.
+class ApiTestTextFormatNoBranch extends ApiWebPagesBaseTest {
+
+  /**
+   * Node for commenting.
+   *
+   * @var object
+   */
   public $node;
 
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'API text format references',
@@ -252,7 +266,10 @@ class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     $this->baseSetUp();
 
     // Set up a new super-user.
@@ -293,8 +310,8 @@ class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
     $this->api_branch_info = $this->createAPIBranchUI(array('data[url]' => $url, 'data[page_limit]' => 10));
 
     $this->drupalPost('admin/people/permissions', array(
-        '1[access API reference]' => TRUE,
-      ), t('Save permissions'));
+      '1[access API reference]' => TRUE,
+    ), t('Save permissions'));
 
     $this->resetBranchesAndCache();
     $this->updateBranches();
@@ -317,23 +334,23 @@ class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
 
     // Set the core compatibility to 7.x.
     $this->drupalPost('admin/config/development/api', array(
-        'api_default_core_compatibility' => '7.x',
-      ), t('Save configuration'));
+      'api_default_core_compatibility' => '7.x',
+    ), t('Save configuration'));
 
     // Set up the Filtered HTML text format to have the API format as part of
     // it.
     $this->drupalPost('admin/config/content/formats/filtered_html', array(
-        'filters[api_filter][status]' => 1,
-      ), t('Save configuration'));
+      'filters[api_filter][status]' => 1,
+    ), t('Save configuration'));
 
     // Make a node.
     $this->node = $this->drupalCreateNode(array('comment' => COMMENT_NODE_OPEN));
   }
 
   /**
-   * Tests the API text format in comments
+   * Tests the API text format in comments.
    */
-  function testApiTextFormat() {
+  public function testApiTextFormat() {
     // Go to the node page and make a comment. Verify that links are
     // created and go to the right places.
     $this->drupalGet('node/' . $this->node->nid);
@@ -347,4 +364,5 @@ class ApiTextFormatNoBranchTestCase extends ApiWebPagesBaseTest {
     $this->assertLinkURLSubstring('SubSample', 'classes.php/class/SubSample', 'Link to fake API reference class is created', 'Link to API reference class goes to right place');
     $this->assertLinkURLSubstring('SubSample::bar', 'classes.php/function/SubSample', 'Link to fake API reference method is created', 'Link to API reference method goes to right place');
   }
+
 }

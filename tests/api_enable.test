@@ -106,10 +106,10 @@ class ApiTestEnable extends ApiWebPagesBaseTest {
     $this->resetBranchesAndCache();
     $this->cronRun();
     $this->checkAndClearLog(array(
-        ApiTestEnable::CRON_MESSAGE,
-        'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
-        'API parse ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
-      ), array(ApiTestEnable::PHP_MESSAGE));
+      ApiTestEnable::CRON_MESSAGE,
+      'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
+      'API parse ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
+    ), array(ApiTestEnable::PHP_MESSAGE));
 
     // Run cron a few times more, which should be enough to parse the rest of
     // the sample branch. If the next test is failing, try adding more cron
