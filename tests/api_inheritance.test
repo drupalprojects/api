@@ -10,7 +10,11 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests that inheritance for classes and interfaces is working.
  */
-class ApiInheritanceTestCase extends ApiWebPagesBaseTest {
+class ApiTestInheritance extends ApiWebPagesBaseTest {
+
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'Inheritance',
@@ -19,7 +23,10 @@ class ApiInheritanceTestCase extends ApiWebPagesBaseTest {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     $this->baseSetUp();
 
     // Make a branch for sample 2 code.
@@ -42,7 +49,7 @@ class ApiInheritanceTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that inheritance is working.
    */
-  function testInheritance() {
+  public function testInheritance() {
     // Visit the base interface page, verify implementing class is shown on
     // the implementing page.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/inheritance.php/interface/BaseInterface');

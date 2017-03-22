@@ -10,7 +10,11 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests that duplicate classes, interfaces, and groups work.
  */
-class ApiDuplicatesTestCase extends ApiWebPagesBaseTest {
+class ApiTestDuplicates extends ApiWebPagesBaseTest {
+
+  /**
+   * {@inheritdoc}
+   */
   public static function getInfo() {
     return array(
       'name' => 'Duplicates',
@@ -19,7 +23,10 @@ class ApiDuplicatesTestCase extends ApiWebPagesBaseTest {
     );
   }
 
-  function setUp() {
+  /**
+   * {@inheritdoc}
+   */
+  public function setUp() {
     $this->baseSetUp();
 
     // Set up a files branch, but do not exclude the usual directories.
@@ -37,7 +44,7 @@ class ApiDuplicatesTestCase extends ApiWebPagesBaseTest {
   /**
    * Tests that duplicate classes, interfaces, and groups work.
    */
-  function testDuplicates() {
+  public function testDuplicates() {
     // Verify that both Sample classes and interfaces are listed.
     $this->drupalGet('api/' . $this->branch_info['project'] . '/classes');
     $this->assertLink('Sample', 0, 'Sample is present once');
@@ -89,4 +96,5 @@ class ApiDuplicatesTestCase extends ApiWebPagesBaseTest {
     $this->assertLink('some_name', 0, 'Correct function is on topic page');
     $this->assertText('A group whose machine name', 'Description is on topic page');
   }
+
 }

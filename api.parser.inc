@@ -510,8 +510,8 @@ function _api_build_php_docblocks(array $statements, array $default_block, array
     // Process the comments for this statement. The parser makes an array of
     // all the comments that precede the statement; the last one is the doc
     // block (for statements that support doc blocks). Other than the official
-    // doc bloc, other ones can be saved as global doc blocks, such as the
-    // @file and @defgroup doc blocks, but only if we are outside of classes.
+    // doc bloc, other ones can be saved as global doc blocks, such as @file
+    // and @defgroup doc blocks, but only if we are outside of classes.
     $comments = $statement->getAttribute('comments');
     $types_without_comments = array(
       'Stmt_Nop',
@@ -882,8 +882,8 @@ function _api_save_docblocks(array $docblocks) {
   }
 
   // Take care of the (bad, but possible) case where the doc block for one
-  // of the items in the file (class, function, etc.) has a @defgroup or
-  // @mainpage in it, by separating the doc block from the item.
+  // of the items in the file (class, function, etc.) has a @defgroup
+  // or @mainpage in it, by separating the doc block from the item.
   $old_blocks = $docblocks;
   $docblocks = array();
   foreach ($old_blocks as $docblock) {
@@ -1355,7 +1355,7 @@ function _api_replace_references($branch, $did, $name, array $references, $do_na
         // Don't save a reference to the item itself.
         unset($list[$shortname]);
 
-      // Intentional fallthrough here!
+        // Intentional fallthrough here.
       default:
         foreach ($list as $call) {
           // If the name contains a backslash, and the first occurrence is not
@@ -1467,8 +1467,8 @@ function _api_format_documentation($documentation, $make_paragraphs, array &$ref
     $documentation = str_replace($annotation_matches[0], '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . $annotation_matches[1] . $annotation_matches[2] . "\n@endcode", $documentation);
     $element_types = array('FormElement', 'RenderElement');
     if (in_array($class, $element_types)) {
-      // This is annotation like @FormElement("button") or
-      // @RenderElement("table"). Extract the element machine name
+      // This is annotation like @FormElement("button")
+      // or @RenderElement("table"). Extract the element machine name
       // (button/table) from $annotation_matches[2] and save it as a reference.
       $element_type = trim(decode_entities($annotation_matches[2]), " \t\n\r()'\"");
       $references['element'][$element_type] = $element_type;
@@ -1501,14 +1501,14 @@ function _api_format_documentation($documentation, $make_paragraphs, array &$ref
  *   Converted text.
  */
 function _api_make_paragraphs($text) {
-  // All block level tags
+  // All block level tags.
   $block = '(?:table|thead|tfoot|caption|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|form|blockquote|address|p|h[1-6]|hr)';
 
   // Split at <pre>, <script>, <style> and </pre>, </script>, </style> tags.
   // We don't apply any processing to the contents of these tags to avoid
   // messing up code. We look for matched pairs and allow basic nesting. For
   // example: "processed <pre> ignored <script> ignored </script>
-  // ignored </pre> processed"
+  // ignored </pre> processed".
   $chunks = preg_split('@(</?(?:pre|script|style|object)[^>]*>)@i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
   // Note: PHP ensures the array consists of alternating delimiters and literals
   // and begins and ends with a literal (inserting NULL as required).
