@@ -8,27 +8,32 @@
  * called by other functions in this file.
  */
 
-use PhpParser\Node\Stmt;
+use PphPaser\Comment\Doc;
+use PhpParser\Error;
+use PhpParser\Node\Stmt\Function_;
+use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\ParserFactory;
-use PhpParser\PrettyPrinter;
-use Symfony\Component\Yaml;
+use PhpParser\PrettyPrinter\Standard;
+use Symfony\Component\Yaml\Dumper;
+use Symfony\Component\Yaml\Parser;
 
 module_load_include('inc', 'api', 'api.utilities');
 
 /**
  * Reads in a file and calls a callback function to parse and save it.
  *
- * @param $callback
+ * @param string $callback
  *   Name of the function to call to parse and save the file contents, such as
  *   api_parse_php_file(), api_parse_text_file(), or api_parse_html_file()
  *   (pass the function name as a string).
- * @param $file_path
+ * @param string $file_path
  *   Full path to the file to read in.
- * @param $branch
+ * @param object $branch
  *   Object representing the branch to assign the file contents to. It is
  *   assumed to be a fresh load of this branch from the branch database table,
  *   and a valid branch.
- * @param $file_name
+ * @param string $file_name
  *   File name to store in the database for this file.
  */
 function api_parse_file($callback, $file_path, $branch, $file_name) {
@@ -78,7 +83,7 @@ function api_parse_file($callback, $file_path, $branch, $file_name) {
  *   Array from api_parse_file() containing the file contents and information
  *   about the file, branch, etc.
  */
-function api_parse_twig_file($docblock) {
+function api_parse_twig_file(array $docblock) {
   // Use the text file function, but escape HTML characters.
   api_parse_text_file($docblock, TRUE);
 }
@@ -92,10 +97,10 @@ function api_parse_twig_file($docblock) {
  *   Array from api_parse_file() containing the file contents and information
  *   about the file, branch, etc.
  * @param bool $escape_html
- *   If TRUE, escpae HTML characters in the source code listing (for Twig
- *   files).
+ *   (optional) If TRUE, escape HTML characters in the source code listing (for
+ *   Twig files). Default is FALSE.
  */
-function api_parse_text_file($docblock, $escape_html = FALSE) {
+function api_parse_text_file(array $docblock, $escape_html = FALSE) {
   // See if the file contains an @file block, and use that for the
   // documentation if so; otherwise, just use the file as a whole. This is
   // probably only present for Twig files.
@@ -128,11 +133,11 @@ function api_parse_text_file($docblock, $escape_html = FALSE) {
  *
  * Callback for api_parse_file().
  *
- * @param $docblock
+ * @param array $docblock
  *   Array from api_parse_file() containing the file contents and information
  *   about the file, branch, etc.
  */
-function api_parse_html_file($docblock) {
+function api_parse_html_file(array $docblock) {
   $docblock['code'] = '<pre>' . htmlspecialchars($docblock['source']) . '</pre>';
   $title_match = array();
   if (preg_match('!<title>([^<]+)</title>!is', $docblock['source'], $title_match)) {
@@ -155,11 +160,11 @@ function api_parse_html_file($docblock) {
  *
  * Callback for api_parse_file().
  *
- * @param $docblock
+ * @param array $docblock
  *   Array from api_parse_file() containing the file contents and information
  *   about the file, branch, etc.
  */
-function api_parse_php_file($docblock) {
+function api_parse_php_file(array $docblock) {
   if (!api_libraries_loaded()) {
     return;
   }
@@ -169,9 +174,9 @@ function api_parse_php_file($docblock) {
   try {
     $statements = $parser->parse($docblock['source']);
   }
-  catch (\PhpParser\Error $e) {
+  catch (Error $e) {
     $error_logged = TRUE;
-    watchdog('api', 'File @name could not be parsed. ' . $e->getMessage(), array('@name' => $docblock['file_name']), WATCHDOG_ERROR);
+    watchdog('api', 'File @name could not be parsed. @message', array('@name' => $docblock['file_name'], '@message' => $e->getMessage()), WATCHDOG_ERROR);
   }
 
   if ($statements && is_array($statements)) {
@@ -207,7 +212,6 @@ function api_parse_php_file($docblock) {
     // calls in the global area of the file, excluding those found in
     // functions declared in the file. This doesn't apply to namespace and use
     // references though -- these are found only in _api_build_php_docblocks().
-
     foreach ($found_references as $type => $list) {
       // For namespaces and use aliases, merge these into the main references.
       if ($type == 'namespace' || $type == 'use_alias') {
@@ -248,18 +252,18 @@ function api_parse_php_file($docblock) {
  *
  * Callback for api_parse_file().
  *
- * @param $docblock
+ * @param array $docblock
  *   Array from api_parse_file() containing the file contents and information
  *   about the file, branch, etc.
  */
-function api_parse_yaml_file($docblock) {
+function api_parse_yaml_file(array $docblock) {
   // Just use the file name as the documentation, since the file contents
   // are not good documentation.
   $bare_docblock = $docblock;
   $docblock['documentation'] = $docblock['file_name'];
 
   // Parse the YAML in the file.
-  $parser = new Yaml\Parser();
+  $parser = new Parser();
   try {
     $parsed = $parser->parse($docblock['source']);
   }
@@ -300,7 +304,6 @@ function api_parse_yaml_file($docblock) {
   $docblock['references'] = $references;
 
   // Format the code, number the lines and put into a code block.
-
   // Escape HTML tags and entities.
   $code = $docblock['source'];
   $code = htmlspecialchars($code, ENT_NOQUOTES, 'UTF-8');
@@ -314,7 +317,7 @@ function api_parse_yaml_file($docblock) {
 
   // For services files, make docblocks for each service.
   if ($is_services && isset($parsed['services'])) {
-    $dumper = new Yaml\Dumper();
+    $dumper = new Dumper();
     $dumper->setIndentation(2);
 
     foreach ($parsed['services'] as $name => $info) {
@@ -390,7 +393,7 @@ function _api_length_compare($a, $b) {
 /**
  * Recursively finds potential references in a parsed YAML array.
  *
- * @param $yaml
+ * @param object $yaml
  *   Parsed YAML object.
  * @param int $key_refs_level
  *   Store references to the keys on this level, where 1 is the current level.
@@ -449,7 +452,7 @@ function _api_find_yaml_references($yaml, $key_refs_level, $filename) {
  * @return string
  *   Formatted code.
  */
-function _api_format_yaml_code($code, $references, $wrappers = '\'"\s', $span_class = 'yaml-reference') {
+function _api_format_yaml_code($code, array $references, $wrappers = '\'"\s', $span_class = 'yaml-reference') {
   // Wrap each found callback reference string in a span. We have to use
   // preg_replace() to do this, because we only want to match whole strings,
   // enclosed in single quotes, double quotes, or whitespace. And we want to
@@ -483,10 +486,10 @@ function _api_format_yaml_code($code, $references, $wrappers = '\'"\s', $span_cl
  *   The array of documentation blocks, passed by reference. Documentation and
  *   code items found in the PHP statements are added to the end of this array.
  *
- * @return
+ * @return array
  *   An array of all the references found while parsing the statements.
  */
-function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
+function _api_build_php_docblocks(array $statements, array $default_block, array &$docblocks) {
   if (!api_libraries_loaded()) {
     return array();
   }
@@ -521,7 +524,7 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
       foreach ($comments as $index => $comment) {
         if (!$in_class &&
           ($index < $count - 1 || in_array($type, $types_without_comments)) &&
-          $comment instanceof \PhpParser\Comment\Doc) {
+          $comment instanceof Doc) {
 
           // This is a global comment. Add it to the list of doc blocks.
           $comment_docblock = $default_block;
@@ -529,7 +532,7 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
           $comment_docblock['start_line'] = $comment->getLine();
           $docblocks[] = $comment_docblock;
         }
-        elseif ($index == $count - 1 && $comment instanceof \PhpParser\Comment\Doc) {
+        elseif ($index == $count - 1 && $comment instanceof Doc) {
           // This is the doc comment for this statement.
           $docblock['content'] = _api_clean_comment($comment->getText());
         }
@@ -540,7 +543,7 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
     $statement->setAttribute('comments', array());
 
     // Process the actual statement.
-     switch ($type) {
+    switch ($type) {
       case 'Expr_FuncCall':
         // Process this only if it is a call to define(CONST_NAME, value);.
         $name = $statement->name->toString();
@@ -714,15 +717,15 @@ function _api_build_php_docblocks($statements, $default_block, &$docblocks) {
 /**
  * Returns the function signature from a PhpParser function node object.
  *
- * @param $statement
- *   A function statement to get the signature of.
+ * @param object $statement
+ *   A function statement object to get the signature of.
  *
  * @return string
  *   The function signature.
  */
 function _api_get_function_signature($statement) {
   // Make a function with empty body, pretty-print it, and remove the {}.
-  $empty_function = new Stmt\Function_(
+  $empty_function = new Function_(
     $statement->name,
     array(
       'byRef' => $statement->byRef,
@@ -732,7 +735,7 @@ function _api_get_function_signature($statement) {
 
   // Note: Use the Standard pretty-printer here, not our class that does
   // HTML formatting.
-  $printer = new PrettyPrinter\Standard();
+  $printer = new Standard();
   $output = $printer->prettyPrint(array($empty_function));
   $output = preg_replace('|\{.*\}|s', '', $output);
   $output = str_replace('function ', '', $output);
@@ -742,7 +745,7 @@ function _api_get_function_signature($statement) {
 /**
  * Returns the modifiers from a PhpParser statement.
  *
- * @param $statement
+ * @param object $statement
  *   A class, method, property, etc. statement to get the modifiers of. Must
  *   have a flags property.
  *
@@ -754,12 +757,12 @@ function _api_get_statement_modifiers($statement) {
   $modifiers = '';
   $modifier_list = array(
     // Note: Keep this list in the order that the modifiers should appear.
-    \PhpParser\Node\Stmt\Class_::MODIFIER_ABSTRACT => 'abstract',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_FINAL => 'final',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_PUBLIC => 'public',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_PROTECTED => 'protected',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_PRIVATE => 'private',
-    \PhpParser\Node\Stmt\Class_::MODIFIER_STATIC => 'static',
+    Class_::MODIFIER_ABSTRACT => 'abstract',
+    Class_::MODIFIER_FINAL => 'final',
+    Class_::MODIFIER_PUBLIC => 'public',
+    Class_::MODIFIER_PROTECTED => 'protected',
+    Class_::MODIFIER_PRIVATE => 'private',
+    Class_::MODIFIER_STATIC => 'static',
   );
   foreach ($modifier_list as $flag => $name) {
     if ($flags & $flag) {
@@ -801,7 +804,7 @@ function _api_clean_comment($text) {
  *   $master, and if there are duplicate namespace or use references, the
  *   $master list is used and a warning is generated.
  */
-function _api_merge_references($master, $new, $filename) {
+function _api_merge_references(array $master, array $new, $filename) {
 
   // We're supporting only one namespace declaration per file.
   if (isset($master['namespace']) && isset($new['namespace'])) {
@@ -828,12 +831,12 @@ function _api_merge_references($master, $new, $filename) {
 /**
  * Saves documentation information to the database.
  *
- * @param $docblocks
+ * @param array $docblocks
  *   An array containing information about API documentation items. The first
  *   array element should be for the file as a whole, and subsequent elements
  *   should have information for items declared in that file (if any).
  */
-function _api_save_docblocks($docblocks) {
+function _api_save_docblocks(array $docblocks) {
   $nested_groups = array();
   $namespace = '';
   $use_aliases = array();
@@ -865,7 +868,6 @@ function _api_save_docblocks($docblocks) {
       // problems, because we won't have a @file doc block any more -- it will
       // be co-opted, and then the site will be screwed up. So, remove these
       // tags and save a watchdog message.
-
       if (preg_match('/' . API_RE_TAG_START . 'mainpage/', $content) ||
         preg_match('/' . API_RE_TAG_START . 'defgroup/', $content)) {
 
@@ -1121,7 +1123,7 @@ function _api_save_docblocks($docblocks) {
       drupal_write_record('api_documentation', $docblock);
     }
 
-    // Keep track of class membership
+    // Keep track of class membership.
     if ($docblock['object_type'] === 'class' || $docblock['object_type'] === 'interface' || $docblock['object_type'] == 'trait') {
       $class_dids[$docblock['object_name']] = $docblock['did'];
       _api_touched($docblock['did']);
@@ -1139,11 +1141,11 @@ function _api_save_docblocks($docblocks) {
             ->fields(array('did', 'signature', 'parameters', 'return_value'));
         }
         $function_insert_query->values(array(
-            'did' => $docblock['did'],
-            'signature' => $docblock['signature'],
-            'parameters' => $docblock['parameters'],
-            'return_value' => $docblock['return_value'],
-          ));
+          'did' => $docblock['did'],
+          'signature' => $docblock['signature'],
+          'parameters' => $docblock['parameters'],
+          'return_value' => $docblock['return_value'],
+        ));
         _api_replace_references($docblocks[0]['branch'], $docblock['did'], $docblock['object_name'], $docblock['references'], FALSE, $namespace, $use_aliases);
         break;
 
@@ -1163,7 +1165,15 @@ function _api_save_docblocks($docblocks) {
       case 'trait':
         db_delete('api_reference_storage')
           ->condition('branch_id', $docblocks[0]['branch']->branch_id)
-          ->condition('object_type', array('class', 'interface', 'trait', 'annotation_class', 'annotation', 'element'))
+          ->condition('object_type',
+            array(
+              'class',
+              'interface',
+              'trait',
+              'annotation_class',
+              'annotation',
+              'element',
+            ))
           ->condition('from_did', $docblock['did'])
           ->execute();
         db_delete('api_namespace')
@@ -1211,12 +1221,12 @@ function _api_save_docblocks($docblocks) {
           }
         }
         if (isset($docblock['references']['annotation'])) {
-          foreach($docblock['references']['annotation'] as $class) {
+          foreach ($docblock['references']['annotation'] as $class) {
             _api_reference($docblocks[0]['branch'], 'annotation', $class, $docblock['did']);
           }
         }
         if (isset($docblock['references']['element'])) {
-          foreach($docblock['references']['element'] as $element_type) {
+          foreach ($docblock['references']['element'] as $element_type) {
             _api_reference($docblocks[0]['branch'], 'element', $element_type, $docblock['did']);
           }
         }
@@ -1277,22 +1287,22 @@ function _api_save_docblocks($docblocks) {
 /**
  * Replaces any existing references for function/hook calls with new ones.
  *
- * @param $branch
+ * @param object $branch
  *   Branch object for the item making the calls.
- * @param $did
+ * @param int $did
  *   Documentation ID of the item making the calls.
- * @param $name
+ * @param string $name
  *   Name of the item making the calls.
- * @param $references
+ * @param array $references
  *   Array of references set up by _api_find_php_references().
- * @param $do_namespaces
- *   TRUE to save namespace references. FALSE (default) to ignore them.
- * @param $namespace
+ * @param bool $do_namespaces
+ *   TRUE to save namespace references. FALSE to ignore them.
+ * @param string $namespace
  *   Namespace for the file these references are from.
- * @param $use_aliases
+ * @param array $use_aliases
  *   Use aliases for the file these references are from.
  */
-function _api_replace_references($branch, $did, $name, $references, $do_namespaces = FALSE, $namespace, $use_aliases) {
+function _api_replace_references($branch, $did, $name, array $references, $do_namespaces, $namespace, array $use_aliases) {
   // Find the name without class prefix, if any.
   $shortname = $name;
   if (($pos = strpos($name, '::')) !== FALSE && $pos > 1) {
@@ -1300,7 +1310,7 @@ function _api_replace_references($branch, $did, $name, $references, $do_namespac
   }
 
   // Remove any existing references.
-  $types_to_remove =  array('function', 'potential hook', 'potential theme', 'potential element', 'potential alter', 'potential callback', 'potential file', 'constant', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string', 'service_tag', 'service_class');
+  $types_to_remove = array('function', 'potential hook', 'potential theme', 'potential element', 'potential alter', 'potential callback', 'potential file', 'constant', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string', 'service_tag', 'service_class');
 
   db_delete('api_reference_storage')
     ->condition('branch_id', $branch->branch_id)
@@ -1354,8 +1364,7 @@ function _api_replace_references($branch, $did, $name, $references, $do_namespac
         // Don't save a reference to the item itself.
         unset($list[$shortname]);
 
-        // Intentional fallthrough here!
-
+      // Intentional fallthrough here!
       default:
         foreach ($list as $call) {
           // If the name contains a backslash, and the first occurrence is not
@@ -1389,7 +1398,7 @@ function _api_replace_references($branch, $did, $name, $references, $do_namespac
  * @param string $documentation
  *   Documentation string to format.
  * @param bool $make_paragraphs
- *   TRUE (default) to convert to paragraphs. FALSE to skip this conversion and
+ *   TRUE to convert to paragraphs. FALSE to skip this conversion and
  *   put the documentation in PRE tags.
  * @param array $references
  *   Array of references. If this function finds references (only for plugin
@@ -1398,8 +1407,9 @@ function _api_replace_references($branch, $did, $name, $references, $do_namespac
  * @return string
  *   Formatted documentation.
  */
-function _api_format_documentation($documentation, $make_paragraphs = TRUE, &$references) {
-  // Don't do processing on empty text (so we don't end up with empty paragraphs).
+function _api_format_documentation($documentation, $make_paragraphs, array &$references) {
+  // Don't do processing on empty text (so we don't end up with empty
+  // paragraphs).
   if (empty($documentation)) {
     return '';
   }
@@ -1411,7 +1421,7 @@ function _api_format_documentation($documentation, $make_paragraphs = TRUE, &$re
 
   $connection = Database::getConnection();
   if (!method_exists($connection, 'utf8mb4IsActive') || !$connection->utf8mb4IsActive()) {
-    // Replace 4-byte characters not supported by MySQL's utf8 encoding
+    // Replace 4-byte characters not supported by MySQL's utf8 encoding.
     $documentation = preg_replace('/[^\x{0000}-\x{FFFF}]/u', '�', $documentation);
   }
 
@@ -1419,7 +1429,8 @@ function _api_format_documentation($documentation, $make_paragraphs = TRUE, &$re
 
   // @link full URLs.
   $documentation = preg_replace('/' . API_RE_TAG_START . 'link ((http:\/\/|https:\/\/|ftp:\/\/|mailto:|smb:\/\/|afp:\/\/|file:\/\/|gopher:\/\/|news:\/\/|ssl:\/\/|sslv2:\/\/|sslv3:\/\/|tls:\/\/|tcp:\/\/|udp:\/\/)([a-zA-Z0-9@:%_+*!~#?&=.,\/;-]*[a-zA-Z0-9@:%_+*!~#&=\/;-])) (.*?) ' . API_RE_TAG_START . 'endlink/', '<a href="$1">$4</a>', $documentation);
-  // Site URLs.
+  // Site URLs. Coding standards ignore because we are using l() without t().
+  // @codingStandardsIgnoreLine
   $documentation = preg_replace('/' . API_RE_TAG_START . 'link \/([a-zA-Z0-9_\/-]+) (.*?) ' . API_RE_TAG_START . 'endlink/', str_replace('%24', '$', l('$2', '$1')), $documentation);
 
   // Process sections.
@@ -1454,7 +1465,7 @@ function _api_format_documentation($documentation, $make_paragraphs = TRUE, &$re
     $documentation = preg_replace($search, $replace, $documentation);
   }
 
-  // Replace left over curly braces
+  // Replace left over curly braces.
   $documentation = preg_replace('/' . API_RE_TAG_START . '[{}]/', '', $documentation);
 
   // Change @Plugin and other annotation sections into @code. They have to be
@@ -1463,7 +1474,7 @@ function _api_format_documentation($documentation, $make_paragraphs = TRUE, &$re
   if (preg_match('/' . API_RE_TAG_START . '(' . API_RE_FUNCTION_CHARACTERS . ')(\(.*\))\s*$/s', $documentation, $annotation_matches)) {
     $class = $annotation_matches[1];
     $references['annotation'][$class] = $class;
-    $documentation = str_replace($annotation_matches[0], '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . $annotation_matches[1] . $annotation_matches[2]. "\n@endcode", $documentation);
+    $documentation = str_replace($annotation_matches[0], '<h3>' . t('Plugin annotation') . '</h3>' . "\n@code\n@" . $annotation_matches[1] . $annotation_matches[2] . "\n@endcode", $documentation);
     $element_types = array('FormElement', 'RenderElement');
     if (in_array($class, $element_types)) {
       // This is annotation like @FormElement("button") or
@@ -1493,21 +1504,21 @@ function _api_format_documentation($documentation, $make_paragraphs = TRUE, &$re
  *
  * Like _filter_autop(), but does not add <br /> tags.
  *
- * @param $text
+ * @param string $text
  *   Text to convert.
  *
- * @return
+ * @return string
  *   Converted text.
  */
 function _api_make_paragraphs($text) {
-  // All block level tags
+  // All block level tags.
   $block = '(?:table|thead|tfoot|caption|colgroup|tbody|tr|td|th|div|dl|dd|dt|ul|ol|li|pre|select|form|blockquote|address|p|h[1-6]|hr)';
 
   // Split at <pre>, <script>, <style> and </pre>, </script>, </style> tags.
   // We don't apply any processing to the contents of these tags to avoid
   // messing up code. We look for matched pairs and allow basic nesting. For
   // example: "processed <pre> ignored <script> ignored </script>
-  // ignored </pre> processed"
+  // ignored </pre> processed".
   $chunks = preg_split('@(</?(?:pre|script|style|object)[^>]*>)@i', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
   // Note: PHP ensures the array consists of alternating delimiters and literals
   // and begins and ends with a literal (inserting NULL as required).
@@ -1533,14 +1544,22 @@ function _api_make_paragraphs($text) {
     }
     elseif (!$ignore) {
       $chunk = _api_format_documentation_lists($chunk);
-      $chunk = preg_replace('|\n*$|', '', $chunk) . "\n\n"; // just to make things a little easier, pad the end
+      // Just to make things a little easier, pad the end.
+      $chunk = preg_replace('|\n*$|', '', $chunk) . "\n\n";
       $chunk = preg_replace('|<br />\s*<br />|', "\n\n", $chunk);
-      $chunk = preg_replace('!(<' . $block . '[^>]*>)!', "\n$1", $chunk); // Space things out a little
-      $chunk = preg_replace('!(</' . $block . '>)!', "$1\n\n", $chunk); // Space things out a little
-      $chunk = preg_replace("/\n\n+/", "\n\n", $chunk); // take care of duplicates
-      $chunk = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $chunk); // make paragraphs, including one at the end
-      $chunk = preg_replace('|<p>\s*</p>\n|', '', $chunk); // under certain strange conditions it could create a P of entirely whitespace
-      $chunk = preg_replace("|<p>(<li.+?)</p>|", "$1", $chunk); // problem with nested lists
+      // Space things out a little.
+      $chunk = preg_replace('!(<' . $block . '[^>]*>)!', "\n$1", $chunk);
+      // Space things out a little.
+      $chunk = preg_replace('!(</' . $block . '>)!', "$1\n\n", $chunk);
+      // Take care of duplicates.
+      $chunk = preg_replace("/\n\n+/", "\n\n", $chunk);
+      // Make paragraphs, including one at the end.
+      $chunk = preg_replace('/\n?(.+?)(?:\n\s*\n|\z)/s', "<p>$1</p>\n", $chunk);
+      // Under certain strange conditions it could create a P of entirely
+      // whitespace.
+      $chunk = preg_replace('|<p>\s*</p>\n|', '', $chunk);
+      // Problem with nested lists.
+      $chunk = preg_replace("|<p>(<li.+?)</p>|", "$1", $chunk);
       $chunk = preg_replace('|<p><blockquote([^>]*)>|i', "<blockquote$1><p>", $chunk);
       $chunk = str_replace('</blockquote></p>', '</p></blockquote>', $chunk);
       $chunk = preg_replace('!<p>\s*(</?' . $block . '[^>]*>)!', "$1", $chunk);
@@ -1561,7 +1580,7 @@ function _api_format_embedded_php($matches) {
   try {
     $statements = $parser->parse("<?php" . $code . "?" . ">");
   }
-  catch (\PhpParser\Error $e) {
+  catch (Error $e) {
     // The code block is not valid PHP. It could be JavaScript, annotation,
     // PHP code with a syntax error, or something else. The best we can do is
     // try to find function-like strings and wrap them in spans for formatting.
@@ -1585,10 +1604,10 @@ function _api_format_embedded_php($matches) {
  * Parses a block of text for lists that uses hyphens or asterisks as bullets,
  * and format the lists as proper HTML lists.
  *
- * @param $documentation
+ * @param string $documentation
  *   Documentation string to format.
  *
- * @return
+ * @return string
  *   $documentation with lists formatted.
  */
 function _api_format_documentation_lists($documentation) {
@@ -1656,11 +1675,11 @@ function _api_format_documentation_lists($documentation) {
 /**
  * Retrieves a summary from a documentation block.
  *
- * @param $documentation
+ * @param string $documentation
  *   Documentation block to find the summary of. Should be pre-formatted into
  *   paragraphs.
  *
- * @return
+ * @return string
  *   First paragraph of the documentation block, stripped of tags, and
  *   truncated to 255 characers.
  */
@@ -1698,7 +1717,7 @@ function _api_documentation_summary($documentation) {
  *   types of references ('function', 'potential hook', etc.), and the values
  *   are arrays of the names of this type that were found.
  */
-function _api_find_php_references($statements, $is_drupal, $filename, $state = array()) {
+function _api_find_php_references(array $statements, $is_drupal, $filename, array $state = array()) {
   $references = array();
 
   $invoke_function_names = ApiPrettyPrinter::invokeFunctionsList();
@@ -1831,7 +1850,7 @@ function _api_find_php_references($statements, $is_drupal, $filename, $state = a
       }
       $sub_statements = $statement->value;
     }
-    elseif ($statement instanceof \PhpParser\Node\Stmt\ClassLike) {
+    elseif ($statement instanceof ClassLike) {
       $sub_state['class'] = $statement->name;
       $sub_statements = $statement->stmts;
     }
@@ -1888,7 +1907,7 @@ function _api_find_php_references($statements, $is_drupal, $filename, $state = a
  * @return string
  *   HTML-formatted code, with spans enclosing various PHP elements.
  */
-function _api_format_statements($statements, $is_drupal = TRUE, $is_file = FALSE) {
+function _api_format_statements(array $statements, $is_drupal = TRUE, $is_file = FALSE) {
 
   $printer = new ApiPrettyPrinter(array('isDrupal' => $is_drupal));
   if ($is_file) {
@@ -1933,7 +1952,7 @@ function _api_number_lines($code, $number = 1) {
   if ($last) {
     array_push($lines, $last);
   }
-  $output = '<ol class="code-lines" start="' . $number . '"><li>' . implode("\n</li><li>", $lines) . "\n</li></ol>";
+  $output = '<ol class="code-lines" start="' . $start . '"><li>' . implode("\n</li><li>", $lines) . "\n</li></ol>";
 
   return $output;
 }
@@ -1945,16 +1964,16 @@ function _api_number_lines($code, $number = 1) {
  * file containing the referenced object, we keep track of the references
  * using a scratch table.
  *
- * @param $branch
+ * @param object $branch
  *   Object representing the branch the reference is in, or TRUE to execute
  *   all of the saved-up inserts.
- * @param $to_type
+ * @param string $to_type
  *   Type of object being referenced.
- * @param $to_name
+ * @param string $to_name
  *   Name of object being referenced.
- * @param $from_did
+ * @param int $from_did
  *   Documentation ID of the object that references this object.
- * @param $wait
+ * @param bool $wait
  *   TRUE to save the insert until _api_reference(TRUE) is called, or FALSE
  *   (default) to do the query immediately.
  */
@@ -1990,22 +2009,22 @@ function _api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $
           ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'extends_did'));
       }
       $query_stored->values(array(
+        'object_name' => $to_name,
+        'branch_id' => $branch->branch_id,
+        'object_type' => $to_type,
+        'from_did' => $from_did,
+        'extends_did' => 0,
+      ));
+    }
+    else {
+      db_insert('api_reference_storage')
+        ->fields(array(
           'object_name' => $to_name,
           'branch_id' => $branch->branch_id,
           'object_type' => $to_type,
           'from_did' => $from_did,
           'extends_did' => 0,
-        ));
-    }
-    else {
-      db_insert('api_reference_storage')
-        ->fields(array(
-            'object_name' => $to_name,
-            'branch_id' => $branch->branch_id,
-            'object_type' => $to_type,
-            'from_did' => $from_did,
-            'extends_did' => 0,
-          ))
+        ))
         ->execute();
     }
   }
@@ -2014,15 +2033,15 @@ function _api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $
 /**
  * Adds a reference to the {api_namespace} table.
  *
- * @param $file_did
+ * @param int $file_did
  *   Documentation ID of the file for this namespace.
- * @param $type
+ * @param string $type
  *   Type of reference ('namespace' or 'use_alias').
- * @param $alias
+ * @param string $alias
  *   Alias for the class, if $type is 'use_alias'.
- * @param $class
+ * @param string $class
  *   Full class name for use aliases; namespace name for namespaces.
- * @param $wait
+ * @param bool $wait
  *   TRUE to save the insert until _api_namespace(TRUE) is called, or FALSE
  *   (default) to do the query immediately.
  */
@@ -2042,22 +2061,22 @@ function _api_namespace($file_did, $type = '', $alias = '', $class = '', $wait =
     if (is_null($query_stored)) {
       $query_stored = db_insert('api_namespace')
         ->fields(array('did', 'object_type', 'class_alias', 'class_name'));
-      }
-      $query_stored->values(array(
-          'did' => $file_did,
-          'object_type' => $type,
-          'class_alias' => $alias,
-          'class_name' => $class,
-        ));
+    }
+    $query_stored->values(array(
+      'did' => $file_did,
+      'object_type' => $type,
+      'class_alias' => $alias,
+      'class_name' => $class,
+      ));
   }
   else {
     db_insert('api_namespace')
       ->fields(array(
-          'did' => $file_did,
-          'object_type' => $type,
-          'class_alias' => $alias,
-          'class_name' => $class,
-        ))
+        'did' => $file_did,
+        'object_type' => $type,
+        'class_alias' => $alias,
+        'class_name' => $class,
+      ))
       ->execute();
   }
 }
@@ -2158,7 +2177,6 @@ function api_shutdown() {
   // - The {api_overrides} table, which figures out for a class member if it
   //   is overriding another class's member, and where it is documented.
   // - The "computed-member" information in the {api_reference_storage} table.
-
   // So, the first step is to recompute class inheritance. This is stored by
   // name in {api_reference_storage}, and we need to find the actual IDs of
   // the classes. Do this one by one, since we need to compute some other
@@ -2287,7 +2305,6 @@ function api_shutdown() {
   // update member, override, and class parent information for. And we have
   // in hand a list of the parent IDs and the direct members for each one.
   // So go through this list and redo the members and overrides tables.
-
   foreach ($classes_changed as $did) {
     _api_update_class_reference_info($did, $class_parents, $class_members);
   }
@@ -2431,7 +2448,7 @@ function _api_best_class_id($class_name, $branch_id) {
  * @param array $member_info
  *   Array of collected direct member information, calculated in api_shutdown().
  */
-function _api_update_class_reference_info($did, $parent_info, $member_info) {
+function _api_update_class_reference_info($did, array $parent_info, array $member_info) {
   if (!$did) {
     return;
   }
@@ -2445,7 +2462,7 @@ function _api_update_class_reference_info($did, $parent_info, $member_info) {
   $ao_query = db_insert('api_overrides')
     ->fields(array('did', 'overrides_did', 'documented_did'));
   $new_dids = array();
-  foreach ($members as $type => $list) {
+  foreach ($members as $list) {
     foreach ($list as $member) {
       $new_dids[] = $member['did'];
       if ($member['documented_did'] != $member['did']) {
@@ -2473,7 +2490,7 @@ function _api_update_class_reference_info($did, $parent_info, $member_info) {
   $query = db_insert('api_members')
     ->fields(array('class_did', 'did', 'member_alias'));
   $has_some = FALSE;
-  foreach ($members as $type => $list) {
+  foreach ($members as $list) {
     foreach ($list as $member) {
       $query->values(array('class_did' => $did, 'did' => $member['did'], 'member_alias' => ($member['alias'] != $member['member_name']) ? $member['alias'] : NULL));
       $has_some = TRUE;
@@ -2673,7 +2690,7 @@ function _api_make_bare_member_list($did, $member_info) {
  * @param array $aliases
  *   List of aliases for member names (functions only)
  */
-function _api_member_list_merge(&$members, $parent_members, $aliases) {
+function _api_member_list_merge(array &$members, array $parent_members, array $aliases) {
   foreach ($parent_members as $type => $new_type_list) {
     foreach ($new_type_list as $member_name => $info) {
       $alias = (isset($aliases[$member_name]) && $type == 'function') ? $aliases[$member_name] : $member_name;
@@ -2706,7 +2723,7 @@ function _api_member_list_merge(&$members, $parent_members, $aliases) {
  * @param int $did
  *   Documentation ID.
  * @param string|array $type
- *   Object type.
+ *   Object type or types.
  *
  * @return object|null
  *   Documentation object, or NULL if not found.
@@ -2733,7 +2750,7 @@ function _api_bare_object_load($did, $type = '') {
     $query->leftJoin('api_function', 'afunc', 'afunc.did = ad.did');
     $query->fields('afunc', array('signature', 'parameters', 'return_value'));
   }
-  else  if ($type == 'file') {
+  elseif ($type == 'file') {
     $query->leftJoin('api_file', 'afile', 'afile.did = ad.did');
     $query->fields('afile', array('modified', 'queued'));
   }
@@ -2753,10 +2770,10 @@ function _api_bare_object_load($did, $type = '') {
 /**
  * Determines whether an object contains any documentation.
  *
- * @param $object
+ * @param object $object
  *   An object to test to see if it contains documentation.
  *
- * @return
+ * @return bool
  *   TRUE if the object has any of the following non-empty properties:
  *   - documentation
  *   - parameters
@@ -2777,7 +2794,7 @@ function _api_has_documentation($object) {
 /**
  * Calculates and stores aggregate reference counts for a branch.
  *
- * @param int branch_id
+ * @param int $branch_id
  *   ID of the branch to calculate counts for.
  *
  * @see api_find_references()

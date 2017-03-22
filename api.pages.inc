@@ -175,7 +175,17 @@ function api_dump_full_list($branch, $project = '') {
   }
 
   $query = db_select('api_documentation', 'd')
-    ->fields('d', array('object_name', 'namespaced_name', 'member_name', 'title', 'summary', 'object_type', 'branch_id', 'file_name'))
+    ->fields('d',
+      array(
+        'object_name',
+        'namespaced_name',
+        'member_name',
+        'title',
+        'summary',
+        'object_type',
+        'branch_id',
+        'file_name',
+      ))
     ->condition('d.branch_id', $branch->branch_id)
     ->condition('d.object_type', 'mainpage', '<>')
     ->orderBy('d.object_name');
@@ -403,7 +413,10 @@ function api_page_file($file) {
   $objects = array();
   foreach ($types as $type => $label) {
     // Render the view of this type of object in this file.
-    $out = api_display_view('api_listings', 'block_items_file', array($file->object_name, $type, $file->branch_id));
+    $out = api_display_view(
+      'api_listings',
+      'block_items_file',
+      array($file->object_name, $type, $file->branch_id));
     // Only display if there was something there.
     if ($out) {
       $objects[$type] = array(
@@ -416,9 +429,24 @@ function api_page_file($file) {
   $objects = drupal_render($objects);
 
   // If this is a theme template or YML file, make reference link.
-  $links = api_build_references_section(array('theme_invokes', 'yml_config', 'yml_keys'), $file, $branch);
+  $links = api_build_references_section(
+    array('theme_invokes', 'yml_config', 'yml_keys'),
+    $file,
+    $branch);
 
-  $output = theme('api_file_page', array('object' => $file, 'documentation' => $documentation, 'objects' => $objects, 'code' => $code, 'see' => $see, 'deprecated' => $deprecated, 'related_topics' => $related_topics, 'defined' => $defined, 'call_links' => $links));
+  $output = theme(
+    'api_file_page',
+    array(
+      'object' => $file,
+      'documentation' => $documentation,
+      'objects' => $objects,
+      'code' => $code,
+      'see' => $see,
+      'deprecated' => $deprecated,
+      'related_topics' => $related_topics,
+      'defined' => $defined,
+      'call_links' => $links,
+    ));
   $output .= _api_add_comments($file);
   return $output;
 }
@@ -796,7 +824,14 @@ function api_page_function($function) {
   $signatures = array();
   $n = 0;
   $query = db_select('api_documentation', 'd')
-    ->fields('d', array('branch_id', 'file_name', 'object_type', 'object_name', 'class_did'));
+    ->fields('d',
+      array(
+        'branch_id',
+        'file_name',
+        'object_type',
+        'object_name',
+        'class_did',
+      ));
   $f = $query->innerJoin('api_function', 'f', 'f.did = d.did');
   $query->fields($f, array('signature'));
   $b = $query->innerJoin('api_branch', 'b', 'd.branch_id = b.branch_id');
@@ -832,7 +867,11 @@ function api_page_function($function) {
 
     // Add the class name, if there is one. This is not part of the signature.
     if ($signature->class_did !== '0') {
-      $class = api_object_load((int) $signature->class_did, $signature_branch, array('interface', 'class', 'trait'), $signature->file_name);
+      $class = api_object_load(
+        (int) $signature->class_did,
+        $signature_branch,
+        array('interface', 'class', 'trait'),
+        $signature->file_name);
       if (isset($class)) {
         $name .= l($class->object_name, api_url($class)) . '::';
       }
@@ -864,7 +903,8 @@ function api_page_function($function) {
     $arg_index = -1;
     $signature_info[$n]['other'][$arg_index] = '';
     foreach ($tokens as $token) {
-      $depth += in_array($token, array('(', '{', '[')) - in_array($token, array(')', '}', ']'));
+      $depth += in_array($token, array('(', '{', '[')) -
+        in_array($token, array(')', '}', ']'));
       if ($depth == 1 && $start && is_array($token) && $token[0] == T_VARIABLE) {
         // New argument.
         $arg_index += 1;
@@ -934,10 +974,34 @@ function api_page_function($function) {
   $class = _api_class_section($function, $branch);
 
   // Build reference links.
-  $links = api_build_references_section(array('calls', 'references', 'implementations', 'invokes', 'theme_invokes', 'overrides'), $function, $branch);
+  $links = api_build_references_section(
+    array(
+      'calls',
+      'references',
+      'implementations',
+      'invokes',
+      'theme_invokes',
+      'overrides',
+    ), $function, $branch);
 
   // Put it all together and theme the output.
-  $output = theme('api_function_page', array('branch' => $branch, 'object' => $function, 'signatures' => $signatures, 'documentation' => $documentation, 'parameters' => $parameters, 'return' => $return, 'related_topics' => $related_topics, 'call_links' => $links, 'code' => $code, 'see' => $see, 'deprecated' => $deprecated, 'throws' => $throws, 'class' => $class));
+  $output = theme(
+    'api_function_page',
+    array(
+      'branch' => $branch,
+      'object' => $function,
+      'signatures' => $signatures,
+      'documentation' => $documentation,
+      'parameters' => $parameters,
+      'return' => $return,
+      'related_topics' => $related_topics,
+      'call_links' => $links,
+      'code' => $code,
+      'see' => $see,
+      'deprecated' => $deprecated,
+      'throws' => $throws,
+      'class' => $class,
+    ));
   $output .= _api_add_comments($function);
   return $output;
 }
@@ -1063,7 +1127,20 @@ function api_page_simple_item($item, $type) {
     'property' => 'api_property_page',
   );
 
-  $output = theme($theme_hooks[$type], array('branch' => $branch, 'object' => $item, 'documentation' => $documentation, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'var' => $var, 'class' => $class, 'call_links' => $links));
+  $output = theme(
+    $theme_hooks[$type],
+    array(
+      'branch' => $branch,
+      'object' => $item,
+      'documentation' => $documentation,
+      'code' => $code,
+      'related_topics' => $related_topics,
+      'see' => $see,
+      'deprecated' => $deprecated,
+      'var' => $var,
+      'class' => $class,
+      'call_links' => $links,
+    ));
 
   $output .= _api_add_comments($item);
   return $output;
@@ -1121,7 +1198,20 @@ function api_page_class($class) {
   $links = api_build_references_section($reference_types, $class, $branch);
 
   // Put it all together.
-  $output = theme('api_class_page', array('branch' => $branch, 'object' => $class, 'documentation' => $documentation, 'hierarchy' => $hierarchy, 'objects' => $objects, 'code' => $code, 'related_topics' => $related_topics, 'see' => $see, 'deprecated' => $deprecated, 'call_links' => $links));
+  $output = theme(
+    'api_class_page',
+    array(
+      'branch' => $branch,
+      'object' => $class,
+      'documentation' => $documentation,
+      'hierarchy' => $hierarchy,
+      'objects' => $objects,
+      'code' => $code,
+      'related_topics' => $related_topics,
+      'see' => $see,
+      'deprecated' => $deprecated,
+      'call_links' => $links,
+    ));
   $output .= _api_add_comments($class);
 
   return $output;
@@ -1165,7 +1255,16 @@ function api_page_service($service) {
   $links = api_build_references_section(array('use'), $service, $branch);
 
   // Put it all together.
-  $output = theme('api_service_page', array('branch' => $branch, 'object' => $service, 'class' => $class, 'code' => $code, 'tags' => $tags, 'call_links' => $links));
+  $output = theme(
+    'api_service_page',
+    array(
+      'branch' => $branch,
+      'object' => $service,
+      'class' => $class,
+      'code' => $code,
+      'tags' => $tags,
+      'call_links' => $links,
+    ));
   $output .= _api_add_comments($service);
 
   return $output;
@@ -1206,7 +1305,10 @@ function api_page_group($group) {
   $objects = array();
   foreach ($types as $type => $label) {
     // Render the view of this type of object in this group.
-    $out = api_display_view('api_references', 'block_items_in_group', array($branch->branch_id, $group->object_name, $type));
+    $out = api_display_view(
+      'api_references',
+      'block_items_in_group',
+      array($branch->branch_id, $group->object_name, $type));
     // Only display if there was something there.
     if ($out) {
       $objects[$type] = array(
@@ -1218,7 +1320,16 @@ function api_page_group($group) {
 
   $objects = drupal_render($objects);
 
-  $output = theme('api_group_page', array('branch' => $branch, 'object' => $group, 'documentation' => $documentation, 'objects' => $objects, 'see' => $see, 'related_topics' => $related_topics));
+  $output = theme(
+    'api_group_page',
+    array(
+      'branch' => $branch,
+      'object' => $group,
+      'documentation' => $documentation,
+      'objects' => $objects,
+      'see' => $see,
+      'related_topics' => $related_topics,
+    ));
   $output .= _api_add_comments($group);
   return $output;
 }
@@ -1269,7 +1380,11 @@ function _api_object_title_and_breadcrumb($branch, $object, $title = NULL, $obje
   }
   if (!empty($object->class_did)) {
     $branch = api_get_branch_by_id($object->branch_id);
-    $class = api_object_load((int) $object->class_did, $branch, array('interface', 'class', 'trait'), $object->file_name);
+    $class = api_object_load(
+      (int) $object->class_did,
+      $branch,
+      array('interface', 'class', 'trait'),
+      $object->file_name);
     if (isset($class)) {
       $breadcrumb[] = l($class->object_name, api_url($class));
     }
@@ -1332,7 +1447,15 @@ function _api_class_hierarchy($class, $type = 'ancestors') {
     $query = db_select('api_reference_storage', 'ars');
     $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.extends_did');
     $query
-      ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
+      ->fields($ad,
+        array(
+          'did',
+          'branch_id',
+          'file_name',
+          'object_type',
+          'object_name',
+          'namespaced_name',
+        ))
       ->condition('ars.from_did', $parent->did)
       ->condition('ars.object_type', 'class')
       ->condition('ad.object_type', array('class', 'interface'));
@@ -1390,14 +1513,21 @@ function _api_class_hierarchy($class, $type = 'ancestors') {
     }
   }
 
-  $output = theme('item_list', array('items' => array($parent . $child_output)));
+  $output = theme('item_list',
+    array('items' => array($parent . $child_output)));
 
   if ($type != 'full' && $class->object_type != 'trait') {
-    $output .= '<p>' . theme('api_function_reference_link', array('type' => 'hierarchy', 'count' => 0, 'function' => $class)) . '</p>';
+    $output .= '<p>' . theme(
+      'api_function_reference_link',
+      array('type' => 'hierarchy', 'count' => 0, 'function' => $class)
+    ) . '</p>';
   }
 
   if ($type != 'full' && $class->object_type == 'interface') {
-    $output .= '<p>' . theme('api_function_reference_link', array('type' => 'implements', 'count' => 0, 'function' => $class)) . '</p>';
+    $output .= '<p>' . theme(
+      'api_function_reference_link',
+      array('type' => 'implements', 'count' => 0, 'function' => $class)
+    ) . '</p>';
   }
 
   return $output;
@@ -1420,7 +1550,15 @@ function _api_class_children($class, $current_did = 0) {
   $query = db_select('api_reference_storage', 'ars');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
   $query
-    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
+    ->fields($ad,
+      array(
+        'did',
+        'branch_id',
+        'file_name',
+        'object_type',
+        'object_name',
+        'namespaced_name',
+      ))
     ->condition('ars.extends_did', $class->did)
     ->condition('ad.object_type', array('class', 'interface'))
     ->condition('ars.object_type', 'class')
@@ -1457,7 +1595,8 @@ function _api_interface_process_inherits($interface, array &$to_process, array &
   $query = db_select('api_reference_storage', 'ars');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
   $query
-    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
+    ->fields($ad,
+      array('did', 'branch_id', 'file_name', 'object_type', 'object_name'))
     ->condition('ars.extends_did', $interface->did)
     ->condition('ad.object_type', array('interface'))
     // In reference storage, any "extends" gets saved as type "class".
@@ -1472,7 +1611,15 @@ function _api_interface_process_inherits($interface, array &$to_process, array &
   $query = db_select('api_reference_storage', 'ars');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
   $query
-    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
+    ->fields($ad,
+      array(
+        'did',
+        'branch_id',
+        'file_name',
+        'object_type',
+        'object_name',
+        'namespaced_name',
+      ))
     ->condition('ars.extends_did', $interface->did)
     ->condition('ad.object_type', array('class'))
     // In reference storage, any "implements" gets saved as type "interface".
@@ -1509,7 +1656,15 @@ function _api_class_process_inherits($class, array &$to_process, array &$process
   $query = db_select('api_reference_storage', 'ars');
   $ad = $query->innerJoin('api_documentation', 'ad', 'ad.did = ars.from_did');
   $query
-    ->fields($ad, array('did', 'branch_id', 'file_name', 'object_type', 'object_name', 'namespaced_name'))
+    ->fields($ad,
+      array(
+        'did',
+        'branch_id',
+        'file_name',
+        'object_type',
+        'object_name',
+        'namespaced_name',
+      ))
     ->condition('ars.extends_did', $class->did)
     ->condition('ad.object_type', array('class'))
     // In reference storage, any "extends" gets saved as type "class".
@@ -1635,7 +1790,13 @@ function _api_add_comments($documentation_object) {
           // Users can register themselves.
           $additions['login_link'] = array(
             '#type' => 'markup',
-            '#value' => t('<a href="@login">Log in</a> or <a href="@register">register</a> to post comments', array('@login' => url('user/login', $options), '@register' => url('user/register', $options))),
+            '#value' => t(
+              '<a href="@login">Log in</a> or <a href="@register">register</a> to post comments',
+              array(
+                '@login' => url('user/login', $options),
+                '@register' => url('user/register', $options),
+              )
+            ),
           );
         }
         else {
@@ -1682,13 +1843,17 @@ function _api_class_section($item, $branch) {
     return FALSE;
   }
 
-  $class = api_object_load((int) $item->class_did, $branch, array('class', 'interface', 'trait'));
+  $class = api_object_load(
+    (int) $item->class_did,
+    $branch,
+    array('class', 'interface', 'trait'));
 
   if (is_null($class)) {
     return FALSE;
   }
 
-  return theme('api_class_section', array('class' => $class, 'branch' => $branch));
+  return theme('api_class_section',
+    array('class' => $class, 'branch' => $branch));
 }
 
 /**
@@ -1739,7 +1904,15 @@ function _api_class_section($item, $branch) {
 function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did = 0, $limit = 0, $is_drupal = TRUE) {
 
   // Early return: if this is a Drupal type and $is_drupal is FALSE.
-  $drupal_types = array('implementations', 'theme_invokes', 'element_invokes', 'theme_references', 'invokes', 'yml_config', 'yml_keys');
+  $drupal_types = array(
+    'implementations',
+    'theme_invokes',
+    'element_invokes',
+    'theme_references',
+    'invokes',
+    'yml_config',
+    'yml_keys',
+  );
   if (!$is_drupal && in_array($type, $drupal_types)) {
     return ($count) ? 0 : array();
   }
@@ -1780,7 +1953,8 @@ function api_find_references($name, $branch, $type, $count = TRUE, $exclude_did 
     $d = $base_query->leftJoin('api_documentation', 'd', 'r.from_did = d.did');
     $base_query->condition('d.branch_id', $branch_id)
       ->condition('d.did', $exclude_did, '<>')
-      ->condition('r.object_type', array('function', 'constant', 'member-class', 'computed-member'))
+      ->condition('r.object_type',
+        array('function', 'constant', 'member-class', 'computed-member'))
       ->condition('r.object_name', $name);
   }
   elseif ($type == 'overrides') {
