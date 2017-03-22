@@ -2615,13 +2615,15 @@ function api_queue_parse_file($data) {
     return;
   }
   $branch = $new_branch;
+  // Make sure there is a timestamp.
+  $data += array('timestamp' => 0);
 
   // Verify that it's still a valid parse job. If the branch has been updated,
   // the parse job is not valid any more, and the file should have been marked
   // as unqueued in api_save_branch(), so it will get requeued at the next
   // update.
-  $when_queued = (isset($data['timestamp']) ? $data['timestamp'] : 0);
-  $valid_time = (isset($branch->queue_valid) ? $branch->queue_valid : 0);
+  $when_queued = $data['timestamp'];
+  $valid_time = $branch->queue_valid;
   if ($when_queued < $valid_time) {
     watchdog(
       'api',

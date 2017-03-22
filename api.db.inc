@@ -14,8 +14,12 @@
 function api_save_branch($branch) {
   $branch->data = serialize($branch->data);
   // Update the queue valid timestamp for this branch so that old queue jobs
-  // are invalid.
-  $branch->queue_valid = time();
+  // are invalid. But make sure it at least increments the old time by a
+  // second.
+  $min_time = isset($branch->queue_valid) ? $branch->queue_valid + 1 : 0;
+  $new_time = time();
+  $new_time = ($new_time < $min_time) ? $min_time : $new_time;
+  $branch->queue_valid = $new_time;
   // Update the last updated timestamp for this branch so that it will be
   // updated as soon as possible.
   $branch->last_updated = 0;

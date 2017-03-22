@@ -319,7 +319,10 @@ function api_update_branch_files($branch) {
           'branch' => $branch,
           'file' => $file_name,
           'branch_name' => $branch->branch_name,
-          'timestamp' => time(),
+          // Set the timestamp to the "valid time" stamp of the branch, so
+          // that in api_queue_parse_file(), we can make sure the branch has
+          // not been updated since this file was queued.
+          'timestamp' => $branch->queue_valid,
         ));
 
         // Make sure this doesn't get added to the parse queue again.
