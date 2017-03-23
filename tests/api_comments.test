@@ -325,12 +325,12 @@ class ApiTestTextFormatNoBranch extends ApiWebPagesBaseTest {
 
     // Verify things are set up right.
     $this->verifyCounts(array(
-        'api_branch' => 0,
-        'api_documentation' => 0,
-        'api_php_branch' => 2,
-        'api_external_documentation' => 68,
-        'api_php_documentation' => 2,
-      ), 0, 'Branches set up');
+      'api_branch' => 0,
+      'api_documentation' => 0,
+      'api_php_branch' => 2,
+      'api_external_documentation' => 68,
+      'api_php_documentation' => 2,
+    ), 0, 'Branches set up');
 
     // Set the core compatibility to 7.x.
     $this->drupalPost('admin/config/development/api', array(
@@ -357,7 +357,7 @@ class ApiTestTextFormatNoBranch extends ApiWebPagesBaseTest {
     $this->drupalPost(NULL, array(
       'subject' => 'test',
       'comment_body[und][0][value]' => 'This is a test of links to things like foo_function() and sample_function() and SubSample and SubSample::bar().',
-      ), t('Save'));
+    ), t('Save'));
 
     $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
     $this->assertLinkURLSubstring('sample_function', 'sample.php/function/sample_function', 'Link to fake API reference function is created', 'Link to API reference function goes to right place');
