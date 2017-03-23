@@ -30,7 +30,7 @@ class ApiTestDuplicates extends ApiWebPagesBaseTest {
     $this->baseSetUp();
 
     // Set up a files branch, but do not exclude the usual directories.
-    $this->branch_info = $this->setUpBranchUI('', TRUE, array('excluded' => ''));
+    $this->branch_info = $this->setUpBranchUi('', TRUE, array('excluded' => ''));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();

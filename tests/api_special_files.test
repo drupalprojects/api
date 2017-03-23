@@ -30,7 +30,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     $this->baseSetUp(array('api_test'));
 
     // Set up a files branch with the special files directory.
-    $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/special_files', 'excluded' => ''));
+    $this->branch_info = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/special_files', 'excluded' => ''));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();

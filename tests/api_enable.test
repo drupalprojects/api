@@ -102,7 +102,7 @@ class ApiTestEnable extends ApiWebPagesBaseTest {
     $this->drupalGet('admin/config/development/api/php_branches');
     $this->clickLink('edit');
     $this->drupalPost(NULL, array('update_frequency' => 604800), t('Save branch'));
-    $this->branch_info = $this->setUpBranchUI();
+    $this->branch_info = $this->setUpBranchUi();
     $this->resetBranchesAndCache();
     $this->cronRun();
     $this->checkAndClearLog(array(

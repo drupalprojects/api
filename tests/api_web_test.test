@@ -214,7 +214,7 @@ class ApiTestSimpleItemPages extends ApiWebPagesBaseTest {
     $this->baseSetUp();
 
     // Create a "file" branch with the sample code, from the admin interface.
-    $this->branch_info = $this->setUpBranchUI();
+    $this->branch_info = $this->setUpBranchUi();
 
     // Create a "php" branch with the sample PHP function list, from the admin
     // interface.
@@ -957,7 +957,7 @@ class ApiTestAdminPages extends ApiWebPagesBaseTest {
     $this->assertText($new_project_word, 'Project name appears on project list');
 
     // Now try creating and then deleting a branch.
-    $this->setUpBranchUI('', FALSE, array(
+    $this->setUpBranchUi('', FALSE, array(
       'project' => $new_project_word,
       'branch_name' => $new_branch_word,
       'title' => $new_branch_word,
@@ -1010,12 +1010,12 @@ class ApiTestEmptyPageLinks extends ApiWebPagesBaseTest {
     $this->baseSetUp();
 
     // Create a "file" branch with the sample code, from the admin interface.
-    $this->branch_info = $this->setUpBranchUI();
+    $this->branch_info = $this->setUpBranchUi();
 
     // Create a second "file" branch in a different project, but with the same
     // branch name. Exclude the "maybe_exclude" directory so that this branch
     // only has functions and not constants and classes.
-    $this->branchInfo2 = $this->setUpBranchUI('', FALSE, array(
+    $this->branchInfo2 = $this->setUpBranchUi('', FALSE, array(
       'project' => 'test2',
       'project_title' => 'Project 2',
       'title' => 'Project 2 6.x',
@@ -1208,7 +1208,7 @@ class ApiTestExcludeDrupalism extends ApiWebPagesBaseTest {
 
     // Create a "file" branch with the excluded directory but exclude it from
     // drupalisms.
-    $this->branch_info = $this->setUpBranchUI('', TRUE, array(
+    $this->branch_info = $this->setUpBranchUi('', TRUE, array(
       'excluded' => '',
       'exclude_drupalism_regexp' => '|to_exclude|',
     ));

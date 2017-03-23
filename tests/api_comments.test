@@ -51,7 +51,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
     ), t('Save comment settings'));
 
     // Set up a regular files branch.
-    $this->branch_info = $this->setUpBranchUI();
+    $this->branch_info = $this->setUpBranchUi();
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();
@@ -195,7 +195,7 @@ class ApiTestTextFormat extends ApiWebPagesBaseTest {
     $this->createPhpBranchUi();
 
     // Set up a branch for the Drupal core files.
-    $this->setUpBranchUI('', TRUE, array(
+    $this->setUpBranchUi('', TRUE, array(
       'project' => 'drupal',
       'project_title' => 'Drupal',
       'project_type' => 'core',
@@ -207,7 +207,7 @@ class ApiTestTextFormat extends ApiWebPagesBaseTest {
     ));
 
     // Set up a files branch for the namespaces files.
-    $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+    $this->branch_info = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
 
     // Set up the Filtered HTML text format to have the API format as part of
     // it.
@@ -299,7 +299,7 @@ class ApiTestTextFormatNoBranch extends ApiWebPagesBaseTest {
     $this->createPhpBranchUi();
 
     // Temporarily set up a regular files branch and parse it.
-    $temp_branch_info = $this->setUpBranchUI();
+    $temp_branch_info = $this->setUpBranchUi();
     $this->resetBranchesAndCache();
     $this->updateBranches();
     $this->processApiParseQueue();

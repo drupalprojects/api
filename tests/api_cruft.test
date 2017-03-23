@@ -91,7 +91,7 @@ class ApiTestCruft extends ApiWebPagesBaseTest {
     $this->verifyCounts($counts, 0, 'No branches');
 
     // Add a branch without the usual exclude directory excluded.
-    $this->setUpBranchUI('', TRUE, array(
+    $this->setUpBranchUi('', TRUE, array(
       'directory' => $this->sourceFileDirectory,
       'excluded' => '',
     ));
@@ -272,7 +272,7 @@ class ApiTestCruft extends ApiWebPagesBaseTest {
 
     // Add and update the sample branch again, without excluding the
     // directory.
-    $this->setUpBranchUI('', TRUE, array(
+    $this->setUpBranchUi('', TRUE, array(
       'directory' => $this->sourceFileDirectory,
       'excluded' => '',
     ));
@@ -324,7 +324,7 @@ class ApiTestCruft extends ApiWebPagesBaseTest {
     // Update the branches, but don't parse.
     $this->createPhpBranchUi();
     $this->createApiBranchUi();
-    $this->setUpBranchUI('', TRUE, array(
+    $this->setUpBranchUi('', TRUE, array(
       'directory' => $this->sourceFileDirectory,
     ));
     $this->resetBranchesAndCache();

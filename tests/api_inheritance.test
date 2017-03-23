@@ -30,7 +30,7 @@ class ApiTestInheritance extends ApiWebPagesBaseTest {
     $this->baseSetUp();
 
     // Make a branch for sample 2 code.
-    $this->branch_info = $this->setUpBranchUI('', TRUE, array(
+    $this->branch_info = $this->setUpBranchUi('', TRUE, array(
       'project' => 'test2',
       'project_title' => 'Project 2',
       'title' => 'Project 2 6.x',

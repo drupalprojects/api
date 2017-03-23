@@ -56,7 +56,7 @@ class ApiTestSearchIntegration extends ApiWebPagesBaseTest {
     $this->drupalLogin($this->super_user);
 
     // Set up a regular files branch.
-    $this->branch_info = $this->setUpBranchUI();
+    $this->branch_info = $this->setUpBranchUi();
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();

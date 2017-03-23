@@ -30,7 +30,7 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->baseSetUp();
 
     // Set up a files branch for the namespaces files.
-    $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+    $this->branch_info = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();
@@ -326,7 +326,7 @@ class ApiTestNamespaceCruft extends ApiWebPagesBaseTest {
     $this->verifyCounts($counts, 0, 'No branches');
 
     // Add a branch for the namespace test files.
-    $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+    $this->branch_info = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
 
     $counts['api_project'] = 1;
     $counts['api_branch'] = 1;

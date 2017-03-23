@@ -111,7 +111,7 @@ abstract class ApiTestCase extends DrupalWebTestCase {
    *   Array of information (defaults with overrides) used to create the
    *   branch and project.
    */
-  function setUpBranchApiCall($prefix = '', $default = TRUE, array $info = array()) {
+  protected function setUpBranchApiCall($prefix = '', $default = TRUE, array $info = array()) {
     module_load_include('inc', 'api', 'api.db');
 
     // Set up defaults.
@@ -189,7 +189,7 @@ abstract class ApiTestCase extends DrupalWebTestCase {
    *   Number of objects to assert. Omit to use the current number that should
    *   be present for the default branch.
    */
-  function assertObjectCount($branch = NULL, $num = 68) {
+  protected function assertObjectCount($branch = NULL, $num = 68) {
     if (is_null($branch)) {
       $branch = $this->getBranch();
     }
@@ -402,7 +402,7 @@ abstract class ApiWebPagesBaseTest extends ApiTestCase {
     $this->baseSetUp();
 
     // Create a "file" branch with the sample code, from the admin interface.
-    $this->branch_info = $this->setUpBranchUI();
+    $this->branch_info = $this->setUpBranchUi();
 
     // Remove the default PHP branch, which most tests do not need.
     $this->removePhpBranch();
@@ -434,7 +434,7 @@ abstract class ApiWebPagesBaseTest extends ApiTestCase {
    *   Array of information (defaults with overrides) used to create the
    *   branch and project.
    */
-  protected function setUpBranchUI($prefix = '', $default = TRUE, array $info = array()) {
+  protected function setUpBranchUi($prefix = '', $default = TRUE, array $info = array()) {
     // Set up defaults.
     $info += array(
       'project' => 'test',
