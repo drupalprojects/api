@@ -51,7 +51,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
     ), t('Save comment settings'));
 
     // Set up a regular files branch.
-    $this->branch_info = $this->setUpBranchUi();
+    $this->branchInfo = $this->setUpBranchUi();
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();
@@ -67,7 +67,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
    */
   public function testComments() {
     // Verify that with comments turned off, the comment form does not appear.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/Sample');
     $this->assertNoText(t('Add new comment'), 'Comment form is not there');
     $this->assertNoText(t('Comment'), 'Comment form is not there');
     $this->assertNoText(t('Subject'), 'Comment form is not there');
@@ -78,7 +78,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
       'comment' => 2,
     ), t('Save comment settings'));
     $this->assertText(t('Saved API comment settings'), 'Confirm message appears');
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/Sample');
     $this->assertNoText(t('Add new comment'), 'Comment form is not there');
     $this->assertNoText(t('Comment'), 'Comment form is not there');
     $this->assertNoText(t('Subject'), 'Comment form is not there');
@@ -88,7 +88,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
     $this->drupalGet('admin/config/development/api/comments');
     $this->clickLink(t('Apply current default comment settings to existing API pages'));
     $this->assertText(t('Applied default comment settings to existing API pages'), 'Confirm message appears');
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/Sample');
     $this->drupalPost(NULL, array(
       'subject' => 'Subject 1',
       'comment_body[und][0][value]' => 'Comment 1 body',
@@ -105,7 +105,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
     $this->updateBranches();
     $count = $this->processApiParseQueue();
     $this->assertTrue($count > 5, 'Files were reparsed');
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/Sample');
     $this->assertLink('Subject 1', 0, 'Comment subject appears');
     $this->assertText('Comment 1 body', 'Comment body appears');
     $this->assertLink('reply', 0, 'Reply link appears');
@@ -117,7 +117,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
     $this->assertText(t('Saved API comment settings'), 'Confirm message appears');
     $this->clickLink(t('Apply current default comment settings to existing API pages'));
     $this->assertText(t('Applied default comment settings to existing API pages'), 'Confirm message appears');
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/Sample');
     $this->assertLink('Subject 1', 0, 'Comment subject appears');
     $this->assertText('Comment 1 body', 'Comment body appears');
     $this->assertNoLink('reply', 0, 'Reply link disappears');
@@ -131,7 +131,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
     $this->assertText(t('Saved API comment settings'), 'Confirm message appears');
     $this->clickLink(t('Apply current default comment settings to existing API pages'));
     $this->assertText(t('Applied default comment settings to existing API pages'), 'Confirm message appears');
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/Sample');
     $this->assertNoLink('Subject 1', 0, 'Comment subject disappears');
     $this->assertNoText('Comment 1 body', 'Comment body disappears');
     $this->assertNoLink('reply', 0, 'Reply link disappears');
@@ -207,7 +207,7 @@ class ApiTestTextFormat extends ApiWebPagesBaseTest {
     ));
 
     // Set up a files branch for the namespaces files.
-    $this->branch_info = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+    $this->branchInfo = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
 
     // Set up the Filtered HTML text format to have the API format as part of
     // it.
@@ -228,17 +228,17 @@ class ApiTestTextFormat extends ApiWebPagesBaseTest {
 
     // Go to a namespaced class and make a comment. Verify that links are
     // created and go to the right places.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassA.php/class/ClassA');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/ClassA.php/class/ClassA');
     $this->drupalPost(NULL, array(
       'subject' => 'test',
       'comment_body[und][0][value]' => 'This is a test of links to things like MyClassB::bMethod(), another_function(), InterfaceD::dMethod(), foo_function(), and drupal_alter().',
     ), t('Save'));
 
-    $this->assertLinkURLSubstring('MyClassB::bMethod', 'ClassB.php/function/ClassB', 'Link to aliased class method is created', 'Link to aliased class method goes to right place');
-    $this->assertLinkURLSubstring('another_function', 'no_namespace.php/function/another_function', 'Link to function is created', 'Link to function goes to right place');
-    $this->assertLinkURLSubstring('InterfaceD::dMethod', 'InterfaceD.php/function/InterfaceD', 'Link to interface method is created', 'Link to interface method goes to right namespace');
-    $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
-    $this->assertLinkURLSubstring('drupal_alter', 'drupal.php/function/drupal_alter', 'Link to core function is created', 'Link to core function goes to right place');
+    $this->assertLinkUrlSubstring('MyClassB::bMethod', 'ClassB.php/function/ClassB', 'Link to aliased class method is created', 'Link to aliased class method goes to right place');
+    $this->assertLinkUrlSubstring('another_function', 'no_namespace.php/function/another_function', 'Link to function is created', 'Link to function goes to right place');
+    $this->assertLinkUrlSubstring('InterfaceD::dMethod', 'InterfaceD.php/function/InterfaceD', 'Link to interface method is created', 'Link to interface method goes to right namespace');
+    $this->assertLinkUrlSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
+    $this->assertLinkUrlSubstring('drupal_alter', 'drupal.php/function/drupal_alter', 'Link to core function is created', 'Link to core function goes to right place');
   }
 
 }
@@ -359,10 +359,10 @@ class ApiTestTextFormatNoBranch extends ApiWebPagesBaseTest {
       'comment_body[und][0][value]' => 'This is a test of links to things like foo_function() and sample_function() and SubSample and SubSample::bar().',
     ), t('Save'));
 
-    $this->assertLinkURLSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
-    $this->assertLinkURLSubstring('sample_function', 'sample.php/function/sample_function', 'Link to fake API reference function is created', 'Link to API reference function goes to right place');
-    $this->assertLinkURLSubstring('SubSample', 'classes.php/class/SubSample', 'Link to fake API reference class is created', 'Link to API reference class goes to right place');
-    $this->assertLinkURLSubstring('SubSample::bar', 'classes.php/function/SubSample', 'Link to fake API reference method is created', 'Link to API reference method goes to right place');
+    $this->assertLinkUrlSubstring('foo_function', 'example.com/function/foo_function', 'Link to fake PHP function is created', 'Link to fake PHP function goes to right place');
+    $this->assertLinkUrlSubstring('sample_function', 'sample.php/function/sample_function', 'Link to fake API reference function is created', 'Link to API reference function goes to right place');
+    $this->assertLinkUrlSubstring('SubSample', 'classes.php/class/SubSample', 'Link to fake API reference class is created', 'Link to API reference class goes to right place');
+    $this->assertLinkUrlSubstring('SubSample::bar', 'classes.php/function/SubSample', 'Link to fake API reference method is created', 'Link to API reference method goes to right place');
   }
 
 }

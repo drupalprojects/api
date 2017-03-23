@@ -30,7 +30,7 @@ class ApiTestInheritance extends ApiWebPagesBaseTest {
     $this->baseSetUp();
 
     // Make a branch for sample 2 code.
-    $this->branch_info = $this->setUpBranchUi('', TRUE, array(
+    $this->branchInfo = $this->setUpBranchUi('', TRUE, array(
       'project' => 'test2',
       'project_title' => 'Project 2',
       'title' => 'Project 2 6.x',
@@ -52,12 +52,12 @@ class ApiTestInheritance extends ApiWebPagesBaseTest {
   public function testInheritance() {
     // Visit the base interface page, verify implementing class is shown on
     // the implementing page.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/inheritance.php/interface/BaseInterface');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/inheritance.php/interface/BaseInterface');
     $this->clickLink('All classes that implement BaseInterface');
     $this->assertLink('ExcitingClass', 0, 'Implementing class is shown.');
 
     // Visit the class hierarchy page and verify everything is there.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/inheritance.php/interface/BaseInterface');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/inheritance.php/interface/BaseInterface');
     $this->clickLink('Expanded class hierarchy of BaseInterface');
     $this->assertLink('SecondInterface', 0, 'Second interface is linked');
     $this->assertLink('ThirdInterface', 0, 'Third interface is linked');
@@ -75,17 +75,17 @@ class ApiTestInheritance extends ApiWebPagesBaseTest {
 
     // Visit the ThirdInterface page and verify that the "Implemented by"
     // text is missing.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/inheritance.php/interface/ThirdInterface');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/inheritance.php/interface/ThirdInterface');
     $this->assertNoText('Implemented by', 'Implemented by text is omitted from interface without implementing class');
 
     // Visit the first class page and verify the method overrides are shown.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/inheritance.php/class/ExcitingClass');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/inheritance.php/class/ExcitingClass');
     $this->assertLink('BaseInterface::base_function', 0, 'First override is shown');
     $this->assertLink('SecondInterface::second_function', 0, 'Second override is shown');
 
     // Visit the third class page and verify all methods and overrides are
     // shown.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/inheritance.php/class/YetAnotherExcitingClass');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/inheritance.php/class/YetAnotherExcitingClass');
     $this->assertLink('AnotherExcitingClass::another_function', 0, 'New function is shown');
     $this->assertLink('ExcitingClass::base_function', 0, 'Indirectly inherited function is shown');
     $this->assertLink('BaseInterface::base_function', 0, 'Indirect function override is shown');
@@ -95,8 +95,8 @@ class ApiTestInheritance extends ApiWebPagesBaseTest {
     // Check formatting for PHP files in top directory of this branch.
     $files = array('inheritance.php', 'sample2.php');
     foreach ($files as $file) {
-      $object = api_filename_load($file, $this->branch_info['project'], $this->branch_info['branch_name']);
-      $this->assertCodeFormatting($object->code, $this->branch_info['directory'] . '/' . $object->file_name);
+      $object = api_filename_load($file, $this->branchInfo['project'], $this->branchInfo['branch_name']);
+      $this->assertCodeFormatting($object->code, $this->branchInfo['directory'] . '/' . $object->file_name);
     }
   }
 

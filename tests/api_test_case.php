@@ -383,7 +383,7 @@ abstract class ApiWebPagesBaseTest extends ApiTestCase {
    *
    * @var array
    */
-  protected $branch_info;
+  protected $branchInfo;
 
   /**
    * Array of branch information for the sample PHP functions branch.
@@ -402,7 +402,7 @@ abstract class ApiWebPagesBaseTest extends ApiTestCase {
     $this->baseSetUp();
 
     // Create a "file" branch with the sample code, from the admin interface.
-    $this->branch_info = $this->setUpBranchUi();
+    $this->branchInfo = $this->setUpBranchUi();
 
     // Remove the default PHP branch, which most tests do not need.
     $this->removePhpBranch();
@@ -568,7 +568,7 @@ abstract class ApiWebPagesBaseTest extends ApiTestCase {
    * @param string $message_url
    *   Message to use for URL matching assertion.
    */
-  protected function assertLinkURL($label, $url, $message_link, $message_url) {
+  protected function assertLinkUrl($label, $url, $message_link, $message_url) {
     // Code follows DrupalWebTestCase::clickLink() and assertLink().
     $links = $this->xpath('//a[text()="' . $label . '"]');
     $this->assert(isset($links[0]), $message_link);
@@ -592,7 +592,7 @@ abstract class ApiWebPagesBaseTest extends ApiTestCase {
    * @param int $index
    *   (optional) Index of the link on the page, like assertLink(). Default: 0.
    */
-  protected function assertLinkURLSubstring($label, $url, $message_link, $message_url, $index = 0) {
+  protected function assertLinkUrlSubstring($label, $url, $message_link, $message_url, $index = 0) {
     // Code follows DrupalWebTestCase::clickLink() and assertLink().
     $links = $this->xpath('//a[text()="' . $label . '"]');
     $this->assert(isset($links[$index]), $message_link);
@@ -623,7 +623,7 @@ abstract class ApiWebPagesBaseTest extends ApiTestCase {
    * @param string $message
    *   Message to print.
    */
-  protected function assertURLContains($string, $message) {
+  protected function assertUrlContains($string, $message) {
     $this->assertTrue(strpos($this->url, $string) !== FALSE, $message);
   }
 

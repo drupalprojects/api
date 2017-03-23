@@ -56,7 +56,7 @@ class ApiTestSearchIntegration extends ApiWebPagesBaseTest {
     $this->drupalLogin($this->super_user);
 
     // Set up a regular files branch.
-    $this->branch_info = $this->setUpBranchUi();
+    $this->branchInfo = $this->setUpBranchUi();
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();
@@ -91,7 +91,7 @@ class ApiTestSearchIntegration extends ApiWebPagesBaseTest {
 
     foreach ($terms as $term) {
       $this->drupalPost('search/node', array('keys' => $term), t('Search'));
-      $this->assertLinkUrlSubstring('sample_function | function | sample.php | ' . $this->branch_info['title'], 'sample.php/function/sample_function', 'sample_function page title is in search results for ' . $term, 'sample_function link is in search results for ' . $term);
+      $this->assertLinkUrlSubstring('sample_function | function | sample.php | ' . $this->branchInfo['title'], 'sample.php/function/sample_function', 'sample_function page title is in search results for ' . $term, 'sample_function link is in search results for ' . $term);
     }
 
     // Now log in as the restricted user and verify that the searches do

@@ -102,13 +102,13 @@ class ApiTestEnable extends ApiWebPagesBaseTest {
     $this->drupalGet('admin/config/development/api/php_branches');
     $this->clickLink('edit');
     $this->drupalPost(NULL, array('update_frequency' => 604800), t('Save branch'));
-    $this->branch_info = $this->setUpBranchUi();
+    $this->branchInfo = $this->setUpBranchUi();
     $this->resetBranchesAndCache();
     $this->cronRun();
     $this->checkAndClearLog(array(
       ApiTestEnable::CRON_MESSAGE,
-      'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
-      'API parse ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
+      'Updated ' . $this->branchInfo['project'] . ' branch ' . $this->branchInfo['branch_name'],
+      'API parse ' . $this->branchInfo['project'] . ' branch ' . $this->branchInfo['branch_name'],
     ), array(ApiTestEnable::PHP_MESSAGE));
 
     // Run cron a few times more, which should be enough to parse the rest of
@@ -123,10 +123,10 @@ class ApiTestEnable extends ApiWebPagesBaseTest {
     // Spot check to verify that the shutdown function has run and all files are
     // parsed: check a class page and see if methods are there, and check a
     // function page and verify that calls are there.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/SubSample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/SubSample');
     $this->assertLink('Sample::baz', 0, 'Inherited method is shown');
     $this->assertLink('SubSample::bar', 0, 'Direct method is shown');
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/sample.php/function/sample_function');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/sample.php/function/sample_function');
     $this->assertRaw('10 calls to sample_function()', 'Calling text is shown');
     $this->assertRaw("1 string reference to 'sample_function'", 'String reference link is shown');
 
@@ -157,7 +157,7 @@ class ApiTestEnable extends ApiWebPagesBaseTest {
         'comment' => 2,
       ), t('Save comment settings'));
     $this->clickLink(t('Apply current default comment settings to existing API pages'));
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes.php/class/Sample');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes.php/class/Sample');
     $this->drupalPost(
       NULL,
       array(
@@ -183,7 +183,7 @@ class ApiTestEnable extends ApiWebPagesBaseTest {
     $this->cronRun();
     $this->checkAndClearLog(array(
       ApiTestEnable::CRON_MESSAGE,
-      'Updated ' . $this->branch_info['project'] . ' branch ' . $this->branch_info['branch_name'],
+      'Updated ' . $this->branchInfo['project'] . ' branch ' . $this->branchInfo['branch_name'],
       ApiTestEnable::PHP_MESSAGE,
     ));
   }

@@ -30,7 +30,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     $this->baseSetUp(array('api_test'));
 
     // Set up a files branch with the special files directory.
-    $this->branch_info = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/special_files', 'excluded' => ''));
+    $this->branchInfo = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/special_files', 'excluded' => ''));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();
@@ -70,8 +70,8 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     // the file (intentionally), so the formatted output does not work.
     $files = array('badheader.php', 'ClassExtendsLoop.php', 'class_loop.php', 'dup_names.php', 'php54.php');
     foreach ($files as $file) {
-      $object = api_filename_load($file, $this->branch_info['project'], $this->branch_info['branch_name']);
-      $this->assertCodeFormatting($object->code, $this->branch_info['directory'] . '/' . $object->file_name);
+      $object = api_filename_load($file, $this->branchInfo['project'], $this->branchInfo['branch_name']);
+      $this->assertCodeFormatting($object->code, $this->branchInfo['directory'] . '/' . $object->file_name);
     }
   }
 
@@ -80,13 +80,13 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
    */
   protected function verifyUnicode() {
     // Verify that both files are present on the Files page.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/files');
     $this->assertLink('AllUnicodeChars.txt', 0, 'Unicode text file is there');
     $this->assertLink('ClassWithUnicode.php', 0, 'Unicode class file is there');
     $this->assertText('Tests that Unicode characters can be dealt with.', 'Class file description is there');
 
     // Verify the text file page.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/AllUnicodeChars.txt/' . $this->branch_info['branch_name']);
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/AllUnicodeChars.txt/' . $this->branchInfo['branch_name']);
     $this->assertText('abcdefghij', 'ASCII characters are there');
     $this->assertText('àáâãä', 'Accented characters are there');
     $this->assertText('ਙਚਛਜ', 'Some other Unicode characters are there');
@@ -94,7 +94,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     $this->assertText('AllUnicodeChars.txt', 'File name is there');
 
     // Verify the class is listed on the classes page.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/classes');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/classes');
     $this->assertLink('CacheArray', 0, 'Link to class is there');
     $this->assertText(t('Non-displayable characters.'), 'Non-displayable message is there');
 
@@ -123,8 +123,8 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     $this->assertRaw('Duplicate found in file', 'Warning message is present for duplicated function');
 
     // Verify that the file is listed and the file's page can be visited.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
-    $this->assertLinkURLSubstring('badheader.php', $this->branch_info['project'] . '/badheader.php', 'File link exists', 'File link goes to right place');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/files');
+    $this->assertLinkUrlSubstring('badheader.php', $this->branchInfo['project'] . '/badheader.php', 'File link exists', 'File link goes to right place');
     $this->clickLink('badheader.php');
     $this->assertLink('badheader_fun', 0, 'Function link is present on file page');
     $this->assertTitleContains('badheader.php', 'Page title has file name');
@@ -144,7 +144,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
    * Tests that circular class dependencies do not screw us up.
    */
   protected function verifyExtendsLoops() {
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/ClassExtendsLoop.php/class/FirstClass');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/ClassExtendsLoop.php/class/FirstClass');
     $this->assertText('First class', 'Description is on the class page');
     $this->clickLink('Expanded class hierarchy of FirstClass');
     $this->assertRaw('SecondClass', 'Second class link exists');
@@ -155,7 +155,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
    * Tests Twig files.
    */
   protected function verifyTwig() {
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/files');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/files');
     $this->assertText('Sample Twig template file, taken from', 'File description is there');
     $this->assertNoText('Available variables', 'Extra information after first line is not shown');
 
@@ -166,7 +166,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
 
     // Click through to the badheader_fun() function and check the theme link.
     $this->clickLink('badheader_fun');
-    $this->assertLinkURLSubstring('sample', '/sample.html.twig', 'Theme call turns into link', 'Link goes to right place');
+    $this->assertLinkUrlSubstring('sample', '/sample.html.twig', 'Theme call turns into link', 'Link goes to right place');
   }
 
   /**
@@ -174,12 +174,12 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
    */
   protected function verifySearchCaseSensitivity() {
     // Search for lower-case function name should get to the function page.
-    $this->drupalPost('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search', array('search' => 'sample_function'), t('Search'));
-    $this->assertURLContains('dup_names.php/function/sample_function', 'Got to function page with lower-case search');
+    $this->drupalPost('api/' . $this->branchInfo['project'] . '/' . $this->branchInfo['branch_name'] . '/search', array('search' => 'sample_function'), t('Search'));
+    $this->assertUrlContains('dup_names.php/function/sample_function', 'Got to function page with lower-case search');
 
     // Search for upper-case function name should get to the constant page.
-    $this->drupalPost('api/' . $this->branch_info['project'] . '/' . $this->branch_info['branch_name'] . '/search', array('search' => 'SAMPLE_FUNCTION'), t('Search'));
-    $this->assertURLContains('dup_names.php/constant/SAMPLE_FUNCTION', 'Got to constant page with upper-case search');
+    $this->drupalPost('api/' . $this->branchInfo['project'] . '/' . $this->branchInfo['branch_name'] . '/search', array('search' => 'SAMPLE_FUNCTION'), t('Search'));
+    $this->assertUrlContains('dup_names.php/constant/SAMPLE_FUNCTION', 'Got to constant page with upper-case search');
 
   }
 
@@ -188,7 +188,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
    */
   protected function verifyYamlServices() {
     // Test the Services listing page.
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/services/');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/services/');
     $this->assertLink('cache_context.url', 0, 'Service is linked');
     $this->assertLink('test.services.yml', 0, 'Services file is linked');
     $this->assertText('Alias of config.storage.active', 'Alias doc is there');
@@ -201,18 +201,18 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     $this->assertText('event_subscriber', 'Tag is listed');
     $this->assertText('ParamConversionEnhancer', 'Class is listed');
 
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/container.trait');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/test.services.yml/service/container.trait');
     $this->assertNoText('Tags', 'Tags header is not there');
     $this->assertText('Abstract', 'Listed as abstract');
 
     // Verify that the Services link is in the navigation block.
     $this->assertLink(t('Services'), 0, 'Services link is present');
 
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/config.storage');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/test.services.yml/service/config.storage');
     $this->assertNoText('Tags', 'Tags header is not there');
     $this->assertText('Alias of', 'Listed as alias');
 
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/test.services.yml/service/cache_context.url');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/test.services.yml/service/cache_context.url');
     $this->assertLink('CacheArray', 0, 'Class is linked');
     $this->assertLink('test.services.yml', 0, 'File is linked');
     $this->assertText('@request', 'Source is listed');
@@ -225,7 +225,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     // Test that in the method page, there is a link to the service it
     // references.
     $this->clickLink('CacheArray::persist');
-    $this->assertLinkURLSubstring('container.trait', 'test.services.yml/service/container.trait', 'Link to service name exists', 'Link goes to right place');
+    $this->assertLinkUrlSubstring('container.trait', 'test.services.yml/service/container.trait', 'Link to service name exists', 'Link goes to right place');
 
     // Test that the service page shows references.
     $this->clickLink('container.trait');
@@ -241,7 +241,7 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
    * site.
    */
   protected function verifyParseAlterHook() {
-    $this->drupalGet('api/' . $this->branch_info['project'] . '/functions/');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/functions/');
     $this->assertText('only_function_in_file');
   }
 

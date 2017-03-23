@@ -31,7 +31,7 @@ class ApiTestQueues extends ApiTestCase {
     $this->timeLimit *= 2;
 
     $this->baseSetUp();
-    $this->branch_info = $this->setUpBranchApiCall();
+    $this->branchInfo = $this->setUpBranchApiCall();
     $this->removePhpBranch();
     $this->resetBranchesAndCache();
   }
@@ -51,8 +51,8 @@ class ApiTestQueues extends ApiTestCase {
     // Each time we update the queue after this point, wait for a few seconds
     // to make sure that the branch will think it is time to check for updated
     // files, and double-check that the log shows the branch was updated.
-    $branch_message = 'Updated ' . $this->branch_info['project'] .
-      ' branch ' . $this->branch_info['branch_name'];
+    $branch_message = 'Updated ' . $this->branchInfo['project'] .
+      ' branch ' . $this->branchInfo['branch_name'];
     sleep(5);
     $this->updateBranches();
     $this->checkAndClearLog(array($branch_message));
