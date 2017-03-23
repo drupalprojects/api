@@ -35,11 +35,11 @@ class ApiTestMultiDirectory extends ApiTestCase {
     $last = array_pop($parts);
     $prefix = '../' . $last . '/';
 
-    $this->setUpBranchAPICall('', TRUE, array(
+    $this->setUpBranchApiCall('', TRUE, array(
       'directory' => $prefix . drupal_get_path('module', 'api') . '/tests/sample' . "\n" . $prefix . drupal_get_path('module', 'api') . '/tests/sample2',
       'excluded' => $prefix . drupal_get_path('module', 'api') . '/tests/sample/to_exclude' . "\n" . $prefix . drupal_get_path('module', 'api') . '/tests/sample2/maybe_exclude',
     ));
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     $this->resetBranchesAndCache();
     $this->updateBranches();
@@ -110,12 +110,12 @@ class ApiTestRegularExpressionExclusion extends ApiTestCase {
     $last = array_pop($parts);
     $prefix = '../' . $last . '/';
 
-    $this->setUpBranchAPICall('', TRUE, array(
+    $this->setUpBranchApiCall('', TRUE, array(
       'directory' => $prefix . drupal_get_path('module', 'api') . '/tests/sample' . "\n" . $prefix . drupal_get_path('module', 'api') . '/tests/sample2',
       'excluded' => $prefix . drupal_get_path('module', 'api') . '/tests/sample/to_exclude' . "\n" . $prefix . drupal_get_path('module', 'api') . '/tests/sample2/maybe_exclude',
       'regexps' => "|subdirectory|\n|inheritance|",
     ));
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     $this->resetBranchesAndCache();
     $this->updateBranches();

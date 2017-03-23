@@ -33,7 +33,7 @@ class ApiTestDuplicates extends ApiWebPagesBaseTest {
     $this->branch_info = $this->setUpBranchUI('', TRUE, array('excluded' => ''));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Parse the code.
     $this->resetBranchesAndCache();

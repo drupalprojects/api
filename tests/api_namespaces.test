@@ -33,7 +33,7 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->branch_info = $this->setUpBranchUI('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -299,7 +299,7 @@ class ApiTestNamespaceCruft extends ApiWebPagesBaseTest {
       t('Save comment settings'));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Add one node to the database.
     $this->drupalCreateNode();

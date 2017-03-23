@@ -31,8 +31,8 @@ class ApiTestQueues extends ApiTestCase {
     $this->timeLimit *= 2;
 
     $this->baseSetUp();
-    $this->branch_info = $this->setUpBranchAPICall();
-    $this->removePHPBranch();
+    $this->branch_info = $this->setUpBranchApiCall();
+    $this->removePhpBranch();
     $this->resetBranchesAndCache();
   }
 

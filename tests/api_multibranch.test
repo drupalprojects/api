@@ -53,7 +53,7 @@ class ApiTestMultipleBranches extends ApiWebPagesBaseTest {
     ));
 
     // Remove PHP branch.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -268,7 +268,7 @@ class ApiTestMultipleProjects extends ApiWebPagesBaseTest {
     ));
 
     // Remove PHP branch.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Parse the code.
     $this->resetBranchesAndCache();

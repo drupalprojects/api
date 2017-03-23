@@ -29,7 +29,7 @@ class ApiTestLinkCode extends ApiTestCase {
    */
   public function setUp() {
     $this->baseSetUp();
-    $this->setUpBranchAPICall();
+    $this->setUpBranchApiCall();
 
     $this->resetBranchesAndCache();
     $this->updateBranches();

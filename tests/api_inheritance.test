@@ -38,7 +38,7 @@ class ApiTestInheritance extends ApiWebPagesBaseTest {
       'excluded' => drupal_get_path('module', 'api') . '/tests/sample2/maybe_exclude',
     ));
 
-    $this->removePHPBranch();
+    $this->removePhpBranch();
     $this->resetBranchesAndCache();
     $this->updateBranches();
 

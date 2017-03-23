@@ -54,7 +54,7 @@ class ApiTestComments extends ApiWebPagesBaseTest {
     $this->branch_info = $this->setUpBranchUI();
 
     // We don't need the PHP branch for this test, so for speed, remove it.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -188,11 +188,11 @@ class ApiTestTextFormat extends ApiWebPagesBaseTest {
     ), t('Save comment settings'));
 
     // Remove the PHP branch.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Create a "php" branch with the sample PHP function list, from the admin
     // interface.
-    $this->php_branch_info = $this->createPHPBranchUI();
+    $this->createPhpBranchUi();
 
     // Set up a branch for the Drupal core files.
     $this->setUpBranchUI('', TRUE, array(
@@ -292,11 +292,11 @@ class ApiTestTextFormatNoBranch extends ApiWebPagesBaseTest {
     $this->drupalLogin($this->super_user);
 
     // Remove the PHP branch.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Create a "php" branch with the sample PHP function list, from the admin
     // interface.
-    $this->php_branch_info = $this->createPHPBranchUI();
+    $this->createPhpBranchUi();
 
     // Temporarily set up a regular files branch and parse it.
     $temp_branch_info = $this->setUpBranchUI();
@@ -307,7 +307,7 @@ class ApiTestTextFormatNoBranch extends ApiWebPagesBaseTest {
     // Create an "api" branch that points to the temporary branch, and parse
     // it. For this, anonymous users must have permission to view API pages.
     $url = url('api/' . $temp_branch_info['project'] . '/full_list', array('absolute' => TRUE));
-    $this->api_branch_info = $this->createAPIBranchUI(array('data[url]' => $url, 'data[page_limit]' => 10));
+    $this->createApiBranchUi(array('data[url]' => $url, 'data[page_limit]' => 10));
 
     $this->drupalPost('admin/people/permissions', array(
       '1[access API reference]' => TRUE,

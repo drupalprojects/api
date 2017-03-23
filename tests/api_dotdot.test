@@ -35,8 +35,8 @@ class ApiTestDotDot extends ApiTestCase {
     $last = array_pop($parts);
     $prefix = '../' . $last . '/';
 
-    $this->setUpBranchAPICall($prefix);
-    $this->removePHPBranch();
+    $this->setUpBranchApiCall($prefix);
+    $this->removePhpBranch();
 
     $this->resetBranchesAndCache();
     $this->updateBranches();

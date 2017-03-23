@@ -218,7 +218,7 @@ class ApiTestSimpleItemPages extends ApiWebPagesBaseTest {
 
     // Create a "php" branch with the sample PHP function list, from the admin
     // interface.
-    $this->php_branch_info = $this->createPHPBranchUI();
+    $this->createPhpBranchUi();
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -877,7 +877,7 @@ class ApiTestAdminPages extends ApiWebPagesBaseTest {
     // Verify the PHP branches overview page.
     $this->drupalGet('admin/config/development/api/php_branches');
     $this->assertText('php', 'PHP branch type appears');
-    $this->assertText($this->php_branch_info['title'], 'Test PHP branch title appears');
+    $this->assertText($this->phpBranchInfo['title'], 'Test PHP branch title appears');
 
     // Create an API branch and verify it shows up.
     $this->clickLink('Add new API reference branch');
@@ -1024,7 +1024,7 @@ class ApiTestEmptyPageLinks extends ApiWebPagesBaseTest {
     ));
 
     // Remove built-in PHP branch.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Parse the code.
     $this->resetBranchesAndCache();
@@ -1213,7 +1213,7 @@ class ApiTestExcludeDrupalism extends ApiWebPagesBaseTest {
       'exclude_drupalism_regexp' => '|to_exclude|',
     ));
 
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Parse the code.
     $this->resetBranchesAndCache();

@@ -58,7 +58,7 @@ class ApiTestCruft extends ApiWebPagesBaseTest {
     ), t('Save comment settings'));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
-    $this->removePHPBranch();
+    $this->removePhpBranch();
 
     // Add one node to the database.
     $this->drupalCreateNode();
@@ -227,7 +227,7 @@ class ApiTestCruft extends ApiWebPagesBaseTest {
     $this->checkAndClearLog(array('Invalid or deleted branch requested in API parse'));
 
     // Add the fake PHP branch.
-    $this->createPHPBranchUI();
+    $this->createPhpBranchUi();
     $this->resetBranchesAndCache();
     $counts['api_php_branch'] = 1;
     $this->verifyCounts($counts, 0, 'Create PHP branch');
@@ -249,7 +249,7 @@ class ApiTestCruft extends ApiWebPagesBaseTest {
     $this->verifyCounts($counts, 0, 'Delete PHP branch');
 
     // Add the fake API branch.
-    $this->createAPIBranchUI();
+    $this->createApiBranchUi();
     $this->resetBranchesAndCache();
     $counts['api_php_branch'] = 1;
     $this->verifyCounts($counts, 0, 'Create API branch');
@@ -322,8 +322,8 @@ class ApiTestCruft extends ApiWebPagesBaseTest {
 
     // Add both sample and fake PHP/API branches again.
     // Update the branches, but don't parse.
-    $this->createPHPBranchUI();
-    $this->createAPIBranchUI();
+    $this->createPhpBranchUi();
+    $this->createApiBranchUi();
     $this->setUpBranchUI('', TRUE, array(
       'directory' => $this->sourceFileDirectory,
     ));
