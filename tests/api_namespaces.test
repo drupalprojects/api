@@ -30,7 +30,10 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->baseSetUp();
 
     // Set up a files branch for the namespaces files.
-    $this->branchInfo = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+    $this->branchInfo = $this->setUpBranchUi('', TRUE, array(
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace',
+      'excluded' => '',
+    ));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();
@@ -190,7 +193,16 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     variable_set('api_breaks_tag', '');
 
     // Check formatting for PHP files in top directory of this branch.
-    $files = array('ClassA.php', 'ClassB.php', 'ClassE.php', 'InterfaceC.php', 'InterfaceD.php', 'InterfaceD2.php', 'no_namespace.php', 'TraitF.php');
+    $files = array(
+      'ClassA.php',
+      'ClassB.php',
+      'ClassE.php',
+      'InterfaceC.php',
+      'InterfaceD.php',
+      'InterfaceD2.php',
+      'no_namespace.php',
+      'TraitF.php',
+    );
     foreach ($files as $file) {
       $object = api_filename_load($file, $this->branchInfo['project'], $this->branchInfo['branch_name']);
       $this->assertCodeFormatting($object->code, $this->branchInfo['directory'] . '/' . $object->file_name);
@@ -326,7 +338,10 @@ class ApiTestNamespaceCruft extends ApiWebPagesBaseTest {
     $this->verifyCounts($counts, 0, 'No branches');
 
     // Add a branch for the namespace test files.
-    $this->branchInfo = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+    $this->branchInfo = $this->setUpBranchUi('', TRUE, array(
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace',
+      'excluded' => '',
+    ));
 
     $counts['api_project'] = 1;
     $counts['api_branch'] = 1;

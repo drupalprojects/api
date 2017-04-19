@@ -42,7 +42,11 @@ class ApiTestNodeAccess extends ApiWebPagesBaseTest {
     // Verify that a node query without the node_access tag returns both API
     // and non-API nodes.
     $results = db_query('SELECT * FROM {node}');
-    $this->verifyQueryResults($results, 'All nodes, no tag', array($page->nid, $article->nid, $object->did), array('page', 'article', 'api'));
+    $this->verifyQueryResults(
+      $results,
+      'All nodes, no tag',
+      array($page->nid, $article->nid, $object->did),
+      array('page', 'article', 'api'));
 
     // Verify that a node query with the node_access tag returns only non-API
     // nodes.
@@ -59,7 +63,11 @@ class ApiTestNodeAccess extends ApiWebPagesBaseTest {
       ->addTag('node_access')
       ->addTag('api_ignore_node_access')
       ->execute();
-    $this->verifyQueryResults($results, 'All nodes, both tags', array($page->nid, $article->nid, $object->did), array('page', 'article', 'api'));
+    $this->verifyQueryResults(
+      $results,
+      'All nodes, both tags',
+      array($page->nid, $article->nid, $object->did),
+      array('page', 'article', 'api'));
 
     // Try a more complicated query with the node_access tag.
     $query = db_select('node_revision', 'r');

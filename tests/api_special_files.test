@@ -30,7 +30,10 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
     $this->baseSetUp(array('api_test'));
 
     // Set up a files branch with the special files directory.
-    $this->branchInfo = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/special_files', 'excluded' => ''));
+    $this->branchInfo = $this->setUpBranchUi('', TRUE, array(
+      'directory' => drupal_get_path('module', 'api') . '/tests/special_files',
+      'excluded' => '',
+    ));
 
     // We don't need the PHP branch for this test, so for speed, remove it.
     $this->removePhpBranch();
@@ -68,7 +71,13 @@ class ApiTestSpecialIssues extends ApiWebPagesBaseTest {
   protected function verifyFormatting() {
     // ClassWithUnicode.php is omitted, because it has a Unicode error in
     // the file (intentionally), so the formatted output does not work.
-    $files = array('badheader.php', 'ClassExtendsLoop.php', 'class_loop.php', 'dup_names.php', 'php54.php');
+    $files = array(
+      'badheader.php',
+      'ClassExtendsLoop.php',
+      'class_loop.php',
+      'dup_names.php',
+      'php54.php',
+    );
     foreach ($files as $file) {
       $object = api_filename_load($file, $this->branchInfo['project'], $this->branchInfo['branch_name']);
       $this->assertCodeFormatting($object->code, $this->branchInfo['directory'] . '/' . $object->file_name);

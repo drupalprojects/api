@@ -207,7 +207,10 @@ class ApiTestTextFormat extends ApiWebPagesBaseTest {
     ));
 
     // Set up a files branch for the namespaces files.
-    $this->branchInfo = $this->setUpBranchUi('', TRUE, array('directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace', 'excluded' => ''));
+    $this->branchInfo = $this->setUpBranchUi('', TRUE, array(
+      'directory' => drupal_get_path('module', 'api') . '/tests/sample_namespace',
+      'excluded' => '',
+    ));
 
     // Set up the Filtered HTML text format to have the API format as part of
     // it.

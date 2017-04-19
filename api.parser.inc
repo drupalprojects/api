@@ -1108,7 +1108,11 @@ function _api_save_docblocks(array $docblocks) {
     if ($docblock['did'] > 0) {
       // Verify that this same object wasn't already in this file in this run.
       if (in_array($docblock['did'], $dids)) {
-        watchdog('api', 'Duplicate found in file %file at line %line. Only first instance of %name is saved', array('%file' => $docblocks[0]['file_name'], '%line' => $docblock['start_line'], '%name' => $docblock['object_name']), WATCHDOG_WARNING);
+        watchdog('api', 'Duplicate found in file %file at line %line. Only first instance of %name is saved', array(
+          '%file' => $docblocks[0]['file_name'],
+          '%line' => $docblock['start_line'],
+          '%name' => $docblock['object_name'],
+        ), WATCHDOG_WARNING);
         continue;
       }
       api_add_text_defaults($docblock, 'api_documentation');
@@ -1164,7 +1168,14 @@ function _api_save_docblocks(array $docblocks) {
       case 'trait':
         db_delete('api_reference_storage')
           ->condition('branch_id', $docblocks[0]['branch']->branch_id)
-          ->condition('object_type', array('class', 'interface', 'trait', 'annotation_class', 'annotation', 'element'))
+          ->condition('object_type', array(
+            'class',
+            'interface',
+            'trait',
+            'annotation_class',
+            'annotation',
+            'element',
+          ))
           ->condition('from_did', $docblock['did'])
           ->execute();
         db_delete('api_namespace')
@@ -1187,7 +1198,11 @@ function _api_save_docblocks(array $docblocks) {
             $refname = api_full_classname($class, $namespace, $use_aliases);
             $refalias = api_full_classname($alias, $namespace, $use_aliases);
             if ($refname != $refalias) {
-              watchdog('api', 'Aliases for use statements for traits are not supported in %filename for %alias, %class', array('%filename' => $docblock['file_name'], '%alias' => $alias, '%class' => $class), WATCHDOG_WARNING);
+              watchdog('api', 'Aliases for use statements for traits are not supported in %filename for %alias, %class', array(
+                '%filename' => $docblock['file_name'],
+                '%alias' => $alias,
+                '%class' => $class,
+              ), WATCHDOG_WARNING);
             }
             _api_reference($docblocks[0]['branch'], 'trait', $refname, $docblock['did']);
             // If there are insteadof/alias details for this trait, save them
@@ -1198,10 +1213,20 @@ function _api_save_docblocks(array $docblocks) {
                   if ($type == 'precedence') {
                     // @todo We could support insteadof here; see other todo
                     // for where it would be used.
-                    watchdog('api', 'Trait inheritance with insteadof statements are not supported in %filename for %item', array('%filename' => $docblock['file_name'], '%item' => $name), WATCHDOG_WARNING);
+                    watchdog('api', 'Trait inheritance with insteadof statements are not supported in %filename for %item', array(
+                      '%filename' => $docblock['file_name'],
+                      '%item' => $name,
+                    ), WATCHDOG_WARNING);
                   }
-                  elseif (in_array($name, array('public', 'protected', 'private'))) {
-                    watchdog('api', 'Trait inheritance that changes visibility is not supported in %filename for %item', array('%filename' => $docblock['file_name'], '%item' => $item), WATCHDOG_WARNING);
+                  elseif (in_array($name, array(
+                    'public',
+                    'protected',
+                    'private',
+                  ))) {
+                    watchdog('api', 'Trait inheritance that changes visibility is not supported in %filename for %item', array(
+                      '%filename' => $docblock['file_name'],
+                      '%item' => $item,
+                    ), WATCHDOG_WARNING);
                   }
                   else {
                     _api_namespace($docblock['did'], 'trait_' . $type, $name, $refname . '::' . $item);
@@ -1301,7 +1326,23 @@ function _api_replace_references($branch, $did, $name, array $references, $do_na
   }
 
   // Remove any existing references.
-  $types_to_remove = array('function', 'potential hook', 'potential theme', 'potential element', 'potential alter', 'potential callback', 'potential file', 'constant', 'member-parent', 'member-self', 'member', 'member-class', 'yaml string', 'service_tag', 'service_class');
+  $types_to_remove = array(
+    'function',
+    'potential hook',
+    'potential theme',
+    'potential element',
+    'potential alter',
+    'potential callback',
+    'potential file',
+    'constant',
+    'member-parent',
+    'member-self',
+    'member',
+    'member-class',
+    'yaml string',
+    'service_tag',
+    'service_class',
+  );
 
   db_delete('api_reference_storage')
     ->condition('branch_id', $branch->branch_id)
@@ -1862,7 +1903,11 @@ function _api_find_php_references(array $statements, $is_drupal, $filename, arra
     }
     elseif (in_array('cond', $sub_nodes) && in_array('if', $sub_nodes) && in_array('else', $sub_nodes)) {
       // A ternary operation.
-      $sub_statements = array($statement->cond, $statement->if, $statement->else);
+      $sub_statements = array(
+        $statement->cond,
+        $statement->if,
+        $statement->else,
+      );
     }
 
     // Recursively find references in sub-statements.
@@ -1995,7 +2040,13 @@ function _api_reference($branch, $to_type = '', $to_name = '', $from_did = '', $
     if ($wait) {
       if (is_null($query_stored)) {
         $query_stored = db_insert('api_reference_storage')
-          ->fields(array('object_name', 'branch_id', 'object_type', 'from_did', 'extends_did'));
+          ->fields(array(
+            'object_name',
+            'branch_id',
+            'object_type',
+            'from_did',
+            'extends_did',
+          ));
       }
       $query_stored->values(array(
         'object_name' => $to_name,
@@ -2481,7 +2532,17 @@ function _api_update_class_reference_info($did, array $parent_info, array $membe
   $has_some = FALSE;
   foreach ($members as $list) {
     foreach ($list as $member) {
-      $query->values(array('class_did' => $did, 'did' => $member['did'], 'member_alias' => ($member['alias'] != $member['member_name']) ? $member['alias'] : NULL));
+      if ($member['alias'] != $member['member_name']) {
+        $member_alias = $member['alias'];
+      }
+      else {
+        $member_alias = NULL;
+      }
+      $query->values(array(
+        'class_did' => $did,
+        'did' => $member['did'],
+        'member_alias' => $member_alias,
+      ));
       $has_some = TRUE;
     }
   }
@@ -2772,7 +2833,16 @@ function _api_bare_object_load($did, $type = '') {
  *   - var
  */
 function _api_has_documentation($object) {
-  foreach (array('documentation', 'parameters', 'return_value', 'see', 'deprecated', 'throws', 'var') as $member) {
+  $members = array(
+    'documentation',
+    'parameters',
+    'return_value',
+    'see',
+    'deprecated',
+    'throws',
+    'var',
+  );
+  foreach ($members as $member) {
     if (!empty($object->$member)) {
       return TRUE;
     }
@@ -2821,7 +2891,14 @@ function _api_calculate_reference_counts($branch_id) {
   $select->addExpression("'call'", 'reference_type');
   $select->addExpression('COUNT(*)', 'reference_count');
   $select
-    ->condition('ars.object_type', array('function', 'constant', 'member-class', 'computed-member', 'class', 'interface'))
+    ->condition('ars.object_type', array(
+      'function',
+      'constant',
+      'member-class',
+      'computed-member',
+      'class',
+      'interface',
+    ))
     ->condition('ars.branch_id', $branch_id)
     ->groupBy('ars.object_name');
   db_insert('api_reference_counts')
@@ -2836,7 +2913,12 @@ function _api_calculate_reference_counts($branch_id) {
   $select->addExpression("'string'", 'reference_type');
   $select->addExpression('COUNT(*)', 'reference_count');
   $select
-    ->condition('ars.object_type', array('potential callback', 'potential file', 'service_class', 'yaml string'))
+    ->condition('ars.object_type', array(
+      'potential callback',
+      'potential file',
+      'service_class',
+      'yaml string',
+    ))
     ->condition('ars.branch_id', $branch_id)
     ->groupBy('ars.object_name');
   db_insert('api_reference_counts')

@@ -31,7 +31,15 @@ abstract class ApiTestCase extends DrupalWebTestCase {
    *   Extra modules to install.
    */
   protected function baseSetUp(array $extra_modules = array()) {
-    $modules = array_merge(array('api', 'ctools', 'composer_manager', 'node', 'comment', 'dblog', 'views'), $extra_modules);
+    $modules = array_merge(array(
+      'api',
+      'ctools',
+      'composer_manager',
+      'node',
+      'comment',
+      'dblog',
+      'views',
+    ), $extra_modules);
     DrupalWebTestCase::setUp($modules);
 
     $this->ensureAutoLoader();

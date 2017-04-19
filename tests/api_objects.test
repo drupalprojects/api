@@ -105,13 +105,21 @@ class ApiTestBranchCreation extends ApiTestCase {
     // Check group samp_GRP-6.x.
     $samples_group = api_object_load('samp_GRP-6.x', $branch, 'group', 'sample.php');
     $this->assertEqual($samples_group->summary, 'A sample group.', 'Group samples has summary ' . $samples_group->summary);
-    $count = db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':object_name' => $samples_group->object_name, ':object_type' => 'group'))->fetchField();
+    $count = db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND object_name = :object_name AND object_type = :object_type", array(
+      ':branch_id' => $branch->branch_id,
+      ':object_name' => $samples_group->object_name,
+      ':object_type' => 'group',
+    ))->fetchField();
     $this->assertEqual($count, 8, 'Group samples has ' . $count . ' members');
 
     // Check group class_samples.
     $class_samples_group = api_object_load('class_samples', $branch, 'group', 'classes.php');
     $this->assertEqual($class_samples_group->summary, 'A sample group of classes. Should not include members.', 'Group class_samples has summary ' . $class_samples_group->summary);
-    $count = db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':object_name' => $class_samples_group->object_name, ':object_type' => 'group'))->fetchField();
+    $count = db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND object_name = :object_name AND object_type = :object_type", array(
+      ':branch_id' => $branch->branch_id,
+      ':object_name' => $class_samples_group->object_name,
+      ':object_type' => 'group',
+    ))->fetchField();
     $this->assertEqual($count, 10, 'Group class_samples has ' . $count . ' members.');
 
     // Check classes.php.
@@ -153,8 +161,18 @@ class ApiTestBranchCreation extends ApiTestCase {
 
     // Check inheritance.
     $subclass = api_object_load('SubSample', $branch, 'class', 'classes.php');
-    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $class->did, ':object_name' => $interface->namespaced_name, ':object_type' => 'interface'))->fetchField(), 1, 'Sample implements SampleInterface.');
-    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(':branch_id' => $branch->branch_id, ':from_did' => $subclass->did, ':object_name' => $class->namespaced_name, ':object_type' => 'class'))->fetchField(), 1, 'SubSample extends Sample.');
+    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(
+      ':branch_id' => $branch->branch_id,
+      ':from_did' => $class->did,
+      ':object_name' => $interface->namespaced_name,
+      ':object_type' => 'interface',
+    ))->fetchField(), 1, 'Sample implements SampleInterface.');
+    $this->assertEqual(db_query("SELECT count(*) FROM {api_reference_storage} WHERE branch_id = :branch_id AND from_did = :from_did AND object_name = :object_name AND object_type = :object_type", array(
+      ':branch_id' => $branch->branch_id,
+      ':from_did' => $subclass->did,
+      ':object_name' => $class->namespaced_name,
+      ':object_type' => 'class',
+    ))->fetchField(), 1, 'SubSample extends Sample.');
 
     // Check overrides.
     $subSample_bar = api_object_load('SubSample::bar', $branch, 'function', 'classes.php');
@@ -186,7 +204,12 @@ class ApiTestBranchCreation extends ApiTestCase {
     $this->assertEqual($dids[$subSample_bar->did], TRUE, 'SubSample::bar is a member of SubSample.');
 
     // Check formatting for remaining PHP files in top directory of this branch.
-    $files = array('duplicates.php', 'onefunction.php', 'sample--doubledash.tpl.php', 'sample-three.tpl.php');
+    $files = array(
+      'duplicates.php',
+      'onefunction.php',
+      'sample--doubledash.tpl.php',
+      'sample-three.tpl.php',
+    );
     foreach ($files as $file) {
       $object = api_filename_load($file, $branch->project, $branch->branch_name);
       $this->assertCodeFormatting($object->code, $branch->directories . '/' . $object->file_name);
