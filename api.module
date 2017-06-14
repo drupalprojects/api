@@ -1967,10 +1967,9 @@ function api_block_view($delta) {
     case 'navigation':
       if (user_access('access API reference') && !empty($branch)) {
         // See if this block is configured to display on this type of API page.
-        $saved_config = variable_get('api_navigation_block_display', array('branch' => 'branch', 'listing' => 'listing', 'item' => 'item', 'references' => 'references', 'search' => 'search', 'special' => 'special'));
-
         $page_type = api_get_page_type();
-        if (!$page_type || !isset($configured[$page_type]) || !$configured[$page_type]) {
+        $saved_config = variable_get('api_navigation_block_display', array('branch' => 'branch', 'listing' => 'listing', 'item' => 'item', 'references' => 'references', 'search' => 'search', 'special' => 'special'));
+        if (!$page_type || !isset($saved_config[$page_type]) || !$saved_config[$page_type]) {
           return;
         }
 
