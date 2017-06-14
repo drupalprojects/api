@@ -1905,6 +1905,50 @@ function api_block_info() {
 }
 
 /**
+ * Implements hook_block_configure().
+ */
+function api_block_configure($delta) {
+  if ($delta !== 'navigation') {
+    return;
+  }
+
+  $form = array();
+
+  // Allow the navigation block to be hidden on certain types of API
+  // pages.
+  $types = array(
+    'branch' => t('Branch landing pages'),
+    'listing' => t('Listing pages for functions, classes, topics, etc.'),
+    'item' => t('Single item pages for a function, class, topic, etc.'),
+    'references' => t('Pages listing references such as function calls'),
+    'search' => t('Search forms and search results'),
+    'special' => t('Miscellaneous API module pages, such as project list'),
+  );
+
+  $saved_config = variable_get('api_navigation_block_display', array('branch' => 'branch', 'listing' => 'listing', 'item' => 'item', 'references' => 'references', 'search' => 'search', 'special' => 'special'));
+
+  $form['display'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Show on'),
+    '#options' => $types,
+    '#default_value' => $saved_config,
+  );
+
+  return $form;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function api_block_save($delta = '', $edit = array()) {
+  if ($delta !== 'navigation') {
+    return;
+  }
+
+  variable_set('api_navigation_block_display', $edit['display']);
+}
+
+/**
  * Implements hook_block_view().
  */
 function api_block_view($delta) {
@@ -1922,6 +1966,14 @@ function api_block_view($delta) {
 
     case 'navigation':
       if (user_access('access API reference') && !empty($branch)) {
+        // See if this block is configured to display on this type of API page.
+        $saved_config = variable_get('api_navigation_block_display', array('branch' => 'branch', 'listing' => 'listing', 'item' => 'item', 'references' => 'references', 'search' => 'search', 'special' => 'special'));
+
+        $page_type = api_get_page_type();
+        if (!$page_type || !isset($configured[$page_type]) || !$configured[$page_type]) {
+          return;
+        }
+
         // Figure out if this is the default branch for this project, the same
         // way the menu system decides.
         $projects = _api_make_menu_projects();
@@ -2155,6 +2207,84 @@ function api_namespace_url($branch_id, $namespace) {
 
   $replaced_string = str_replace(API_NAMESPACE_SEPARATOR, API_FILEPATH_SEPARATOR_REPLACEMENT, $namespace);
   return 'api/' . $branch->project . '/namespace/' . $replaced_string . '/' . $branch->branch_name;
+}
+
+/**
+ * Returns the API page type of the current page.
+ *
+ * @return string
+ *   One of the following:
+ *   - (empty): If the current page is not an API module page.
+ *   - branch: If it is a branch landing page.
+ *   - listing: If it is a functions, classes, etc. listing page.
+ *   - item: If it is an item page for a single function, class, topic, etc.
+ *   - references: If it is a '25 functions call this one' or other references
+ *     page, or class hierarchy, interface implements, etc.
+ *   - search: If it is a search or search results page.
+ *   - special: If it is a special page, such as the project list, function
+ *     dump, etc.
+ */
+function api_get_page_type() {
+  static $type = '';
+  static $type_set = FALSE;
+
+  if (!$type_set) {
+    $type_set = TRUE;
+
+    // See if we are on an API page at all. If we are not on an API page,
+    // calling menu_get_item() could lead to recursion problems, so check arg()
+    // first.
+    $arg = arg();
+    if ($arg[0] != 'api' || count($arg) < 2) {
+      $type = '';
+      return $type;
+    }
+
+    // Get the router item and see what the page callback function is. Use this
+    // to determine the page type.
+    $item = menu_get_item();
+    switch ($item['page_callback']) {
+      case 'api_opensearch':
+      case 'api_suggest':
+      case 'api_search_autocomplete':
+      case 'api_page_function_dump':
+      case 'api_page_projects':
+      case 'api_dump_full_list':
+        $type = 'special';
+        break;
+
+      case 'api_page_branch':
+        $type = 'branch';
+        break;
+
+      case 'drupal_get_form':
+      case 'api_search_listing':
+        $type = 'search';
+        break;
+
+      case 'api_page_listing':
+        $type = 'listing';
+        break;
+
+      case 'api_page_file':
+      case 'api_page_function':
+      case 'api_page_simple_item':
+      case 'api_page_class':
+      case 'api_page_service':
+      case 'api_page_group':
+      case 'api_page_namespace':
+        $type = 'item';
+        break;
+
+      case 'api_page_function_calls':
+      case 'api_page_class_hierarchy':
+      case 'api_page_interface_implements':
+        $type = 'references';
+        break;
+    }
+
+    return $type;
+  }
 }
 
 /**
