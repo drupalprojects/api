@@ -2529,7 +2529,8 @@ function api_search_form($form, $form_state, $branch, $set_page_title = FALSE) {
   }
 
   $form['search'] = array(
-    '#title' => t('Function, file, or topic'),
+    '#title' => t('Function, class, file, topic, etc.'),
+    '#title_display' => 'invisible',
     '#description' => t('Partial match search is supported'),
     '#type' => 'textfield',
     '#default_value' => '',

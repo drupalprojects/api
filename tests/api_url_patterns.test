@@ -302,7 +302,7 @@ class ApiTestUrlPatterns extends ApiTestCase {
       ),
       array(
         'url' => 'api/' . $project_name . '/' . $branch_name . '/search',
-        'text' => array($branch_title, 'Function, file, or topic'),
+        'text' => array($branch_title),
         'aliases' => array('api/search'),
       ),
 
