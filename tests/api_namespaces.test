@@ -180,6 +180,7 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
       t('Save blocks')
     );
     // Verify the Namespaces link is present in the navigation block.
+    $this->drupalGet('api');
     $this->assertLink(t('Namespaces'), 0, 'Namespaces navigation link is present');
 
     // Set the breaks tag variable and test Classes and Namespaces pages.
