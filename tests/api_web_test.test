@@ -998,7 +998,7 @@ class ApiTestEmptyPageLinks extends ApiWebPagesBaseTest {
   public static function getInfo() {
     return array(
       'name' => 'Empty listing page links',
-      'description' => 'Tests that links to empty listing pages are not made. Also tests multiple projects setup.',
+      'description' => 'Tests that links to empty listing pages are not made. Also tests multiple projects setup, and navigation block configuration.',
       'group' => 'API module',
     );
   }
@@ -1109,6 +1109,62 @@ class ApiTestEmptyPageLinks extends ApiWebPagesBaseTest {
     $this->assertNoLink(t('Constants'), 'Constants link is not present');
     $this->assertNoLink(t('Globals'), 'Globals link is not present');
     $this->assertNoLink(t('Topics'), 'Topics link is not present');
+
+    // Test the settings for which pages the block should be displayed on.
+    $pages = array(
+      'branch' => array('api/' . $this->branchInfo2['project']),
+      'listing' => array(
+        'api/' . $this->branchInfo2['project'] . '/functions',
+        'api/' . $this->branchInfo2['project'] . '/classes',
+        'api/' . $this->branchInfo2['project'] . '/groups',
+      ),
+      'item' => array(
+        'api/' . $this->branchInfo2['project'] . '/sample2.php/function/second_sample_function',
+        'api/' . $this->branchInfo['project'] . '/sample.php/constant/DUPLICATE_CONSTANT',
+        'api/' . $this->branchInfo['project'] . '/sample.php/global/sample_global',
+        'api/' . $this->branchInfo['project'] . '/classes.php/class/Sample',
+        'api/' . $this->branchInfo['project'] . '/sample.php/group/samp_GRP-6.x',
+        'api/' . $this->branchInfo['project'] . '/sample.php/' . $this->branchInfo['branch_name'],
+      ),
+      'references' => array(
+        'api/' . $this->branchInfo['project'] . '/sample.php/function/calls/sample_function',
+        'api/' . $this->branchInfo['project'] . '/classes.php/class/hierarchy/sample',
+        'api/' . $this->branchInfo['project'] . '/classes.php/interface/implements/SampleInterface',
+      ),
+      'search' => array(
+        'api/' . $this->branchInfo['project'] . '/' . $this->branchInfo['branch_name'] . '/search',
+        'api/' . $this->branchInfo['project'] . '/' . $this->branchInfo['branch_name'] . '/search/sample',
+      ),
+      'special' => array('api/projects'),
+    );
+
+    $types = array_keys($pages);
+    $all_off = array();
+    foreach ($types as $type) {
+      $all_off['display[' . $type . ']'] = FALSE;
+    }
+
+    foreach ($types as $type) {
+      // Configure the block to only be visible on this type of page.
+      $edit = $all_off;
+      $edit['display[' . $type . ']'] = TRUE;
+      $this->drupalPost('admin/structure/block/manage/api/navigation/configure',
+        $edit, 'Save block');
+      $this->refreshVariables();
+
+      // Verify all the URLs either have or don't have the block.
+      foreach ($pages as $test_type => $urls) {
+        foreach ($urls as $url) {
+          $this->drupalGet($url);
+          if ($test_type == $type) {
+            $this->assertText('API Navigation', 'Block is present when configured for ' . $type);
+          }
+          else {
+            $this->assertNoText('API Navigation', 'Block is not present when configured for ' . $type);
+          }
+        }
+      }
+    }
   }
 
 }
