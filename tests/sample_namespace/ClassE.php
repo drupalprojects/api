@@ -7,6 +7,7 @@
 namespace api\test2;
 
 use api\test1\TraitF;
+use api\test1\TraitG;
 
 /**
  * Still another sample class in a namespace.
@@ -14,6 +15,10 @@ use api\test1\TraitF;
 class ClassE {
 
   use TraitF;
+
+  use TraitG {
+    TraitG::def insteadof TraitF;
+  }
 
   /**
    * A class variable to test linking to the type class.

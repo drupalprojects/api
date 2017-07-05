@@ -1924,6 +1924,20 @@ function api_update_7142() {
 }
 
 /**
+ * Mark all classes using traits for reparsing.
+ */
+function api_update_7143() {
+  module_load_include('inc', 'api', 'api.db');
+  $select = db_select('api_reference_storage', 'ars')
+    ->condition('object_type', 'trait')
+    ->fields('ars', array('from_did'))
+    ->groupBy('ars.from_did');
+  $dids = $select->execute()->fetchCol();
+  api_mark_items_for_reparse($dids);
+  return format_string('@count files marked for reparse, starting at next cron run', array('@count' => count($dids)));
+}
+
+/**
  * Remove variables and other data on uninstall.
  */
 function api_uninstall() {

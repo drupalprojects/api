@@ -149,7 +149,12 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->drupalGet('api/' . $this->branchInfo['project'] . '/ClassE.php/class/ClassE');
     $this->assertLink('TraitF::$fvar', 0, 'Trait property link is present on using class page');
     $this->assertLink('TraitF::xyz', 0, 'Trait method link is present on using class page');
+    $this->assertLink('TraitG::abc', 0, 'Trait method link is present on using class page');
     $this->assertLink('TraitF', 0, 'Link to used trait is present on class page');
+    $this->assertLink('TraitG', 0, 'Link to used trait is present on class page');
+    // Verify insteadof.
+    $this->assertLink('TraitG::def', 0, 'Trait method insteadof link is present on using class page');
+    $this->assertNoLink('TraitF::def', 'Trait method omitted with insteadof is not present');
 
     // Verify links in code for class using trait.
     $this->clickLink('ClassE::eMethod');
@@ -352,22 +357,22 @@ class ApiTestNamespaceCruft extends ApiWebPagesBaseTest {
     // Run the branch update function and verify counts. There should be
     // records for each file.
     $this->updateBranches();
-    $counts['node'] = 10;
-    $counts['api_documentation'] = 9;
-    $counts['api_file'] = 9;
-    $this->verifyCounts($counts, 9, 'Add and update branch');
+    $counts['node'] = 11;
+    $counts['api_documentation'] = 10;
+    $counts['api_file'] = 10;
+    $this->verifyCounts($counts, 10, 'Add and update branch');
 
     // Parse everything and verify counts.
     $this->checkAndClearLog();
     $this->updateBranches();
     $this->processApiParseQueue();
-    $counts['node'] = 32;
-    $counts['api_documentation'] = 31;
-    $counts['api_function'] = 12;
-    $counts['api_file'] = 9;
-    $counts['api_members'] = 18;
-    $counts['api_overrides'] = 13;
-    $counts['api_namespace'] = 12;
+    $counts['node'] = 37;
+    $counts['api_documentation'] = 36;
+    $counts['api_function'] = 15;
+    $counts['api_file'] = 10;
+    $counts['api_members'] = 24;
+    $counts['api_overrides'] = 16;
+    $counts['api_namespace'] = 15;
     $this->verifyCounts($counts, 0, 'Parse the branch');
 
     // Delete the branch, and verify counts.

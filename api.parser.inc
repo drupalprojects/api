@@ -703,7 +703,15 @@ function _api_build_php_docblocks(array $statements, array $default_block, array
         foreach ($statement->adaptations as $adaptation) {
           $ad_type_parts = explode('_', $adaptation->getType());
           $ad_type = strtolower(array_pop($ad_type_parts));
-          $references['use_trait'][$trait]['details'][$ad_type][$adaptation->newName] = $adaptation->method;
+          if ($ad_type == 'precedence') {
+            foreach ($adaptation->insteadof as $node) {
+              $classname = $node->toString();
+              $references['use_trait'][$trait]['details'][$ad_type][$node->toString()] = $adaptation->method;
+            }
+          }
+          else {
+            $references['use_trait'][$trait]['details'][$ad_type][$adaptation->newName] = $adaptation->method;
+          }
         }
         $all_references = _api_merge_references($all_references, $references, $docblock['file_name']);
         break;
@@ -1180,7 +1188,7 @@ function _api_save_docblocks(array $docblocks) {
           ->execute();
         db_delete('api_namespace')
           ->condition('did', $docblock['did'])
-          ->condition('object_type', array('trait_instead', 'trait_alias'))
+          ->condition('object_type', array('trait_alias', 'trait_precedence'))
           ->execute();
 
         foreach ($docblock['extends'] as $extend) {
@@ -1211,12 +1219,9 @@ function _api_save_docblocks(array $docblocks) {
               foreach ($info['details'] as $type => $list) {
                 foreach ($list as $name => $item) {
                   if ($type == 'precedence') {
-                    // @todo We could support insteadof here; see other todo
-                    // for where it would be used.
-                    watchdog('api', 'Trait inheritance with insteadof statements are not supported in %filename for %item', array(
-                      '%filename' => $docblock['file_name'],
-                      '%item' => $name,
-                    ), WATCHDOG_WARNING);
+                    // This is an insteadof statement.
+                    $name = api_full_classname($name, $namespace, $use_aliases);
+                    _api_namespace($docblock['did'], 'trait_' . $type, $name, $item);
                   }
                   elseif (in_array($name, array(
                     'public',
@@ -2649,12 +2654,13 @@ function _api_calc_class_members($did, array $parent_info, array $member_info) {
   if (!isset($parent_info[$did])) {
     return $members;
   }
-  // See if there are any aliases for trait members.
+  // See if there are any aliases or insteadof statements for trait members.
   $aliases = _api_find_trait_aliases($did);
+  $omit = _api_find_trait_precedence($did);
 
   foreach ($parent_info[$did] as $parent_name => $parent) {
     $parent_members = _api_calc_class_members($parent, $parent_info, $member_info);
-    _api_member_list_merge($members, $parent_members, isset($aliases[$parent_name]) ? $aliases[$parent_name] : array());
+    _api_member_list_merge($members, $parent_members, isset($aliases[$parent_name]) ? $aliases[$parent_name] : array(), isset($omit[$parent_name]) ? $omit[$parent_name] : array());
   }
 
   // Save in the cache and return.
@@ -2672,8 +2678,6 @@ function _api_find_trait_aliases($did) {
     ->fields('an', array('class_alias', 'class_name'))
     ->execute();
 
-  // @todo Consider the possibility of insteadof in traits -- right now Core
-  // does not use this -- but it would mean excluding some trait methods.
   $return = array();
   foreach ($results as $item) {
     $alias = $item->class_alias;
@@ -2687,6 +2691,31 @@ function _api_find_trait_aliases($did) {
   }
 
   return $return;
+}
+
+/**
+ * Reads trait method precedence (insteadof) statements from the database.
+ *
+ * @return array
+ *   Array whose keys are trait class names, and whose values are a list of
+ *   methods that should be excluded from that trait when using it, because
+ *   methods from another class is being used instead of them.
+ */
+function _api_find_trait_precedence($did) {
+  $results = db_select('api_namespace', 'an')
+    ->condition('did', $did)
+    ->condition('object_type', array('trait_precedence'))
+    ->fields('an', array('class_alias', 'class_name'))
+    ->execute();
+
+  $omit = array();
+  foreach ($results as $item) {
+    $class = $item->class_alias;
+    $method = $item->class_name;
+    $omit[$class][] = $method;
+  }
+
+  return $omit;
 }
 
 /**
@@ -2738,11 +2767,16 @@ function _api_make_bare_member_list($did, $member_info) {
  * @param array $parent_members
  *   List of parent member information to merge in.
  * @param array $aliases
- *   List of aliases for member names (functions only)
+ *   List of aliases for member names (functions only).
+ * @param array $omit
+ *   List of methods in parent class to omit due to insteadof statements.
  */
-function _api_member_list_merge(array &$members, array $parent_members, array $aliases) {
+function _api_member_list_merge(array &$members, array $parent_members, array $aliases, array $omit) {
   foreach ($parent_members as $type => $new_type_list) {
     foreach ($new_type_list as $member_name => $info) {
+      if (in_array($member_name, $omit)) {
+        continue;
+      }
       $alias = (isset($aliases[$member_name]) && $type == 'function') ? $aliases[$member_name] : $member_name;
       if (isset($members[$type][$alias])) {
         // We already knew about this member. Save override info, if new.

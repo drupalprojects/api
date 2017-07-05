@@ -24,4 +24,12 @@ trait TraitF {
   protected function xyz() {
     return 7;
   }
+
+  /**
+   * Conflicting method to inherit.
+   */
+  protected function def() {
+    return 'Value from TraitF';
+  }
+
 }
