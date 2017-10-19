@@ -124,6 +124,14 @@ function sample_function($parameter, $complex_parameter) {
   $baz = array(
     '#type' => 'subdir_sample',
   );
+
+  // Some random code to test formatting problems.
+  $boo = array();
+
+  newclass()
+    ->method1()
+    ->method2()
+    ->method3();
 }
 
 /**

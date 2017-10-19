@@ -31,8 +31,10 @@ class ClassA extends MyClassB implements InterfaceC, InterfaceD {
     $baz = parent::bMethod();
     $fb = self::sMethod();
     $blech = static::sMethod();
-    $fuz = $this->dMethod();
-    $who = $this->pdq();
+    $fuz = $this
+      ->dMethod();
+    $who = $this
+      ->pdq();
   }
 
   /**

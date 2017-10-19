@@ -39,6 +39,9 @@ function array_5_4() {
       5,
     ),
   );
+
+  // Empty array.
+  $boo = [];
 }
 
 /**

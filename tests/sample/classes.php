@@ -80,7 +80,8 @@ class Sample extends ClassNotDefinedHere implements SampleInterface {
     Sample::foo();
 
     // This should link to a search.
-    $x->bar();
+    $x
+      ->bar();
 
     // This should link to the property. Not really valid PHP as this is
     // not a static property, but just to test that the link works.
@@ -116,7 +117,8 @@ class SubSample extends Sample implements SampleInterfaceTwo, InterfaceNotDefine
 
     // This should link to the parent method, which is not overridden on
     // this class.
-    $this->baz();
+    $this
+      ->baz();
   }
 }
 

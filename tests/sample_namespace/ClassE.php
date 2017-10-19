@@ -31,7 +31,8 @@ class ClassE {
    * A really exciting method.
    */
   function eMethod() {
-    $this->fvar = $this->xyz();
+    $this->fvar = $this
+      ->xyz();
   }
 
   /**

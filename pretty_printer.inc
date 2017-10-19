@@ -28,8 +28,10 @@ module_load_include('inc', 'api', 'api.utilities');
  * - There is a line of vertical whitespace before each comment block.
  * - Individual single-line '//' comments are combined into blocks.
  * - Arrays are printed out multi-line instead of single-line, and comments are
- *   printed inside arrays.
+ *   printed inside arrays. Exception: empty arrays on one line.
  * - HTML spans are added for highlighting and linking.
+ * - Chained methods are split into lines.
+ * - Space at ends of lines is removed.
  */
 class ApiPrettyPrinter extends Standard {
 
@@ -159,7 +161,11 @@ class ApiPrettyPrinter extends Standard {
       $result .= "\n" . $this->p($node) . ($node instanceof Expr ? ';' : '');
     }
     if ($indent) {
-      return preg_replace('~\n(?!$|' . $this->noIndentToken . ')~', "\n" . $this->options['indentation'], $result);
+      // Indent lines.
+      $result = preg_replace('~\n(?!$|' . $this->noIndentToken . ')~', "\n" . $this->options['indentation'], $result);
+      // Remove trailing spaces at ends of lines (usually from indenting).
+      $result = preg_replace('| +$|m', '', $result);
+      return $result;
     }
     else {
       return $result;
@@ -430,11 +436,14 @@ class ApiPrettyPrinter extends Standard {
   }
 
   /**
-   * Overrides method call printing to add HTML spans.
+   * Overrides method call printing to add HTML spans and split into lines.
    */
   protected function pExpr_MethodCall(Expr\MethodCall $node) {
     if (!$this->options['html']) {
-      return parent::pExpr_MethodCall($node);
+      return $this->pDereferenceLhs($node->var) .
+        "\n" . $this->options['indentation'] . '->' .
+        $this->pObjectProperty($node->name) .
+        '(' . $this->pMaybeMultiline($node->args) . ')';
     }
 
     $variable = $this->pDereferenceLhs($node->var);
@@ -454,7 +463,8 @@ class ApiPrettyPrinter extends Standard {
     $args = $this->pCommaSeparated($node->args);
     array_pop($this->state['function_calls']);
 
-    return $variable . htmlentities('->') .
+    return $variable . "\n" . $this->options['indentation'] .
+      htmlentities('->') .
       '<span class="' . $span_class . '">' .
       $method_name . '</span>(' . $args . ')';
   }
@@ -601,15 +611,22 @@ class ApiPrettyPrinter extends Standard {
   protected function pExpr_Array(Expr\Array_ $node) {
     $syntax = $node->getAttribute('kind',
       $this->options['shortArraySyntax'] ? Expr\Array_::KIND_SHORT : Expr\Array_::KIND_LONG);
+    if (empty($node->items)) {
+      $items = '';
+    }
+    else {
+      $items = "\n" . $this->pCommaSeparatedMultiLine($node->items);
+    }
+
     if ($syntax === Expr\Array_::KIND_SHORT) {
-      return "[\n" . $this->pCommaSeparatedMultiLine($node->items) . "]";
+      return '[' . $items . ']';
     }
     else {
       if ($this->options['html']) {
-        return '<span class="php-keyword">array</span>(' . "\n" . $this->pCommaSeparatedMultiLine($node->items) . ")";
+        return '<span class="php-keyword">array</span>(' . $items . ')';
       }
       else {
-        return 'array(' . "\n" . $this->pCommaSeparatedMultiLine($node->items) . ")";
+        return 'array(' . $items . ")";
       }
     }
   }
@@ -888,7 +905,7 @@ class ApiPrettyPrinter extends Standard {
 
     return '<span class="php-boundary">' . htmlentities('?>') . '</span>' .
       htmlentities($this->pNoIndent($newline . $node->value)) .
-      '<span class="php-boundary">' . htmlentities('<?php') . '</span> ';
+      '<span class="php-boundary">' . htmlentities('<?php') . '</span>' . "\n";
   }
 
   /**

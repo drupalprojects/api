@@ -13,7 +13,8 @@ class ClassQ {
    */
   function bMethod() {
     // This should turn into a link to the YML file, as if it were config.
-    $my_config->get('sample.routing');
+    $my_config
+      ->get('sample.routing');
   }
 }
 
@@ -22,5 +23,6 @@ class ClassQ {
  */
 function another_function() {
   // This should turn into a link to the yml file.
-  $foo->url('user_register');
+  $foo
+    ->url('user_register');
 }

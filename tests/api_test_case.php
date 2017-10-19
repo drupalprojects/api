@@ -363,9 +363,9 @@ abstract class ApiTestCase extends DrupalWebTestCase {
     // in the file. Hopefully. That is what we're testing in this assert.
     $formatted = html_entity_decode(strip_tags($formatted));
 
-    // Remove spaces at ends of lines, and vertical whitespace.
+    // Remove vertical whitespace. We used to remove spaces at ends of lines,
+    // but now we test that there are none.
     $patterns = array(
-      '|\s+$|m' => '',
       '|\n+|' => "\n",
     );
     foreach ($patterns as $pattern => $replace) {
