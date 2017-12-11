@@ -47,11 +47,15 @@ class ApiPrettyPrinter extends Standard {
    * - first_argument: TRUE if printing the first argument of the deepest-level
    *   function in the function_calls stack.
    * - in_array: TRUE if we are currently printing an array element.
+   * - in_string: TRUE if we are currently printing the content of a literal
+   *   string.
    * - array_key: Key of the array element we are printing, if it is a string.
    *
    * @var array
    */
-  protected $state = array('function_calls' => array(), 'in_array' => FALSE);
+  protected $state = array(
+    'function_calls' => array(), 'in_array' => FALSE, 'in_string' => FALSE,
+  );
 
   /**
    * Constructs an ApiPrettyPrinter object.
@@ -211,10 +215,6 @@ class ApiPrettyPrinter extends Standard {
         $output = parent::p($node);
         return '<span class="php-constant">' . $output . '</span>';
       }
-      elseif ($type == 'Expr_Variable') {
-        $output = parent::p($node);
-        return '<span class="php-variable">' . $output . '</span>';
-      }
       elseif ($node instanceof Expr\Cast) {
         $cast_type = strtolower(array_pop($type_pieces));
         return $this->pPrefixOp($type, '(<span class="php-keyword">' . $cast_type . '</span>) ', $node->expr);
@@ -373,11 +373,29 @@ class ApiPrettyPrinter extends Standard {
       return htmlentities(parent::pScalar_Encapsed($node));
     }
 
+    // Change the state to record we are inside a string.
+    $this->state['in_string'] = TRUE;
+
     $string = $this->pEncapsList($node->parts, '"');
     $span = $this->getStringSpan($string);
     $endspan = '</span>';
     $this->state['last_string'] = $string;
+    $this->state['in_string'] = FALSE;
     return $span . '"' . htmlentities($string) . '"' . $endspan;
+  }
+
+  /**
+   * Overrides variable printing to add HTML spans.
+   */
+  protected function pExpr_Variable(Expr\Variable $node) {
+    $output = parent::pExpr_Variable($node);
+
+    // Add the HTML spans only if we aren't inside a string.
+    if ($this->options['html'] && !$this->state['in_string']) {
+      $output = '<span class="php-variable">' . $output . '</span>';
+    }
+
+    return  $output;
   }
 
   /**

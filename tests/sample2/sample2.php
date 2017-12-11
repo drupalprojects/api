@@ -28,6 +28,12 @@ function second_sample_function() {
 
   $foo = sample_function('a', 'b');
   $bar = sample_class_function('x');
+
+  // Test code for formatting variables inside strings. See issue
+  // https://www.drupal.org/project/api/issues/2926278
+  // and note that the pretty printer puts {} around variables inside
+  // strings, even if they weren't present, so the test code has the {} there.
+  $foobar = "{$foo} and {$bar}";
 }
 
 /**
