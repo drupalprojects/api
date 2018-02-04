@@ -88,6 +88,11 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->clickLink('InterfaceD::dMethod');
     $this->assertLink('\\api\\test2\\InterfaceC', 0, 'Link to param type is there');
 
+    // Verify that namespace page URLs work without branch name.
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/namespace/api!test2');
+    $this->assertLink('ClassB');
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/namespace/api!test2/' . $this->branchInfo['branch_name']);
+
     // Test contents of second namespace page.
     $this->drupalGet('api/' . $this->branchInfo['project'] . '/namespaces');
     $this->clickLink('api\\test2');

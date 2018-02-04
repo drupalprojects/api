@@ -794,7 +794,7 @@ function api_menu() {
   );
 
   // Namespace pages.
-  $items['api/%api_project/namespace/%/%'] = array(
+  $items['api/%api_project/namespace/%'] = array(
     'title' => 'Namespace',
     'page callback' => 'api_page_namespace',
     // Arguments: project, branch, namespace.

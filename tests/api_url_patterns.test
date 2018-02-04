@@ -10,11 +10,9 @@ module_load_include('php', 'api', 'tests/api_test_case');
 /**
  * Tests URLs to make sure they are handled correctly.
  *
- * Tests all valid URL patterns for the API module. See
- * http://drupal.org/node/829662#comment-3120966 for a list of URL patterns
- * up to API 6-x-1.2. In 6.x-1.6, the file name component of URLs changed to
- * use ! as a directory separator instead of --, so that files with -- in the
- * name could be supported.
+ * Tests current and legacy URL patterns for the API module, for listing and
+ * item pages, but only those that have examples in the base "sample" test
+ * area.
  */
 class ApiTestUrlPatterns extends ApiTestCase {
 
@@ -24,7 +22,7 @@ class ApiTestUrlPatterns extends ApiTestCase {
   public static function getInfo() {
     return array(
       'name' => 'URL functioning',
-      'description' => 'Test URLs specified in api_menu(), both old and current.',
+      'description' => 'Test basic URLs specified in api_menu()',
       'group' => 'API module',
     );
   }
@@ -262,6 +260,98 @@ class ApiTestUrlPatterns extends ApiTestCase {
         ),
         'text' => array('A sample group', 'A sample function'),
         'links' => array('sample_function', 'sample.php'),
+      ),
+
+      // Check same item URLs as above, but without branch suffixes. File
+      // pages do not work without branch suffix.
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!classes-subdir.php/class/SampleInSubDir/',
+        'aliases' => array(),
+        'text' => array(
+          'implements',
+          'A public property for testing',
+          'Sample class in a subdirectory',
+          'SampleInSubDir',
+          'Only implemented in children',
+          'A class constant in a subdirectory',
+          'subdirectory/',
+          'Classes in a subdirectory test',
+          'A sample group of classes.',
+        ),
+        'links' => array(
+          'SampleInterface',
+          'Expanded class hierarchy of SampleInSubDir',
+          'SampleInSubDir::$property_in_sub_dir',
+          'SampleInSubDir::baz',
+          'SampleInSubDir::constant',
+          'classes-subdir.php',
+          'Class Samples',
+        ),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!classes-subdir.php/class/hierarchy/SampleInSubDir/',
+        'aliases' => array(),
+        'text' => array('implements', 'Expanded class hierarchy of SampleInSubDir'),
+        'links' => array(
+          'SampleInSubDir',
+          'SampleInterface',
+          'SubInSubDirSample',
+          'SampleInterfaceTwo',
+        ),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!sample-subdir.php/constant/SAMPLE_CONSTANT_IN_SUB_DIR/',
+        'aliases' => array(),
+        'text' => array(
+          'SAMPLE_CONSTANT_IN_SUB_DIR',
+          'A sample constant',
+          'subdirectory/',
+          'A sample file in a subdirectory',
+          'A sample group',
+        ),
+        'links' => array('sample-subdir.php', 'Samples'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!sample-subdir.php/function/sample_insubdir_function/',
+        'aliases' => array(),
+        'text' => array('Used for sample and testing URLs', 'Another sample function; in a sub-directory'),
+        'links' => array('sample_function', 'Samples', 'sample-subdir.php'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!sample-subdir.php/global/sample_in_sub_dir_global/',
+        'aliases' => array(),
+        'text' => array(
+          '$sample_in_sub_dir_global',
+          'A sample global in a subdirectory',
+          'subdirectory/',
+          'A sample file in a subdirectory',
+          'A sample group.',
+        ),
+        'links' => array('sample-subdir.php', 'Samples'),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!classes-subdir.php/interface/SampleInSubDirInterface/',
+        'aliases' => array(),
+        'text' => array(
+          'SampleInSubDirInterface',
+          'Sample interface in a subdirectory',
+          'Implements this API',
+        ),
+        'links' => array(
+          'SampleInSubDirInterface::foo2',
+          'classes-subdir.php',
+          'Class Samples',
+        ),
+      ),
+      array(
+        'url' => 'api/' . $project_name . '/subdirectory!classes-subdir.php/property/SampleInSubDir::protected_property_in_sub_dir/',
+        'aliases' => array(),
+        'text' => array(
+          'SampleInSubDir::$protected_property_in_sub_dir',
+          'A protected property for testing',
+          'Classes in a subdirectory test',
+        ),
+        'links' => array('classes-subdir.php'),
       ),
 
       // Check search page.
