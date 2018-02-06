@@ -54,7 +54,9 @@ class ApiPrettyPrinter extends Standard {
    * @var array
    */
   protected $state = array(
-    'function_calls' => array(), 'in_array' => FALSE, 'in_string' => FALSE,
+    'function_calls' => array(),
+    'in_array' => FALSE,
+    'in_string' => FALSE,
   );
 
   /**
@@ -395,7 +397,7 @@ class ApiPrettyPrinter extends Standard {
       $output = '<span class="php-variable">' . $output . '</span>';
     }
 
-    return  $output;
+    return $output;
   }
 
   /**

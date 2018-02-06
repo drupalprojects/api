@@ -705,7 +705,6 @@ function _api_build_php_docblocks(array $statements, array $default_block, array
           $ad_type = strtolower(array_pop($ad_type_parts));
           if ($ad_type == 'precedence') {
             foreach ($adaptation->insteadof as $node) {
-              $classname = $node->toString();
               $references['use_trait'][$trait]['details'][$ad_type][$node->toString()] = $adaptation->method;
             }
           }
@@ -2503,21 +2502,24 @@ function _api_update_class_reference_info($did, array $parent_info, array $membe
   $members = _api_calc_class_members($did, $parent_info, $member_info);
 
   // Save the overrides info, and if we are getting documentation from an
-  // inherited member, update the summary on the main object.
+  // inherited member, update the summary on the main object. This is only
+  // done for the direct members of this class.
   $ao_query = db_insert('api_overrides')
     ->fields(array('did', 'overrides_did', 'documented_did'));
   $new_dids = array();
   foreach ($members as $list) {
     foreach ($list as $member) {
-      $new_dids[] = $member['did'];
-      if ($member['documented_did'] != $member['did']) {
-        db_update('api_documentation')
-          ->condition('did', $member['did'])
-          ->fields(array('summary' => $member['summary']))
-          ->execute();
+      if ($member['direct_member']) {
+        $new_dids[] = $member['did'];
+        if ($member['documented_did'] != $member['did']) {
+          db_update('api_documentation')
+            ->condition('did', $member['did'])
+            ->fields(array('summary' => $member['summary']))
+            ->execute();
+        }
+        unset($member['summary']);
+        $ao_query->values($member);
       }
-      unset($member['summary']);
-      $ao_query->values($member);
     }
   }
   if (count($new_dids)) {
@@ -2751,6 +2753,7 @@ function _api_make_bare_member_list($did, $member_info) {
         'summary' => $item->summary,
         'alias' => $member_name,
         'member_name' => $member_name,
+        'direct_member' => TRUE,
       );
     }
   }
@@ -2779,22 +2782,27 @@ function _api_member_list_merge(array &$members, array $parent_members, array $a
       }
       $alias = (isset($aliases[$member_name]) && $type == 'function') ? $aliases[$member_name] : $member_name;
       if (isset($members[$type][$alias])) {
-        // We already knew about this member. Save override info, if new.
-        if (!$members[$type][$alias]['overrides_did']) {
-          // We just found what the known member is overriding.
-          $members[$type][$alias]['overrides_did'] = $info['did'];
-        }
-        if (!$members[$type][$alias]['documented_did']) {
-          // The old member didn't have documentation, maybe this one does.
-          $members[$type][$alias]['documented_did'] = $info['documented_did'];
-        }
-        if (!$members[$type][$alias]['summary']) {
-          $members[$type][$alias]['summary'] = $info['summary'];
+        // We already knew about this member. Save override info, but only
+        // for direct members.
+        if ($members[$type][$alias]['direct_member']) {
+          if (!$members[$type][$alias]['overrides_did']) {
+            // We just found what the known member is overriding.
+            $members[$type][$alias]['overrides_did'] = $info['did'];
+          }
+          if (!$members[$type][$alias]['documented_did']) {
+            // The old member didn't have documentation, maybe this one does.
+            $members[$type][$alias]['documented_did'] = $info['documented_did'];
+          }
+          if (!$members[$type][$alias]['summary']) {
+            // The old member didn't have a summary, maybe this one does.
+            $members[$type][$alias]['summary'] = $info['summary'];
+          }
         }
       }
       else {
-        // It's a new member, add it in.
+        // It's a new member inherited from a parent, add it in.
         $info['alias'] = $alias;
+        $info['direct_member'] = FALSE;
         $members[$type][$alias] = $info;
       }
     }

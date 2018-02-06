@@ -17,4 +17,9 @@ interface InterfaceD {
    *   Something to test making links to a class.
    */
   function dMethod($foo);
+
+  /**
+   * A copy of a method from Interface C.
+   */
+  function cMethod();
 }

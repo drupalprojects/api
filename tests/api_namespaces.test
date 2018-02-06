@@ -6,6 +6,7 @@
  */
 
 module_load_include('php', 'api', 'tests/api_test_case');
+module_load_include('php', 'api', 'api.db.inc');
 
 /**
  * Tests that namespace and YAML functionality works.
@@ -39,6 +40,13 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->removePhpBranch();
 
     // Parse the code.
+    $this->resetBranchesAndCache();
+    $this->updateBranches();
+    $this->processApiParseQueue();
+
+    // To test a bug in calculating overrides in interfaces with multiple
+    // inheritance, parse the InterfaceH file again.
+    api_mark_for_reparse('InterfaceH.php');
     $this->resetBranchesAndCache();
     $this->updateBranches();
     $this->processApiParseQueue();
@@ -83,8 +91,10 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->clickLink('api\\test1');
     $this->assertLink('InterfaceD', 0, 'Link went back to namespace page');
 
-    // Verify that on method/function pages, param types make links.
+    // Verify that on method/function pages, param types make links, and that
+    // incorrect interface overrides are not present.
     $this->clickLink('InterfaceD');
+    $this->assertNoRaw('InterfaceC::dMethod');
     $this->clickLink('InterfaceD::dMethod');
     $this->assertLink('\\api\\test2\\InterfaceC', 0, 'Link to param type is there');
 
@@ -98,7 +108,7 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->clickLink('api\\test2');
     $this->assertLink('ClassB', 0, 'ClassB is on second namespace page');
     $this->assertLink('ClassE', 0, 'ClassE is on second namespace page');
-    $this->assertLink('InterfaceC', 0, 'InterfaceE is on second namespace page');
+    $this->assertLink('InterfaceC', 0, 'InterfaceC is on second namespace page');
     $this->assertLink('InterfaceD', 0, 'InterfaceD is on second namespace page');
     $this->assertText('InterfaceD2.php', 'Right InterfaceD file is on second namespace page');
     $this->assertNoLink('ClassA', 'ClassA is not on second namespace page');
@@ -107,6 +117,12 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
     $this->clickLink('ClassE');
     $this->clickLink('ClassE::$foobar');
     $this->assertLink('\\api\\test1\\InterfaceD', 0, 'Link to type of member variable is there');
+
+    // Verify that incorrect interface overrides are not present.
+    $this->drupalGet('api/' . $this->branchInfo['project'] . '/namespaces');
+    $this->clickLink('api\\test2');
+    $this->clickLink('InterfaceC');
+    $this->assertNoRaw('InterfaceD::cMethod');
 
     // Verify namespace links on file pages.
     $this->drupalGet('api/' . $this->branchInfo['project'] . '/ClassA.php/' . $this->branchInfo['branch_name']);
@@ -211,6 +227,7 @@ class ApiTestNamespaces extends ApiWebPagesBaseTest {
       'InterfaceC.php',
       'InterfaceD.php',
       'InterfaceD2.php',
+      'InterfaceH.php',
       'no_namespace.php',
       'TraitF.php',
     );
@@ -362,22 +379,22 @@ class ApiTestNamespaceCruft extends ApiWebPagesBaseTest {
     // Run the branch update function and verify counts. There should be
     // records for each file.
     $this->updateBranches();
-    $counts['node'] = 11;
-    $counts['api_documentation'] = 10;
-    $counts['api_file'] = 10;
-    $this->verifyCounts($counts, 10, 'Add and update branch');
+    $counts['node'] = 12;
+    $counts['api_documentation'] = 11;
+    $counts['api_file'] = 11;
+    $this->verifyCounts($counts, 11, 'Add and update branch');
 
     // Parse everything and verify counts.
     $this->checkAndClearLog();
     $this->updateBranches();
     $this->processApiParseQueue();
-    $counts['node'] = 37;
-    $counts['api_documentation'] = 36;
-    $counts['api_function'] = 15;
-    $counts['api_file'] = 10;
-    $counts['api_members'] = 24;
-    $counts['api_overrides'] = 16;
-    $counts['api_namespace'] = 15;
+    $counts['node'] = 40;
+    $counts['api_documentation'] = 39;
+    $counts['api_function'] = 16;
+    $counts['api_file'] = 11;
+    $counts['api_members'] = 27;
+    $counts['api_overrides'] = 17;
+    $counts['api_namespace'] = 17;
     $this->verifyCounts($counts, 0, 'Parse the branch');
 
     // Delete the branch, and verify counts.
