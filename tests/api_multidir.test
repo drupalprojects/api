@@ -54,7 +54,7 @@ class ApiTestMultiDirectory extends ApiTestCase {
   public function testParsing() {
     // Make sure we have the right number of doc objects.
     $branch = $this->getBranch();
-    $this->assertObjectCount($branch, 91);
+    $this->assertObjectCount($branch, 92);
 
     // Verify that the top-level directory was parsed.
     $object = api_filename_load('sample/sample.php', $branch->project, $branch->branch_name);
@@ -130,7 +130,7 @@ class ApiTestRegularExpressionExclusion extends ApiTestCase {
   public function testParsing() {
     // Make sure we have the right number of doc objects.
     $branch = $this->getBranch();
-    $this->assertObjectCount($branch, 45);
+    $this->assertObjectCount($branch, 46);
 
     // Verify that the top-level directory was parsed.
     $object = api_filename_load('sample/sample.php', $branch->project, $branch->branch_name);

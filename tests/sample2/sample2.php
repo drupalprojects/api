@@ -6,6 +6,14 @@
  */
 
 /**
+ * @defgroup another_group A great topic
+ *
+ * Say something interesting about classes here.
+ *
+ * @see sample_function()
+ */
+
+/**
  * A second sample function.
  *
  * This function links to the first sample function, with both see and link,

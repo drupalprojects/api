@@ -1057,14 +1057,16 @@ class ApiTestEmptyPageLinks extends ApiWebPagesBaseTest {
 
     // Visit the branch home page for the second project.
     $this->drupalGet('api/' . $this->branchInfo2['project']);
-    // Verify that the correct listing page links are there.
+    // Verify that the correct listing page links are there, and the topic.
+    $this->assertLink('A great topic');
     $this->assertLink(t('Files'), 0, 'Files link is present');
     $this->assertLink(t('Functions'), 0, 'Functions link is present');
     $this->assertLink(t('Classes and Interfaces'), 0, 'Classes link is present');
+    $this->assertLink(t('Topics'), 0, 'Topics link is present');
+
     // Verify that the listing pages that would be empty are not present.
     $this->assertNoLink(t('Constants'), 'Constants link is not present');
     $this->assertNoLink(t('Globals'), 'Globals link is not present');
-    $this->assertNoLink(t('Topics'), 'Topics link is not present');
     // Verify link to the project page is there.
     $this->assertLink(t('Other projects'), 0, 'Link to projects page is present');
 
@@ -1099,16 +1101,20 @@ class ApiTestEmptyPageLinks extends ApiWebPagesBaseTest {
     $this->assertLink(t('Elements'), 0, 'Elements link is present');
     $this->assertLink(t('Deprecated'), 0, 'Deprecated link is present');
 
-    // Project/branch with only files/functions.
+    // Project/branch with only some types of items.
     $this->drupalGet('api/' . $this->branchInfo2['project'] . '/sample2.php/function/second_sample_function');
     $this->assertText(t('API Navigation'), 'Block title is present');
     $this->assertLink($this->branchInfo2['title'], 0, 'Branch link is present');
-    $this->assertLink(t('Files'), 0, 'Files link is present');
-    $this->assertLink(t('Functions'), 0, 'Functions link is present');
-    $this->assertLink(t('Classes'), 0, 'Classes link is present');
-    $this->assertNoLink(t('Constants'), 'Constants link is not present');
-    $this->assertNoLink(t('Globals'), 'Globals link is not present');
-    $this->assertNoLink(t('Topics'), 'Topics link is not present');
+    $this->assertLink('Topics');
+    $this->assertLink('Files');
+    $this->assertLink('Functions');
+    $this->assertLink('Classes');
+    $this->assertNoLink('Constants');
+    $this->assertNoLink('Globals');
+    $this->assertNoLink('Namespaces');
+    $this->assertNoLink('Deprecated');
+    $this->assertNoLink('Services');
+    $this->assertNoLink('Elements');
 
     // Test the settings for which pages the block should be displayed on.
     $pages = array(

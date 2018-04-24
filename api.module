@@ -2062,7 +2062,7 @@ function api_listing_types($branch) {
     $table = ($type == 'elements') ? 'api_reference_storage' : 'api_documentation';
     $sql = 'SELECT 1 FROM {' . $table . '} WHERE branch_id = :branch_id AND '
       . $condition . ' ORDER BY branch_id';
-    $cache[$branch->branch_id][$type] = (bool) db_query_range($sql, 1, 1, $args)->fetchField();
+    $cache[$branch->branch_id][$type] = (bool) db_query_range($sql, 0, 1, $args)->fetchField();
   }
 
   return $cache[$branch->branch_id];
