@@ -132,6 +132,17 @@ function sample_function($parameter, $complex_parameter) {
     ->method1()
     ->method2()
     ->method3();
+
+  switch ($foo) {
+    case 'bar':
+      return 1;
+
+    // Make sure comments like this only appear once.
+    // Even if they are multi-line.
+    case 'baz':
+    case 'boo':
+      return 2;
+  }
 }
 
 /**
