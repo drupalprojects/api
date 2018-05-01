@@ -25,7 +25,8 @@
  *   title = @Translation("A great plugin title"),
  *   description = @Translation("A very descriptive plugin description."),
  *   something = "foo_sample_name",
- *   else = "SubSample"
+ *   else = "SubSample",
+ *   problem = "<em> <strong> <blockquote> <anothertag>",
  * )
  */
 class Sample extends ClassNotDefinedHere implements SampleInterface {

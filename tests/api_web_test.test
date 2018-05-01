@@ -565,6 +565,7 @@ class ApiTestComplexItemPages extends ApiWebPagesBaseTest {
     $this->assertLink('foo_sample_name', 0, 'Link to function name in plugin annotation is there');
     $this->assertLink('SubSample', 0, 'Link to class in plugin annotation is there');
     $this->assertLink('SampleInSubDir', 0, 'Link to annotation class is there');
+    $this->assertRaw('&lt;em&gt; &lt;strong&gt; &lt;blockquote&gt; &lt;anothertag&gt;', 'HTML is properly escaped');
 
     // Click the links on the page and verify.
     $this->assertLinkUrlSubstring('classes.php', $this->branchInfo['project'] . '/classes.php', 'classes.php link exists', 'classes.php link went to the right place');
@@ -744,6 +745,7 @@ class ApiTestComplexItemPages extends ApiWebPagesBaseTest {
     $this->assertLink('sample--doubledash.tpl.php', 0, 'sample--doubledash.tpl.php link is shown');
     $this->assertText('Displays a sample with a doubledash', 'sample--doubledash.tpl.php description is on sample topic page');
     $this->assertText('Deprecated', 'Deprecated is shown');
+    $this->assertRaw('&lt;em&gt; &lt;strong&gt; &lt;blockquote&gt; &lt;anothertag&gt;', 'HTML is properly escaped');
 
     // Verify section, sub-section, and ref links.
     $this->assertRaw('<h3 id="sec_one">Section 1</h3>', 'Section 1 header is there');

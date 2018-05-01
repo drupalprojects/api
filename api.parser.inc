@@ -1618,6 +1618,9 @@ function _api_format_embedded_php($matches) {
     // The code block is not valid PHP. It could be JavaScript, annotation,
     // PHP code with a syntax error, or something else. The best we can do is
     // try to find function-like strings and wrap them in spans for formatting.
+    // And recode the HTML entities, so they don't screw up other formatting,
+    // but this time avoiding quotes.
+    $code = htmlentities($code, ENT_NOQUOTES, 'UTF-8');
     $string_matches = array();
     $wrappers = '\'" @(';
     $possible_matches = array();

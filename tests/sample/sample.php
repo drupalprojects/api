@@ -21,6 +21,10 @@
  * This is the content of the second section. This is a link to the
  * sub-section @ref sub_a right here in the text.
  *
+ * Here is a possibly problematic code sample:
+ * @code
+ * $allowed_html = "<em> <strong> <blockquote> <anothertag>";
+ * @endcode
  * @{
  */
 
